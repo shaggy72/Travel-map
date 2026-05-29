@@ -1,27 +1,82 @@
 'use strict';
 
+const http     = require('http');
 const path     = require('path');
 const fs       = require('fs');
 const os       = require('os');
+const crypto   = require('crypto');
 const { execSync } = require('child_process');
 const express  = require('express');
-const session  = require('express-session');
 const multer   = require('multer');
 require('dotenv').config();
 
 // ── Config ────────────────────────────────────────────────────────────────
-const PORT       = parseInt(process.env.PORT || '3002', 10);
-const USERNAME   = process.env.APP_USERNAME   || 'admin';
-const PASSWORD   = process.env.APP_PASSWORD   || 'changeme';
-const SECRET     = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
+const PORT     = parseInt(process.env.PORT || '3002', 10);
+const USERNAME = process.env.APP_USERNAME   || 'admin';
+const PASSWORD = process.env.APP_PASSWORD   || 'changeme';
 
-const ROOT_DIR   = process.cwd();
-const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
-const WEBAPP_DIR = path.join(ROOT_DIR, 'webapp', 'dist');
+const ROOT_DIR    = process.cwd();
+const PUBLIC_DIR  = path.join(ROOT_DIR, 'public');
+const WEBAPP_DIR  = path.join(ROOT_DIR, 'webapp', 'dist');
 const ENTRY_POINT = path.join(ROOT_DIR, 'src', 'index.ts');
 
-// ── Bundle cache ──────────────────────────────────────────────────────────
-let bundlePath  = null;   // null = needs (re)build
+// ── Simple session store (no express-session dependency) ──────────────────
+// Maps token → createdAt timestamp. Tokens survive server restarts only via
+// the in-process Map (users re-login after restart, which is fine).
+const SESSION_COOKIE  = 'travel_map_sid';
+const SESSION_MAX_MS  = 7 * 24 * 60 * 60 * 1000; // 7 days
+const activeSessions  = new Map();
+
+function createSession() {
+  const token = crypto.randomBytes(32).toString('hex');
+  activeSessions.set(token, Date.now());
+  return token;
+}
+
+function destroySession(token) {
+  activeSessions.delete(token);
+}
+
+function isValidSession(token) {
+  if (!token || !activeSessions.has(token)) return false;
+  const age = Date.now() - activeSessions.get(token);
+  if (age > SESSION_MAX_MS) { activeSessions.delete(token); return false; }
+  return true;
+}
+
+/** Parse the session cookie from request headers (no cookie-parser needed). */
+function getSessionToken(req) {
+  const raw = req.headers.cookie || '';
+  for (const part of raw.split(';')) {
+    const [k, v] = part.trim().split('=');
+    if (k.trim() === SESSION_COOKIE) return decodeURIComponent((v || '').trim());
+  }
+  return null;
+}
+
+/** Set the session cookie on the response. */
+function setSessionCookie(res, token) {
+  const maxAge = Math.round(SESSION_MAX_MS / 1000);
+  res.setHeader('Set-Cookie',
+    `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Path=/`
+  );
+}
+
+/** Clear the session cookie. */
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie',
+    `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Max-Age=0; Path=/`
+  );
+}
+
+// ── Auth middleware ───────────────────────────────────────────────────────
+function requireAuth(req, res, next) {
+  if (isValidSession(getSessionToken(req))) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+// ── Remotion bundle cache ─────────────────────────────────────────────────
+let bundlePath  = null;
 let isRendering = false;
 
 async function getBundle() {
@@ -50,7 +105,7 @@ const upload = multer({
       cb(new Error('Only .gpx files are accepted'));
     }
   },
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 // ── Express app ───────────────────────────────────────────────────────────
@@ -58,21 +113,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(session({
-  secret:            SECRET,
-  resave:            false,
-  saveUninitialized: false,
-  cookie:            { maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days
-}));
-
-// Serve GPX files (needed by @remotion/player in the browser)
+// Serve GPX files (needed by @remotion/player in browser)
 app.use('/public', express.static(PUBLIC_DIR));
-
-// ── Auth middleware ───────────────────────────────────────────────────────
-function requireAuth(req, res, next) {
-  if (req.session && req.session.loggedIn) return next();
-  res.status(401).json({ error: 'Unauthorized' });
-}
 
 // ── Auth routes ───────────────────────────────────────────────────────────
 app.get('/api/me', requireAuth, (_req, res) => {
@@ -82,7 +124,8 @@ app.get('/api/me', requireAuth, (_req, res) => {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (username === USERNAME && password === PASSWORD) {
-    req.session.loggedIn = true;
+    const token = createSession();
+    setSessionCookie(res, token);
     res.json({ ok: true });
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
@@ -90,9 +133,10 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.json({ ok: true });
-  });
+  const token = getSessionToken(req);
+  if (token) destroySession(token);
+  clearSessionCookie(res);
+  res.json({ ok: true });
 });
 
 // ── GPX management ────────────────────────────────────────────────────────
@@ -108,24 +152,18 @@ app.get('/api/gpx-files', requireAuth, (_req, res) => {
 });
 
 app.post('/api/upload-gpx', requireAuth, upload.single('gpxFile'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send('No file received.');
-  }
+  if (!req.file) return res.status(400).send('No file received.');
 
-  // Regenerate src/gpxFiles.ts so next bundle includes the new file
   try {
     execSync(`node "${path.join(ROOT_DIR, 'scripts', 'syncGpxFiles.cjs')}"`, {
-      cwd: ROOT_DIR,
-      stdio: 'inherit',
+      cwd: ROOT_DIR, stdio: 'inherit',
     });
   } catch (err) {
     console.error('[upload] syncGpxFiles failed:', err.message);
   }
 
-  // Invalidate bundle so next render picks up the new file
-  bundlePath = null;
-  console.log('[upload] Bundle invalidated — will rebuild on next render.');
-
+  bundlePath = null; // invalidate bundle so next render picks up new file
+  console.log('[upload] GPX saved, bundle invalidated.');
   res.json({ ok: true, filename: req.file.originalname });
 });
 
@@ -145,16 +183,10 @@ app.post('/api/render', requireAuth, async (req, res) => {
 
   try {
     const serveUrl = await getBundle();
-
     const { selectComposition, renderMedia } = await import('@remotion/renderer');
 
-    const composition = await selectComposition({
-      serveUrl,
-      id: 'EuropeMap',
-      inputProps,
-    });
-
-    console.log(`[render] Starting render — ${composition.durationInFrames} frames`);
+    const composition = await selectComposition({ serveUrl, id: 'EuropeMap', inputProps });
+    console.log(`[render] Starting — ${composition.durationInFrames} frames`);
 
     await renderMedia({
       composition,
@@ -163,13 +195,11 @@ app.post('/api/render', requireAuth, async (req, res) => {
       outputLocation: outFile,
       inputProps,
       onProgress: ({ progress }) => {
-        const pct = Math.round(progress * 100);
-        process.stdout.write(`\r[render] ${pct}%`);
+        process.stdout.write(`\r[render] ${Math.round(progress * 100)}%`);
       },
     });
 
     console.log('\n[render] Done:', outFile);
-
     res.download(outFile, 'travel-map.mp4', (err) => {
       if (err) console.error('[render] Download error:', err);
       fs.unlink(outFile, () => {});
@@ -177,34 +207,50 @@ app.post('/api/render', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('\n[render] Error:', err);
     fs.unlink(outFile, () => {});
-    res.status(500).send(
-      err instanceof Error ? err.message : 'Render failed. Check server logs.'
-    );
+    res.status(500).send(err instanceof Error ? err.message : 'Render failed.');
   } finally {
     isRendering = false;
   }
 });
 
-// ── Serve frontend (production) ───────────────────────────────────────────
+// ── Serve frontend (production build) ─────────────────────────────────────
 if (fs.existsSync(WEBAPP_DIR)) {
   app.use(express.static(WEBAPP_DIR));
-  // SPA fallback (Express v5 wildcard syntax)
   app.get('/{*path}', (_req, res) => {
     res.sendFile(path.join(WEBAPP_DIR, 'index.html'));
   });
 } else {
   app.get('/', (_req, res) => {
-    res.send(
-      '<p>Frontend not built. Run <code>npm run build:webapp</code> first, ' +
-      'or start Vite dev server with <code>npm run dev</code>.</p>'
-    );
+    res.send('<p>Run <code>npm run build:webapp</code> first, or start Vite dev server.</p>');
   });
 }
 
-// ── Start ─────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`Travel Map server running on http://localhost:${PORT}`);
-  if (!process.env.APP_PASSWORD) {
-    console.warn('[warn] APP_PASSWORD not set in .env — using default "changeme". Set it before exposing publicly!');
+// ── Start server ──────────────────────────────────────────────────────────
+// Use http.createServer directly (more reliable than app.listen in Express v5)
+const server = http.createServer(app);
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] Port ${PORT} is already in use. Kill the other process first.`);
+  } else {
+    console.error('[server] Fatal error:', err);
   }
+  process.exit(1);
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Travel Map server running on http://localhost:${PORT}`);
+  if (!process.env.APP_PASSWORD || process.env.APP_PASSWORD === 'changeme') {
+    console.warn('[warn] Set APP_PASSWORD in .env before exposing to the internet!');
+  }
+});
+
+// ── Catch any unhandled errors ────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('[server] Uncaught exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] Unhandled rejection:', reason);
 });

@@ -15,16 +15,19 @@ export default function App() {
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/me')
+    // AbortController ensures we don't hang forever if the server proxy is down
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000); // 5s timeout
+
+    fetch('/api/me', { signal: ctrl.signal })
       .then(r => {
-        if (r.ok) {
-          setAuth('logged-in');
-          fetchGpxFiles();
-        } else {
-          setAuth('logged-out');
-        }
+        clearTimeout(timer);
+        if (r.ok) { setAuth('logged-in'); fetchGpxFiles(); }
+        else       { setAuth('logged-out'); }
       })
-      .catch(() => setAuth('logged-out'));
+      .catch(() => { clearTimeout(timer); setAuth('logged-out'); });
+
+    return () => { clearTimeout(timer); ctrl.abort(); };
   }, []);
 
   async function fetchGpxFiles() {
