@@ -1,9 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import LoginPage   from './LoginPage';
-import PropsForm   from './PropsForm';
-import PreviewPlayer from './PreviewPlayer';
+import React, { useState, useEffect, Suspense, Component, ErrorInfo, ReactNode } from 'react';
+import LoginPage from './LoginPage';
+import PropsForm from './PropsForm';
 import { Props, DEFAULT_PROPS } from './types';
 
+// Lazy-load PreviewPlayer so a Remotion import failure can't kill the whole app
+const PreviewPlayer = React.lazy(() => import('./PreviewPlayer'));
+
+// ── Error boundary for the player ─────────────────────────────────────────
+interface EBState { error: Error | null }
+class PlayerErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error): EBState {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[PreviewPlayer] error:', error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          padding: 16, borderRadius: 8, background: '#fef2f2',
+          border: '1px solid #fecaca', color: '#dc2626', fontSize: 12,
+          fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: 300,
+        }}>
+          Preview unavailable:{'\n'}
+          {this.state.error.message}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ── Auth state ────────────────────────────────────────────────────────────
 type AuthState = 'loading' | 'logged-out' | 'logged-in';
 
 export default function App() {
@@ -15,9 +48,8 @@ export default function App() {
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
-    // AbortController ensures we don't hang forever if the server proxy is down
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 5000); // 5s timeout
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
 
     fetch('/api/me', { signal: ctrl.signal })
       .then(r => {
@@ -33,10 +65,7 @@ export default function App() {
   async function fetchGpxFiles() {
     try {
       const r = await fetch('/api/gpx-files');
-      if (r.ok) {
-        const files: string[] = await r.json();
-        setGpxFiles(files);
-      }
+      if (r.ok) setGpxFiles(await r.json());
     } catch { /* ignore */ }
   }
 
@@ -54,14 +83,10 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(props),
       });
-
       if (!res.ok) {
-        const text = await res.text();
-        setRenderErr(text || `Render failed (${res.status})`);
+        setRenderErr((await res.text()) || `Render failed (${res.status})`);
         return;
       }
-
-      // Trigger download
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
@@ -79,8 +104,11 @@ export default function App() {
   // ── Auth states ─────────────────────────────────────────────────────────
   if (auth === 'loading') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <span className="spinner" style={{ borderTopColor: '#2563eb', borderColor: '#e2e8f0', width: 24, height: 24 }} />
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center',
+                    height:'100vh', gap: 10, color: '#64748b', fontSize: 14 }}>
+        <span className="spinner"
+          style={{ borderTopColor:'#2563eb', borderColor:'#e2e8f0', width:20, height:20 }} />
+        Connecting…
       </div>
     );
   }
@@ -135,9 +163,18 @@ export default function App() {
       <main className="preview-panel">
         <div className="preview-label">Live Preview</div>
         <div className="preview-player-wrapper">
-          <PreviewPlayer props={props} />
+          <PlayerErrorBoundary>
+            <Suspense fallback={
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center',
+                            width:270, height:480, color:'#94a3b8', fontSize:13 }}>
+                Loading preview…
+              </div>
+            }>
+              <PreviewPlayer props={props} />
+            </Suspense>
+          </PlayerErrorBoundary>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-light)', textAlign: 'center' }}>
+        <div style={{ fontSize:11, color:'var(--text-light)', textAlign:'center' }}>
           Preview uses your browser — no server needed
         </div>
       </main>
