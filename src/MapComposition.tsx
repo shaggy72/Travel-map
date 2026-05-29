@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, delayRender, continueRender } from "remotion";
 import {
   CANVAS_W, CANVAS_H,
   MAJOR_CITIES,
@@ -9,6 +9,16 @@ import {
 import { easeInOutCubic, easeOutCubic, windowT } from "./easing";
 import { useMapboxImage, useGeocode, useGpxTrack, useRoute } from "./useMapboxImages";
 import { MapSchema } from "./schema";
+
+// ── City font registry ────────────────────────────────────────────────────
+// system: no download needed. googleParam: Google Fonts family+variant string.
+const CITY_FONT_MAP: Record<string, { family: string; googleParam?: string }> = {
+  Helvetica:    { family: "'Helvetica Neue', Arial, sans-serif" },
+  Inter:        { family: "Inter, 'Segoe UI', sans-serif",             googleParam: "Inter:wght@400;500;700" },
+  Georgia:      { family: "Georgia, 'Times New Roman', serif" },
+  Oswald:       { family: "Oswald, 'Helvetica Neue', sans-serif",      googleParam: "Oswald:wght@400;500;700" },
+  Merriweather: { family: "'Merriweather', Georgia, serif",             googleParam: "Merriweather:wght@400;700" },
+};
 
 // ── Palette ───────────────────────────────────────────────────────────────
 const C = {
@@ -66,11 +76,38 @@ export const MapComposition: React.FC<MapSchema> = (props) => {
 
 const MapCompositionInner: React.FC<MapSchema> = ({
   mode, startAddress, endAddress, startLabel, endLabel,
+  mapStyle,
   zoomMode, zoom: manualZoom, gpxFile,
+  labelMode,
   lineColor, lineWidth, lineStyle, pencilStrength, labelBgColor, labelTextColor,
   minPopulation,
+  cityFont,
+  cityUppercase,
+  cityColorBig, cityColorMedium, cityColorSmall,
+  citySizeBig, citySizeMedium, citySizeSmall,
 }) => {
   const frame = useCurrentFrame();
+
+  // ── Load Google Font if needed (works in both browser preview and Remotion render) ──
+  useEffect(() => {
+    const fontData = CITY_FONT_MAP[cityFont];
+    if (!fontData?.googleParam) return; // system font — nothing to fetch
+
+    const handle = delayRender(`Loading city font: ${cityFont}`);
+    let done = false;
+    const finish = () => { if (!done) { done = true; continueRender(handle); } };
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${fontData.googleParam}&display=swap`;
+    link.addEventListener("load", async () => {
+      try { await document.fonts.ready; } finally { finish(); }
+    });
+    link.addEventListener("error", finish);
+    document.head.appendChild(link);
+
+    return finish; // ensure handle resolves if effect re-runs or component unmounts
+  }, [cityFont]);
   const { width, height, durationInFrames: dur } = useVideoConfig();
 
   // ── Mode: directions — geocode both addresses ─────────────────────────
@@ -97,7 +134,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   // ── Fetch map tile ─────────────────────────────────────────────────────
   // Always build the URL — center/zoom always has a valid fallback value,
   // so the map stays visible while GPX data or geocoding is still loading.
-  const mapUrl  = buildMapUrl(center, zoom);
+  const mapUrl  = buildMapUrl(center, zoom, mapStyle);
   const tileUrl = useMapboxImage(mapUrl);
 
   // ── Route: directions fetches API; GPX uses parsed coords directly ─────
@@ -121,16 +158,15 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const endPx   = resolvedEnd   ? (proj(resolvedEnd)   ?? [0, 0]) : [0, 0];
 
   // ── Scaled timing (proportional to total duration) ───────────────────
-  const fadeInEnd    = Math.round(dur * 0.067);  //  ~0.33s of 5s
-  const routeStart   = fadeInEnd;
+  const routeStart   = 0;
   const routeEnd     = Math.round(dur * 0.867);  //  ~4.33s of 5s
   const endFadeIn    = Math.round(dur * 0.800);  //  ~4.00s of 5s
   const endFadeEnd   = Math.round(dur * 0.947);  //  ~4.73s of 5s
   const startBoxEnd  = Math.round(dur * 0.267);  //  ~1.33s of 5s
   const endBoxEnd    = Math.round(dur * 0.967);  //  ~4.83s of 5s
 
-  // ── Global fade-in ────────────────────────────────────────────────────
-  const mapOpacity = easeOutCubic(windowT(frame, 0, fadeInEnd));
+  // ── No fade-in — map is fully visible from frame 0 ───────────────────
+  const mapOpacity = 1;
 
   // ── Route progress ────────────────────────────────────────────────────
   const routeT       = easeInOutCubic(windowT(frame, routeStart, routeEnd));
@@ -143,14 +179,42 @@ const MapCompositionInner: React.FC<MapSchema> = ({
     : "";
 
   // ── Endpoint opacities ────────────────────────────────────────────────
-  const startO = mapOpacity;
-  const endO   = easeOutCubic(windowT(frame, endFadeIn, endFadeEnd));
+  const startO = 1;
+  const endO   = labelMode === 'on' ? 1
+               : easeOutCubic(windowT(frame, endFadeIn, endFadeEnd));
 
   // ── Label box reveal (left → right) ──────────────────────────────────
   const startFullW = labelBoxWidth(startLabel);
   const endFullW   = labelBoxWidth(endLabel);
-  const startBoxW  = easeInOutCubic(windowT(frame, fadeInEnd,  startBoxEnd)) * startFullW;
-  const endBoxW    = easeInOutCubic(windowT(frame, endFadeIn,  endBoxEnd))   * endFullW;
+  // 'on'       → full width immediately, no animation
+  // 'animated' → left-to-right reveal (original behaviour)
+  // 'off'      → 0 (labels not rendered anyway, but safe fallback)
+  const startBoxW  = labelMode === 'on' ? startFullW
+                   : labelMode === 'animated' ? easeInOutCubic(windowT(frame, 0,         startBoxEnd)) * startFullW
+                   : 0;
+  const endBoxW    = labelMode === 'on' ? endFullW
+                   : labelMode === 'animated' ? easeInOutCubic(windowT(frame, endFadeIn, endBoxEnd))   * endFullW
+                   : 0;
+
+  // ── Label box positioning — clamped so labels never go off-screen ─────
+  const LABEL_EDGE = 20; // min px from canvas edge
+  const BOX_H      = 52;
+  const DOT_R      = 6;
+  const LABEL_GAP  = 8;  // clear gap between dot edge and label box
+
+  // Horizontal: clamp so right edge stays within canvas
+  const startLabelX = Math.max(LABEL_EDGE,
+    Math.min(startPx[0] - 2, CANVAS_W - LABEL_EDGE - startFullW));
+  const endLabelX   = Math.max(LABEL_EDGE,
+    Math.min(endPx[0] - 2,   CANVAS_W - LABEL_EDGE - endFullW));
+
+  // Vertical: label sits above the dot with a gap; flips below if too close to top
+  const startLabelY = startPx[1] - DOT_R - LABEL_GAP - BOX_H >= LABEL_EDGE
+    ? startPx[1] - DOT_R - LABEL_GAP - BOX_H
+    : startPx[1] + DOT_R + LABEL_GAP;
+  const endLabelY   = endPx[1] - DOT_R - LABEL_GAP - BOX_H >= LABEL_EDGE
+    ? endPx[1] - DOT_R - LABEL_GAP - BOX_H
+    : endPx[1] + DOT_R + LABEL_GAP;
 
   return (
     <AbsoluteFill style={{ background: C.bg }}>
@@ -162,10 +226,10 @@ const MapCompositionInner: React.FC<MapSchema> = ({
       >
         <defs>
           <clipPath id="startClip">
-            <rect x={startPx[0] - 2} y={startPx[1] - 50} width={startBoxW} height={52} />
+            <rect x={startLabelX} y={startLabelY} width={startBoxW} height={BOX_H} />
           </clipPath>
           <clipPath id="endClip">
-            <rect x={endPx[0] - 2} y={endPx[1] - 50} width={endBoxW} height={52} />
+            <rect x={endLabelX} y={endLabelY} width={endBoxW} height={BOX_H} />
           </clipPath>
 
           {/* ── Pencil filters (only mounted when needed) ─────────────── */}
@@ -197,22 +261,33 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         )}
 
         {/* ── Major city dots + labels ──────────────────────────────────── */}
+        {/* minPopulation === 0 is the "hide all" sentinel                   */}
         <g opacity={mapOpacity}>
-          {MAJOR_CITIES.filter((c) => c.pop >= minPopulation).map(({ name, lnglat }) => {
+          {MAJOR_CITIES.filter((c) => minPopulation > 0 && c.pop >= minPopulation).map(({ name, lnglat, pop }) => {
             const px = proj(lnglat);
             if (!px) return null;
             const [cx, cy] = px;
             if (cx < 0 || cx > CANVAS_W || cy < 0 || cy > CANVAS_H) return null;
+
+            // ── Three-tier font sizing ─────────────────────────────────────
+            const isBig    = pop > 1_000_000;
+            const isMedium = pop > 200_000 && pop <= 1_000_000;
+            const fontSize   = isBig ? citySizeBig : isMedium ? citySizeMedium : citySizeSmall;
+            const fontWeight = isBig ? "700" : "500";
+            const fill       = isBig ? cityColorBig : isMedium ? cityColorMedium : cityColorSmall;
+            const dotR       = isBig ? 4 : isMedium ? 3 : 2;
+
             return (
               <g key={name}>
-                <circle cx={cx} cy={cy} r={3} fill={C.cityDot} />
+                <circle cx={cx} cy={cy} r={dotR} fill={C.cityDot} />
                 <text
-                  x={cx + 6} y={cy + 4}
-                  fontSize={40}
-                  fontFamily="'Helvetica Neue', Arial, sans-serif"
-                  fontWeight="500"
-                  fill={C.cityLabel}
-                  letterSpacing={0.3}
+                  x={cx + 6} y={cy + fontSize * 0.35}
+                  fontSize={fontSize}
+                  fontFamily={CITY_FONT_MAP[cityFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
+                  fontWeight={fontWeight}
+                  fill={fill}
+                  letterSpacing={cityUppercase ? 1.2 : 0.3}
+                  style={{ textTransform: cityUppercase ? "uppercase" : "none" }}
                 >
                   {name}
                 </text>
@@ -259,17 +334,16 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         ))}
 
         {/* ── Start marker ──────────────────────────────────────────────── */}
+        {labelMode !== 'off' && (
         <g opacity={startO}>
-          <circle cx={startPx[0]} cy={startPx[1]} r={6} fill={lineColor} />
-          <circle cx={startPx[0]} cy={startPx[1]} r={3} fill={C.dot} />
           <g clipPath="url(#startClip)">
             <rect
-              x={startPx[0] - 2} y={startPx[1] - 50}
-              width={startFullW} height={52} rx={6}
+              x={startLabelX} y={startLabelY}
+              width={startFullW} height={BOX_H} rx={6}
               fill={labelBgColor}
             />
             <text
-              x={startPx[0] + 10} y={startPx[1] - 10}
+              x={startLabelX + 12} y={startLabelY + 40}
               fontSize={40}
               fontFamily="'Helvetica Neue', Arial, sans-serif"
               fontWeight="700"
@@ -279,20 +353,23 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               {startLabel}
             </text>
           </g>
+          {/* Dot drawn after label so it's always visible on top */}
+          <circle cx={startPx[0]} cy={startPx[1]} r={6} fill={lineColor} />
+          <circle cx={startPx[0]} cy={startPx[1]} r={3} fill={C.dot} />
         </g>
+        )}
 
         {/* ── End marker (fades in when line arrives) ───────────────────── */}
+        {labelMode !== 'off' && (
         <g opacity={endO}>
-          <circle cx={endPx[0]} cy={endPx[1]} r={6} fill={lineColor} />
-          <circle cx={endPx[0]} cy={endPx[1]} r={3} fill={C.dot} />
           <g clipPath="url(#endClip)">
             <rect
-              x={endPx[0] - 2} y={endPx[1] - 50}
-              width={endFullW} height={52} rx={6}
+              x={endLabelX} y={endLabelY}
+              width={endFullW} height={BOX_H} rx={6}
               fill={labelBgColor}
             />
             <text
-              x={endPx[0] + 10} y={endPx[1] - 10}
+              x={endLabelX + 12} y={endLabelY + 40}
               fontSize={40}
               fontFamily="'Helvetica Neue', Arial, sans-serif"
               fontWeight="700"
@@ -302,7 +379,11 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               {endLabel}
             </text>
           </g>
+          {/* Dot drawn after label so it's always visible on top */}
+          <circle cx={endPx[0]} cy={endPx[1]} r={6} fill={lineColor} />
+          <circle cx={endPx[0]} cy={endPx[1]} r={3} fill={C.dot} />
         </g>
+        )}
 
       </svg>
     </AbsoluteFill>

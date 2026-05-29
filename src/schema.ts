@@ -12,15 +12,25 @@ export const schema = z.object({
   endAddress:   z.string().default("Lauris, France"),
   startLabel:   z.string().default("Ghent"),
   endLabel:     z.string().default("Lauris"),
+  mapStyle:     z.string().default("shaggy72/cmpma5agg000101qr4tt68gad"),
   zoomMode:     z.enum(["auto", "manual"]).default("auto"),
   zoom:         z.number().min(1).max(20).multipleOf(0.1).default(5.5),
   lineColor:    zColor().default("#e53935"),
   lineWidth:    z.number().min(1).max(20).default(4),
   lineStyle:      z.enum(["solid", "dashed", "dotted", "long-dash", "dash-dot", "pencil"]).default("solid"),
   pencilStrength: z.number().min(1).max(10).default(5),
+  labelMode:       z.enum(["animated", "on", "off"]).default("animated"),
   labelBgColor:    zColor().default("#555555"),
   labelTextColor:  zColor().default("#ffffff"),
   minPopulation:   z.number().min(0).max(15_000_000).default(100_000), // city label filter
+  cityFont:        z.enum(['Helvetica', 'Inter', 'Georgia', 'Oswald', 'Merriweather']).default('Helvetica'),
+  cityUppercase:   z.boolean().default(false),
+  cityColorBig:    zColor().default("#333333"),
+  cityColorMedium: zColor().default("#555555"),
+  cityColorSmall:  zColor().default("#999999"),
+  citySizeBig:     z.number().min(10).max(80).default(44),
+  citySizeMedium:  z.number().min(8).max(60).default(31),
+  citySizeSmall:   z.number().min(6).max(44).default(22),
   duration:        z.number().min(1).max(60).default(5), // seconds
 });
 

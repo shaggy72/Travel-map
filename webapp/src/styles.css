@@ -3,29 +3,31 @@
 
 :root {
   --font:        'Inter', system-ui, -apple-system, sans-serif;
-  --bg:          #ffffff;
-  --sidebar-bg:  #f8fafc;
-  --border:      #e2e8f0;
-  --border-hover:#cbd5e1;
-  --text:        #0f172a;
-  --text-muted:  #64748b;
-  --text-light:  #94a3b8;
-  --accent:      #2563eb;
-  --accent-hover:#1d4ed8;
-  --accent-light:#eff6ff;
-  --danger:      #dc2626;
-  --success:     #16a34a;
-  --radius:      8px;
-  --radius-lg:   12px;
-  --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-  --shadow-md:   0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
-  --sidebar-w:   360px;
+  --bg:          #edeae4;       /* warm beige — preview panel bg          */
+  --sidebar-bg:  #e8e4de;       /* slightly deeper beige — sidebar        */
+  --field-bg:    #f8f6f2;       /* near-white — individual field cards    */
+  --border:      #d0cbc3;       /* warm gray border                       */
+  --border-hover:#b8b2aa;
+  --text:        #26211a;       /* dark warm brown-black                  */
+  --text-muted:  #8c7e6e;       /* warm muted brown — values / labels     */
+  --text-light:  #b4a898;
+  --accent:      #a06840;       /* warm brown — selected / active         */
+  --accent-hover:#8a5530;
+  --accent-light:#f2e9de;
+  --danger:      #b83c3c;
+  --success:     #4a7a50;
+  --field-hover: #e8e1d6;       /* warm beige on field hover              */
+  --radius:      6px;
+  --radius-lg:   10px;
+  --shadow:      0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:   0 2px 16px rgba(0,0,0,.10);
+  --sidebar-w:   280px;
 }
 
 html, body, #root {
   height: 100%;
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 11px;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -49,20 +51,20 @@ html, body, #root {
 }
 
 .sidebar-header {
-  padding: 18px 20px 14px;
+  padding: 13px 13px 10px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .sidebar-header h1 {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.01em;
 }
 
 .sidebar-header p {
-  font-size: 12px;
+  font-size: 9px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -70,11 +72,18 @@ html, body, #root {
 .sidebar-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 0;
+  /* 4px on each side keeps content clear of the scrollbar.
+     scrollbar-gutter: stable reserves additional space for classic scrollbars.
+     Together these ensure the scrollbar never overlaps content on any platform. */
+  padding: 10px 4px 6px 4px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
+
 .sidebar-footer {
-  padding: 14px 16px;
+  padding: 9px 11px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -88,77 +97,141 @@ html, body, #root {
   justify-content: center;
   padding: 32px;
   overflow: hidden;
-  gap: 16px;
+  gap: 14px;
 }
 
 .preview-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 9px;
+  font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
 .preview-player-wrapper {
+  height: calc(100vh - 180px);
+  max-height: 560px;
+  aspect-ratio: 9 / 16;
   box-shadow: var(--shadow-md);
   border-radius: var(--radius);
   overflow: hidden;
-  max-height: calc(100vh - 160px);
-  aspect-ratio: 9 / 16;
+  flex-shrink: 0;
+  background: #ddd8d0;
 }
 
 /* ── Form Sections ────────────────────────────────────────────────────── */
 .form-section {
-  padding: 0 16px 4px;
+  padding: 0 11px 4px;
 }
 
 .form-section + .form-section {
-  margin-top: 8px;
-  padding-top: 12px;
+  margin-top: 9px;
+  padding-top: 9px;
   border-top: 1px solid var(--border);
 }
 
 .section-title {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.09em;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
+/* ── Field cards ──────────────────────────────────────────────────────── */
+/* Each .field is a white rounded pill — label left, control right        */
 .field {
-  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 12px 0 8px;
+  min-height: 27px;
+  margin-bottom: 4px;
+  gap: 6px;
+  transition: background .12s;
+  overflow: hidden; /* clips slider thumb + focus ring to the rounded pill shape */
 }
 
-.field label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
+.field:hover {
+  background: var(--field-hover);
+}
+
+.field > label {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 400;           /* regular weight — matches reference        */
+  color: var(--text-muted);   /* warm brownish, not black                  */
+  margin: 0;
+  width: 38%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Controls that sit directly inside .field fill the remaining space */
+.field > input[type="text"],
+.field > input[type="number"],
+.field > select {
+  flex: 1;
+  text-align: right;
+  border: none;
+  background: transparent;
+  padding: 6px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.field > input[type="text"]:focus,
+.field > input[type="number"]:focus,
+.field > select:focus {
   color: var(--text);
-  margin-bottom: 4px;
+  outline: none;
+}
+
+/* Range and color rows fill the remaining width */
+.field > .range-row,
+.field > .color-row,
+.field > .radio-group,
+.field > .city-slider-row {
+  flex: 1;
+}
+
+/* Upload area sits in its own full-width field-like block */
+.field > .upload-area {
+  flex: 1;
+  margin: 4px 0;
 }
 
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 4px;
 }
 
-/* ── Inputs ───────────────────────────────────────────────────────────── */
+/* Narrower label in two-column grid so the control has room */
+.field-row .field > label {
+  width: auto;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+/* ── Inputs (base — overridden inside .field) ─────────────────────────── */
 input[type="text"],
 input[type="number"],
 select,
 input[type="email"],
 input[type="password"] {
   width: 100%;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--font);
-  font-size: 13px;
+  font-size: 10px;
   color: var(--text);
-  background: var(--bg);
+  background: var(--field-bg);
   transition: border-color .15s, box-shadow .15s;
   appearance: none;
   -webkit-appearance: none;
@@ -171,91 +244,306 @@ select:focus,
 input[type="email"]:focus,
 input[type="password"]:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  box-shadow: 0 0 0 3px rgba(160,104,64,.14);
 }
 
 select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238c7e6e' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   padding-right: 28px;
   cursor: pointer;
 }
 
+/* Select inside a .field pill: no individual border */
+.field > select {
+  background-position: right 0 center;
+  padding-right: 18px;
+}
+
 /* ── Range Slider ─────────────────────────────────────────────────────── */
 .range-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 2px 0;
 }
 
-.range-row input[type="range"] {
+/* Custom range input — overrides native OS thumb so overflow:hidden clips it */
+.range-row input[type="range"],
+.city-slider-row input[type="range"] {
   flex: 1;
   padding: 0;
   border: none;
+  outline: none;
   box-shadow: none;
-  height: 4px;
   cursor: pointer;
-  accent-color: var(--accent);
-  background: var(--border);
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 20px; /* tall hit target; track + thumb rendered via pseudo-elements */
+}
+
+.range-row input[type="range"]:focus,
+.city-slider-row input[type="range"]:focus {
+  outline: none;
+}
+
+/* ── Webkit track ── */
+.range-row input[type="range"]::-webkit-slider-runnable-track,
+.city-slider-row input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
   border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--range-fill, 0%),
+    var(--border) var(--range-fill, 0%)
+  );
 }
 
-.range-row input[type="range"]:focus {
+/* ── Webkit thumb ── */
+.range-row input[type="range"]::-webkit-slider-thumb,
+.city-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  margin-top: -5px; /* center on 3px track: -(13-3)/2 */
+  box-shadow: 0 1px 3px rgba(0,0,0,.28);
+}
+
+/* ── Firefox track ── */
+.range-row input[type="range"]::-moz-range-track,
+.city-slider-row input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.range-row input[type="range"]::-moz-range-progress,
+.city-slider-row input[type="range"]::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ── Firefox thumb ── */
+.range-row input[type="range"]::-moz-range-thumb,
+.city-slider-row input[type="range"]::-moz-range-thumb {
   border: none;
-  box-shadow: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.28);
 }
 
-.range-value {
-  font-size: 12px;
-  color: var(--text-muted);
-  min-width: 32px;
-  text-align: right;
-}
 
-/* ── Color Picker ─────────────────────────────────────────────────────── */
+/* ── Color row (field pill interior) ─────────────────────────────────── */
 .color-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 2px 0;
+  flex: 1;
 }
 
-.color-preview {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+/* Swatch trigger — small coloured square inside the field pill */
+.cp-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,.18);
   cursor: pointer;
-  padding: 0;
-  background: none;
+  flex-shrink: 0;
+  transition: transform .12s;
+}
+.cp-swatch:hover { transform: scale(1.12); }
+
+/* Hex value displayed as plain text next to the swatch — matches other field values */
+.color-hex {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 10px;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--text-muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Floating color picker panel ──────────────────────────────────────── */
+.cp-panel {
+  position: fixed;
+  z-index: 1001;
+  width: 224px;
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 24px rgba(0,0,0,.16);
+  padding: 10px;
+  user-select: none;
+}
+
+/* Gradient square */
+.cp-sq {
+  width: 100%;
+  height: 156px;
+  border-radius: 5px;
+  position: relative;
+  cursor: crosshair;
+  margin-bottom: 10px;
+  touch-action: none;
   overflow: hidden;
+}
+
+/* Cursor circle on the gradient square */
+.cp-sq-cur {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.55);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Hue slider track */
+.cp-hue {
+  width: 100%;
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 8px;
+  touch-action: none;
+}
+
+/* Alpha slider track — checkered then fades to current colour via inline style */
+.cp-alpha {
+  width: 100%;
+  height: 11px;
+  border-radius: 6px;
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 10px;
+  touch-action: none;
+  /* Checkered background to signal transparency */
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+/* Coloured overlay for the alpha gradient (set via inline style) */
+.cp-alpha-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* Shared thumb style for hue + alpha bars */
+.cp-bar-cur {
+  position: absolute;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 5px rgba(0,0,0,.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Bottom input row */
+.cp-inputs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cp-hex-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  gap: 2px;
+}
+
+.cp-hash {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
   flex-shrink: 0;
 }
 
-.color-preview input[type="color"] {
-  width: 40px;
-  height: 40px;
-  margin: -4px;
+.cp-hex-in {
+  flex: 1;
+  min-width: 0;
   border: none;
+  background: transparent;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  outline: none;
   padding: 0;
-  cursor: pointer;
-  background: none;
 }
 
-.color-hex {
+/* Alpha % input */
+.cp-alpha-display {
+  display: flex;
+  align-items: center;
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 6px;
+  gap: 2px;
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.cp-alpha-in {
+  width: 0;
   flex: 1;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 9px;
+  color: var(--text);
+  outline: none;
+  padding: 0;
+  /* Hide number spinner arrows */
+  -moz-appearance: textfield;
+}
+.cp-alpha-in::-webkit-outer-spin-button,
+.cp-alpha-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.cp-pct {
+  font-size: 9px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 /* ── Radio Toggle ─────────────────────────────────────────────────────── */
 .radio-group {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 6px;
   overflow: hidden;
+  background: var(--sidebar-bg);
 }
 
 .radio-group input[type="radio"] { display: none; }
@@ -263,8 +551,8 @@ select {
 .radio-group label {
   flex: 1;
   text-align: center;
-  padding: 6px 0;
-  font-size: 13px;
+  padding: 4px 0;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
@@ -277,19 +565,141 @@ select {
   color: #fff;
 }
 
-.radio-group label:hover:not(.checked) {
+.radio-group label:hover {
   background: var(--border);
   color: var(--text);
+}
+
+/* Radio group inside a field pill: remove the inner box, use text-only toggle */
+.field > .radio-group {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.field > .radio-group label {
+  padding: 0 8px;
+  border-right: 1px solid var(--border);
+  font-weight: 400;
+}
+
+.field > .radio-group label:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.field > .radio-group input[type="radio"]:checked + label {
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.field > .radio-group label:hover {
+  background: none;
+  color: var(--text);
+}
+
+/* ── City tier sub-headings (Big / Medium / Small inside City labels section) */
+.city-tier-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin: 6px 0 3px;
+}
+.city-tier-label:first-of-type { margin-top: 2px; }
+.city-tier-label span {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 8px;
+  opacity: 0.75;
+}
+
+/* ── City Slider ──────────────────────────────────────────────────────── */
+.city-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  padding: 2px 0;
+}
+/* range input styles for city-slider-row are merged with .range-row above */
+
+/* ── Line Style Picker ────────────────────────────────────────────────── */
+.field > .ls-picker { flex: 1; }
+
+.ls-picker { position: relative; width: 100%; }
+
+.ls-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: var(--font);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.ls-label      { flex: 1; }
+.ls-font-preview { flex: 1; font-size: 11px; line-height: 1; }
+
+.ls-arrow {
+  font-size: 8px;
+  color: var(--text-light);
+  line-height: 1;
+}
+
+/* Panel rendered with position:fixed (set inline) to escape sidebar clipping */
+.ls-panel {
+  position: fixed;
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0,0,0,.13);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.ls-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: left;
+  transition: background .1s;
+}
+
+.ls-option:last-child { border-bottom: none; }
+.ls-option:hover      { background: var(--field-hover); }
+
+.ls-option.selected {
+  background: var(--accent-light);
+  color: var(--accent);
 }
 
 /* ── File Upload ──────────────────────────────────────────────────────── */
 .upload-area {
   border: 1.5px dashed var(--border);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 7px 10px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 9px;
   cursor: pointer;
   transition: border-color .15s, background .15s;
   position: relative;
@@ -313,8 +723,9 @@ select {
 }
 
 .upload-status {
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: 9px;
+  margin-top: 3px;
+  padding: 0 2px;
 }
 
 .upload-status.ok    { color: var(--success); }
@@ -325,11 +736,11 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 5px;
+  padding: 6px 12px;
   border-radius: var(--radius);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -347,10 +758,10 @@ select {
 }
 
 .btn-primary:hover { background: var(--accent-hover); }
-.btn-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 .btn-ghost {
-  background: transparent;
+  background: var(--field-bg);
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
@@ -359,9 +770,9 @@ select {
 
 /* ── Spinner ──────────────────────────────────────────────────────────── */
 .spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,.4);
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255,255,255,.35);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin .7s linear infinite;
@@ -372,16 +783,16 @@ select {
 
 /* ── Render status ────────────────────────────────────────────────────── */
 .render-error {
-  font-size: 12px;
+  font-size: 9px;
   color: var(--danger);
-  margin-top: 6px;
+  margin-top: 5px;
   line-height: 1.4;
 }
 
 .render-info {
-  font-size: 12px;
+  font-size: 9px;
   color: var(--text-muted);
-  margin-top: 6px;
+  margin-top: 5px;
 }
 
 /* ── Login Page ───────────────────────────────────────────────────────── */
@@ -394,7 +805,7 @@ select {
 }
 
 .login-card {
-  background: var(--bg);
+  background: var(--field-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 36px 32px;
@@ -403,7 +814,7 @@ select {
 }
 
 .login-card h1 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text);
   margin-bottom: 4px;
@@ -424,13 +835,14 @@ select {
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 5px;
+  color: var(--text);
 }
 
 .login-error {
   font-size: 13px;
   color: var(--danger);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: rgba(184,60,60,.08);
+  border: 1px solid rgba(184,60,60,.25);
   border-radius: var(--radius);
   padding: 8px 12px;
   margin-bottom: 14px;
@@ -445,6 +857,7 @@ select {
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .logout-btn:hover { color: var(--text); }

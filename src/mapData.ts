@@ -30,13 +30,13 @@ export function calcZoomAndCenter(
   const avgMercY  = (mercY(a[1]) + mercY(b[1])) / 2;
   const centerLat = (Math.atan(Math.exp(avgMercY)) * 360) / Math.PI - 90;
 
-  // Scale to fit both points with padding (PAD = fraction of half-canvas used)
-  const PAD      = 0.70;
+  // Scale to fit both points with padding (PAD = fraction of full canvas used)
+  const PAD      = 0.85;
   const dLng     = Math.abs(a[0] - b[0]) * (Math.PI / 180);
   const dMercY   = Math.abs(mercY(a[1]) - mercY(b[1]));
 
-  const scaleFromLng = dLng  > 0 ? (CANVAS_W / 2) * PAD / dLng  : Infinity;
-  const scaleFromLat = dMercY > 0 ? (CANVAS_H / 2) * PAD / dMercY : Infinity;
+  const scaleFromLng = dLng  > 0 ? CANVAS_W * PAD / dLng  : Infinity;
+  const scaleFromLat = dMercY > 0 ? CANVAS_H * PAD / dMercY : Infinity;
   const scale = Math.min(scaleFromLng, scaleFromLat);
   const zoom  = Math.log2(scale / SCALE_BASE);
 
@@ -63,10 +63,10 @@ export function buildProjection(center: [number, number], zoom: number) {
 }
 
 /** Build the Mapbox Static Images API URL. */
-export function buildMapUrl(center: [number, number], zoom: number): string {
+export function buildMapUrl(center: [number, number], zoom: number, style: string = MAPBOX_STYLE): string {
   const z = zoom.toFixed(2);
   return (
-    `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE}/static/` +
+    `https://api.mapbox.com/styles/v1/${style}/static/` +
     `${center[0]},${center[1]},${z}/540x960@2x?access_token=${MAPBOX_TOKEN}`
   );
 }
