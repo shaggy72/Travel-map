@@ -136,7 +136,11 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             <input
               type="radio" id="mode-gpx" name="mode"
               checked={props.mode === 'gpx'}
-              onChange={() => upd('mode', 'gpx')}
+              onChange={() => {
+                // Auto-select first available GPX file if none chosen yet
+                const gpxFile = props.gpxFile || (gpxFiles[0] ?? '');
+                onChange({ ...props, mode: 'gpx', gpxFile });
+              }}
             />
             <label htmlFor="mode-gpx">GPX track</label>
           </div>

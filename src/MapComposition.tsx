@@ -95,7 +95,9 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const proj = buildProjection(center, zoom);
 
   // ── Fetch map tile ─────────────────────────────────────────────────────
-  const mapUrl  = ready ? buildMapUrl(center, zoom) : null;
+  // Always build the URL — center/zoom always has a valid fallback value,
+  // so the map stays visible while GPX data or geocoding is still loading.
+  const mapUrl  = buildMapUrl(center, zoom);
   const tileUrl = useMapboxImage(mapUrl);
 
   // ── Route: directions fetches API; GPX uses parsed coords directly ─────
