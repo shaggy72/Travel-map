@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Remotion build output
+out/
+.remotion/
+
+# Rendered videos
+*.mp4
+*.mov
+
+# Build output (future web app)
+webapp/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables (if you ever add a .env file)
+.env
+.env.local

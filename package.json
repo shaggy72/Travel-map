@@ -1,0 +1,34 @@
+{
+  "name": "europe-map-animation",
+  "version": "1.0.0",
+  "description": "Europe map animation with Remotion",
+  "scripts": {
+    "sync-gpx": "node scripts/syncGpxFiles.cjs",
+    "upload-server": "node scripts/uploadServer.cjs",
+    "prestart": "node scripts/syncGpxFiles.cjs",
+    "start": "concurrently -n studio,upload -c cyan,yellow \"remotion studio\" \"node scripts/uploadServer.cjs\"",
+    "prebuild": "node scripts/syncGpxFiles.cjs",
+    "build": "remotion render",
+    "preview": "remotion studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@remotion/cli": "^4.0.464",
+    "d3-geo": "^3.1.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "remotion": "^4.0.464",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "^3.1.0",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@types/topojson-client": "^3.1.5",
+    "concurrently": "^9.2.1",
+    "typescript": "^6.0.3"
+  }
+}

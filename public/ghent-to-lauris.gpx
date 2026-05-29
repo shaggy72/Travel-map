@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="europe-map-animation"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>Ghent to Lauris</name>
+    <desc>Road trip from Ghent, Belgium to Lauris, France via E17, A26, A6, A7</desc>
+    <time>2024-06-15T08:00:00Z</time>
+  </metadata>
+  <trk>
+    <name>Ghent - Lauris</name>
+    <trkseg>
+      <!-- Ghent -->
+      <trkpt lat="51.0543" lon="3.7174"><ele>8</ele><time>2024-06-15T08:00:00Z</time></trkpt>
+      <trkpt lat="51.0121" lon="3.6432"><ele>10</ele><time>2024-06-15T08:08:00Z</time></trkpt>
+      <trkpt lat="50.9734" lon="3.5721"><ele>15</ele><time>2024-06-15T08:16:00Z</time></trkpt>
+      <trkpt lat="50.9312" lon="3.4980"><ele>18</ele><time>2024-06-15T08:24:00Z</time></trkpt>
+      <!-- Kortrijk area -->
+      <trkpt lat="50.8892" lon="3.4210"><ele>22</ele><time>2024-06-15T08:32:00Z</time></trkpt>
+      <trkpt lat="50.8512" lon="3.3541"><ele>25</ele><time>2024-06-15T08:40:00Z</time></trkpt>
+      <trkpt lat="50.8242" lon="3.2642"><ele>20</ele><time>2024-06-15T08:48:00Z</time></trkpt>
+      <!-- Crossing into France -->
+      <trkpt lat="50.7934" lon="3.2012"><ele>18</ele><time>2024-06-15T08:56:00Z</time></trkpt>
+      <trkpt lat="50.7612" lon="3.1523"><ele>22</ele><time>2024-06-15T09:04:00Z</time></trkpt>
+      <!-- Lille -->
+      <trkpt lat="50.7201" lon="3.1103"><ele>25</ele><time>2024-06-15T09:12:00Z</time></trkpt>
+      <trkpt lat="50.6812" lon="3.0821"><ele>30</ele><time>2024-06-15T09:20:00Z</time></trkpt>
+      <trkpt lat="50.6292" lon="3.0573"><ele>28</ele><time>2024-06-15T09:28:00Z</time></trkpt>
+      <!-- South of Lille -->
+      <trkpt lat="50.5743" lon="2.9934"><ele>60</ele><time>2024-06-15T09:38:00Z</time></trkpt>
+      <trkpt lat="50.5102" lon="2.9231"><ele>85</ele><time>2024-06-15T09:48:00Z</time></trkpt>
+      <!-- Arras -->
+      <trkpt lat="50.4421" lon="2.8712"><ele>72</ele><time>2024-06-15T09:58:00Z</time></trkpt>
+      <trkpt lat="50.3734" lon="2.8231"><ele>65</ele><time>2024-06-15T10:08:00Z</time></trkpt>
+      <trkpt lat="50.2917" lon="2.7780"><ele>68</ele><time>2024-06-15T10:18:00Z</time></trkpt>
+      <!-- Towards Amiens -->
+      <trkpt lat="50.2012" lon="2.6834"><ele>78</ele><time>2024-06-15T10:28:00Z</time></trkpt>
+      <trkpt lat="50.1201" lon="2.5712"><ele>95</ele><time>2024-06-15T10:38:00Z</time></trkpt>
+      <trkpt lat="50.0412" lon="2.4823"><ele>88</ele><time>2024-06-15T10:48:00Z</time></trkpt>
+      <!-- Amiens -->
+      <trkpt lat="49.9634" lon="2.4123"><ele>32</ele><time>2024-06-15T10:58:00Z</time></trkpt>
+      <trkpt lat="49.8942" lon="2.2957"><ele>28</ele><time>2024-06-15T11:08:00Z</time></trkpt>
+      <!-- Heading southeast toward Paris -->
+      <trkpt lat="49.7834" lon="2.3412"><ele>55</ele><time>2024-06-15T11:22:00Z</time></trkpt>
+      <trkpt lat="49.6712" lon="2.3823"><ele>72</ele><time>2024-06-15T11:36:00Z</time></trkpt>
+      <trkpt lat="49.5534" lon="2.4123"><ele>85</ele><time>2024-06-15T11:50:00Z</time></trkpt>
+      <trkpt lat="49.4312" lon="2.4534"><ele>92</ele><time>2024-06-15T12:04:00Z</time></trkpt>
+      <trkpt lat="49.3101" lon="2.4912"><ele>80</ele><time>2024-06-15T12:18:00Z</time></trkpt>
+      <trkpt lat="49.1923" lon="2.4123"><ele>65</ele><time>2024-06-15T12:32:00Z</time></trkpt>
+      <!-- Paris outskirts (north) -->
+      <trkpt lat="49.0734" lon="2.3534"><ele>48</ele><time>2024-06-15T12:46:00Z</time></trkpt>
+      <trkpt lat="48.9812" lon="2.3412"><ele>40</ele><time>2024-06-15T13:00:00Z</time></trkpt>
+      <!-- Paris ring / périphérique area -->
+      <trkpt lat="48.9023" lon="2.3354"><ele>35</ele><time>2024-06-15T13:14:00Z</time></trkpt>
+      <trkpt lat="48.8412" lon="2.3234"><ele>42</ele><time>2024-06-15T13:28:00Z</time></trkpt>
+      <trkpt lat="48.7823" lon="2.3512"><ele>55</ele><time>2024-06-15T13:42:00Z</time></trkpt>
+      <!-- South of Paris, heading for A6 -->
+      <trkpt lat="48.7012" lon="2.3923"><ele>68</ele><time>2024-06-15T13:56:00Z</time></trkpt>
+      <trkpt lat="48.6134" lon="2.4512"><ele>75</ele><time>2024-06-15T14:10:00Z</time></trkpt>
+      <!-- Fontainebleau area -->
+      <trkpt lat="48.5212" lon="2.5234"><ele>85</ele><time>2024-06-15T14:24:00Z</time></trkpt>
+      <trkpt lat="48.4041" lon="2.7016"><ele>102</ele><time>2024-06-15T14:38:00Z</time></trkpt>
+      <!-- Sens -->
+      <trkpt lat="48.2834" lon="2.8923"><ele>68</ele><time>2024-06-15T14:52:00Z</time></trkpt>
+      <trkpt lat="48.1923" lon="3.0534"><ele>72</ele><time>2024-06-15T15:06:00Z</time></trkpt>
+      <!-- Joigny / Auxerre -->
+      <trkpt lat="48.0712" lon="3.2112"><ele>80</ele><time>2024-06-15T15:20:00Z</time></trkpt>
+      <trkpt lat="47.9534" lon="3.3534"><ele>115</ele><time>2024-06-15T15:34:00Z</time></trkpt>
+      <trkpt lat="47.8623" lon="3.4812"><ele>128</ele><time>2024-06-15T15:48:00Z</time></trkpt>
+      <!-- Auxerre -->
+      <trkpt lat="47.7986" lon="3.5731"><ele>108</ele><time>2024-06-15T16:02:00Z</time></trkpt>
+      <!-- Toward Dijon -->
+      <trkpt lat="47.7023" lon="3.7234"><ele>145</ele><time>2024-06-15T16:16:00Z</time></trkpt>
+      <trkpt lat="47.5912" lon="3.9123"><ele>178</ele><time>2024-06-15T16:30:00Z</time></trkpt>
+      <trkpt lat="47.5034" lon="4.1534"><ele>212</ele><time>2024-06-15T16:44:00Z</time></trkpt>
+      <trkpt lat="47.4312" lon="4.4023"><ele>248</ele><time>2024-06-15T16:58:00Z</time></trkpt>
+      <!-- Dijon -->
+      <trkpt lat="47.3812" lon="4.7234"><ele>238</ele><time>2024-06-15T17:12:00Z</time></trkpt>
+      <trkpt lat="47.3220" lon="5.0415"><ele>225</ele><time>2024-06-15T17:26:00Z</time></trkpt>
+      <!-- South on A31/A6 toward Lyon -->
+      <trkpt lat="47.1934" lon="5.0823"><ele>198</ele><time>2024-06-15T17:40:00Z</time></trkpt>
+      <trkpt lat="47.0512" lon="5.0534"><ele>182</ele><time>2024-06-15T17:54:00Z</time></trkpt>
+      <trkpt lat="46.9023" lon="4.9823"><ele>175</ele><time>2024-06-15T18:08:00Z</time></trkpt>
+      <!-- Chalon-sur-Saône -->
+      <trkpt lat="46.7834" lon="4.9112"><ele>168</ele><time>2024-06-15T18:22:00Z</time></trkpt>
+      <trkpt lat="46.6512" lon="4.8712"><ele>172</ele><time>2024-06-15T18:36:00Z</time></trkpt>
+      <!-- Mâcon -->
+      <trkpt lat="46.5123" lon="4.8534"><ele>178</ele><time>2024-06-15T18:50:00Z</time></trkpt>
+      <trkpt lat="46.3069" lon="4.8287"><ele>185</ele><time>2024-06-15T19:04:00Z</time></trkpt>
+      <!-- Entering Rhône valley -->
+      <trkpt lat="46.1534" lon="4.8423"><ele>192</ele><time>2024-06-15T19:18:00Z</time></trkpt>
+      <!-- Lyon -->
+      <trkpt lat="45.9812" lon="4.8323"><ele>168</ele><time>2024-06-15T19:32:00Z</time></trkpt>
+      <trkpt lat="45.8312" lon="4.8312"><ele>155</ele><time>2024-06-15T19:46:00Z</time></trkpt>
+      <trkpt lat="45.7640" lon="4.8357"><ele>148</ele><time>2024-06-15T20:00:00Z</time></trkpt>
+      <!-- South of Lyon on A7 -->
+      <trkpt lat="45.6234" lon="4.8512"><ele>138</ele><time>2024-06-15T20:12:00Z</time></trkpt>
+      <trkpt lat="45.5023" lon="4.8634"><ele>130</ele><time>2024-06-15T20:24:00Z</time></trkpt>
+      <!-- Vienne -->
+      <trkpt lat="45.3812" lon="4.8712"><ele>125</ele><time>2024-06-15T20:36:00Z</time></trkpt>
+      <trkpt lat="45.2412" lon="4.8823"><ele>118</ele><time>2024-06-15T20:48:00Z</time></trkpt>
+      <!-- Valence -->
+      <trkpt lat="45.1023" lon="4.8912"><ele>112</ele><time>2024-06-15T21:00:00Z</time></trkpt>
+      <trkpt lat="44.9334" lon="4.8924"><ele>108</ele><time>2024-06-15T21:12:00Z</time></trkpt>
+      <!-- Montélimar -->
+      <trkpt lat="44.7812" lon="4.8534"><ele>95</ele><time>2024-06-15T21:24:00Z</time></trkpt>
+      <trkpt lat="44.6423" lon="4.8023"><ele>88</ele><time>2024-06-15T21:36:00Z</time></trkpt>
+      <trkpt lat="44.5570" lon="4.7490"><ele>75</ele><time>2024-06-15T21:48:00Z</time></trkpt>
+      <!-- Orange -->
+      <trkpt lat="44.4312" lon="4.7923"><ele>48</ele><time>2024-06-15T22:00:00Z</time></trkpt>
+      <trkpt lat="44.2823" lon="4.8012"><ele>42</ele><time>2024-06-15T22:12:00Z</time></trkpt>
+      <trkpt lat="44.1378" lon="4.8090"><ele>38</ele><time>2024-06-15T22:24:00Z</time></trkpt>
+      <!-- Avignon -->
+      <trkpt lat="44.0512" lon="4.8055"><ele>22</ele><time>2024-06-15T22:36:00Z</time></trkpt>
+      <trkpt lat="43.9493" lon="4.8055"><ele>18</ele><time>2024-06-15T22:48:00Z</time></trkpt>
+      <!-- Heading east toward Lauris -->
+      <trkpt lat="43.8912" lon="4.9534"><ele>25</ele><time>2024-06-15T23:00:00Z</time></trkpt>
+      <trkpt lat="43.8423" lon="5.0923"><ele>45</ele><time>2024-06-15T23:12:00Z</time></trkpt>
+      <trkpt lat="43.8012" lon="5.2123"><ele>68</ele><time>2024-06-15T23:24:00Z</time></trkpt>
+      <!-- Lauris -->
+      <trkpt lat="43.7634" lon="5.2912"><ele>82</ele><time>2024-06-15T23:36:00Z</time></trkpt>
+      <trkpt lat="43.7392" lon="5.3319"><ele>95</ele><time>2024-06-15T23:48:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
