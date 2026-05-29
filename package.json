@@ -9,14 +9,25 @@
     "start": "concurrently -n studio,upload -c cyan,yellow \"remotion studio\" \"node scripts/uploadServer.cjs\"",
     "prebuild": "node scripts/syncGpxFiles.cjs",
     "build": "remotion render",
-    "preview": "remotion studio"
+    "preview": "remotion studio",
+    "build:webapp": "vite build --config webapp/vite.config.ts",
+    "dev:webapp": "vite --config webapp/vite.config.ts",
+    "start:server": "node server/index.cjs",
+    "dev": "concurrently -n server,webapp -c blue,green \"node server/index.cjs\" \"vite --config webapp/vite.config.ts\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@remotion/bundler": "^4.0.469",
     "@remotion/cli": "^4.0.464",
+    "@remotion/player": "^4.0.469",
+    "@remotion/renderer": "^4.0.469",
     "d3-geo": "^3.1.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "remotion": "^4.0.464",
@@ -25,10 +36,16 @@
   },
   "devDependencies": {
     "@types/d3-geo": "^3.1.0",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@types/topojson-client": "^3.1.5",
+    "@vitejs/plugin-react": "^6.0.2",
     "concurrently": "^9.2.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
   }
 }
