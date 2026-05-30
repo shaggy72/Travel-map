@@ -7,6 +7,7 @@ export interface Props {
   startLabel:     string;
   endLabel:       string;
   mapStyle:       string;
+  mapBgColor:     string;
   zoomMode:       'auto' | 'manual';
   zoom:           number;
   lineColor:      string;
@@ -14,6 +15,7 @@ export interface Props {
   lineStyle:      'solid' | 'dashed' | 'dotted' | 'long-dash' | 'dash-dot' | 'pencil';
   pencilStrength: number;
   labelMode:      'animated' | 'on' | 'off';
+  labelAnimation: string;
   labelBgColor:   string;
   labelTextColor: string;
   minPopulation:  number;
@@ -36,6 +38,7 @@ export const DEFAULT_PROPS: Props = {
   startLabel:     'Ghent',
   endLabel:       'Lauris',
   mapStyle:       'shaggy72/cmpma5agg000101qr4tt68gad',
+  mapBgColor:     '#ffffff',
   zoomMode:       'auto',
   zoom:           5.5,
   lineColor:      '#e53935',
@@ -43,6 +46,7 @@ export const DEFAULT_PROPS: Props = {
   lineStyle:      'solid',
   pencilStrength: 5,
   labelMode:      'animated',
+  labelAnimation: 'left-to-right',
   labelBgColor:   '#555555',
   labelTextColor: '#ffffff',
   minPopulation:  100000,

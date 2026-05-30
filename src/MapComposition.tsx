@@ -40,6 +40,65 @@ function labelBoxWidth(text: string): number {
   return Math.ceil(text.length * LABEL_CHAR_W + LABEL_PADDING);
 }
 
+// ── Per-frame label animation state ──────────────────────────────────────
+interface LabelAnimState {
+  clipX: number; clipY: number; clipW: number; clipH: number;
+  opacity: number; transform: string;
+}
+
+/**
+ * Compute clip-rect + optional opacity/transform for a label box.
+ * `t` is raw linear progress 0→1; easing is applied internally per animation.
+ */
+function getLabelAnim(
+  animation: string,
+  t: number,
+  lx: number, ly: number,
+  fw: number, bh: number,
+  dotX: number,
+  label: string,
+): LabelAnimState {
+  const cx = lx + fw / 2;
+  const cy = ly + bh / 2;
+  const e  = easeInOutCubic(t);
+  const eo = easeOutCubic(t);
+
+  switch (animation) {
+    case 'right-to-left': {
+      const w = e * fw;
+      return { clipX: lx + fw - w, clipY: ly, clipW: w, clipH: bh, opacity: 1, transform: '' };
+    }
+    case 'fade':
+      return { clipX: lx, clipY: ly, clipW: fw, clipH: bh, opacity: e, transform: '' };
+
+    case 'scale': {
+      const s = Math.max(0.001, e);
+      return { clipX: lx, clipY: ly, clipW: fw, clipH: bh, opacity: e,
+               transform: `translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})` };
+    }
+    case 'slide-up': {
+      // label slides up into the clip region (bh = full box height as slide distance)
+      const dy = (1 - eo) * bh;
+      return { clipX: lx, clipY: ly, clipW: fw, clipH: bh, opacity: e, transform: `translate(0 ${dy})` };
+    }
+    case 'typewriter': {
+      // step-reveal: one character at a time
+      const n = Math.ceil(t * label.length);
+      const w = n === 0 ? 0 : Math.min(n * LABEL_CHAR_W + LABEL_PADDING / 2, fw);
+      return { clipX: lx, clipY: ly, clipW: w, clipH: bh, opacity: 1, transform: '' };
+    }
+    case 'wipe-from-dot': {
+      // expands outward from the dot position
+      const left  = dotX - e * (dotX - lx);
+      const right = dotX + e * (lx + fw - dotX);
+      return { clipX: left, clipY: ly, clipW: Math.max(0, right - left), clipH: bh, opacity: 1, transform: '' };
+    }
+    case 'left-to-right':
+    default:
+      return { clipX: lx, clipY: ly, clipW: e * fw, clipH: bh, opacity: 1, transform: '' };
+  }
+}
+
 const DEBOUNCE_MS = 800;
 
 /** Outer shell — debounces address/file input so fetches only fire after the user stops typing. */
@@ -76,9 +135,9 @@ export const MapComposition: React.FC<MapSchema> = (props) => {
 
 const MapCompositionInner: React.FC<MapSchema> = ({
   mode, startAddress, endAddress, startLabel, endLabel,
-  mapStyle,
+  mapStyle, mapBgColor,
   zoomMode, zoom: manualZoom, gpxFile,
-  labelMode,
+  labelMode, labelAnimation,
   lineColor, lineWidth, lineStyle, pencilStrength, labelBgColor, labelTextColor,
   minPopulation,
   cityFont,
@@ -132,9 +191,10 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const proj = buildProjection(center, zoom);
 
   // ── Fetch map tile ─────────────────────────────────────────────────────
-  // Always build the URL — center/zoom always has a valid fallback value,
-  // so the map stays visible while GPX data or geocoding is still loading.
-  const mapUrl  = buildMapUrl(center, zoom, mapStyle);
+  // Always build a URL (even when mapStyle === 'none') so the delayRender
+  // handle inside useMapboxImage always resolves.  We use a cheap fallback
+  // style when "No map" is selected so the fetch doesn't error out.
+  const mapUrl  = buildMapUrl(center, zoom, mapStyle === 'none' ? 'mapbox/light-v11' : mapStyle);
   const tileUrl = useMapboxImage(mapUrl);
 
   // ── Route: directions fetches API; GPX uses parsed coords directly ─────
@@ -183,18 +243,9 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const endO   = labelMode === 'on' ? 1
                : easeOutCubic(windowT(frame, endFadeIn, endFadeEnd));
 
-  // ── Label box reveal (left → right) ──────────────────────────────────
+  // ── Label box dimensions ─────────────────────────────────────────────
   const startFullW = labelBoxWidth(startLabel);
   const endFullW   = labelBoxWidth(endLabel);
-  // 'on'       → full width immediately, no animation
-  // 'animated' → left-to-right reveal (original behaviour)
-  // 'off'      → 0 (labels not rendered anyway, but safe fallback)
-  const startBoxW  = labelMode === 'on' ? startFullW
-                   : labelMode === 'animated' ? easeInOutCubic(windowT(frame, 0,         startBoxEnd)) * startFullW
-                   : 0;
-  const endBoxW    = labelMode === 'on' ? endFullW
-                   : labelMode === 'animated' ? easeInOutCubic(windowT(frame, endFadeIn, endBoxEnd))   * endFullW
-                   : 0;
 
   // ── Label box positioning — clamped so labels never go off-screen ─────
   const LABEL_EDGE = 20; // min px from canvas edge
@@ -216,8 +267,17 @@ const MapCompositionInner: React.FC<MapSchema> = ({
     ? endPx[1] - DOT_R - LABEL_GAP - BOX_H
     : endPx[1] + DOT_R + LABEL_GAP;
 
+  // ── Label animation state ─────────────────────────────────────────────
+  // 'on'  → t=1 (fully revealed immediately, no animation)
+  // 'animated' → t runs 0→1 over the reveal window
+  // 'off' → labels not rendered; t=0 as safe fallback
+  const startT = labelMode === 'on' ? 1 : windowT(frame, 0, startBoxEnd);
+  const endT   = labelMode === 'on' ? 1 : windowT(frame, endFadeIn, endBoxEnd);
+  const startAnim = getLabelAnim(labelAnimation, startT, startLabelX, startLabelY, startFullW, BOX_H, startPx[0], startLabel);
+  const endAnim   = getLabelAnim(labelAnimation, endT,   endLabelX,   endLabelY,   endFullW,   BOX_H, endPx[0],   endLabel);
+
   return (
-    <AbsoluteFill style={{ background: C.bg }}>
+    <AbsoluteFill style={{ background: mapStyle === 'none' ? mapBgColor : C.bg }}>
       <svg
         width={width}
         height={height}
@@ -226,10 +286,10 @@ const MapCompositionInner: React.FC<MapSchema> = ({
       >
         <defs>
           <clipPath id="startClip">
-            <rect x={startLabelX} y={startLabelY} width={startBoxW} height={BOX_H} />
+            <rect x={startAnim.clipX} y={startAnim.clipY} width={startAnim.clipW} height={startAnim.clipH} />
           </clipPath>
           <clipPath id="endClip">
-            <rect x={endLabelX} y={endLabelY} width={endBoxW} height={BOX_H} />
+            <rect x={endAnim.clipX} y={endAnim.clipY} width={endAnim.clipW} height={endAnim.clipH} />
           </clipPath>
 
           {/* ── Pencil filters (only mounted when needed) ─────────────── */}
@@ -250,7 +310,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         </defs>
 
         {/* ── Map tile ──────────────────────────────────────────────────── */}
-        {tileUrl && (
+        {tileUrl && mapStyle !== 'none' && (
           <image
             href={tileUrl}
             x={0} y={0}
@@ -336,22 +396,24 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {/* ── Start marker ──────────────────────────────────────────────── */}
         {labelMode !== 'off' && (
         <g opacity={startO}>
-          <g clipPath="url(#startClip)">
-            <rect
-              x={startLabelX} y={startLabelY}
-              width={startFullW} height={BOX_H} rx={6}
-              fill={labelBgColor}
-            />
-            <text
-              x={startLabelX + 12} y={startLabelY + 40}
-              fontSize={40}
-              fontFamily="'Helvetica Neue', Arial, sans-serif"
-              fontWeight="700"
-              fill={labelTextColor}
-              letterSpacing={0.4}
-            >
-              {startLabel}
-            </text>
+          <g clipPath="url(#startClip)" opacity={startAnim.opacity}>
+            <g transform={startAnim.transform || undefined}>
+              <rect
+                x={startLabelX} y={startLabelY}
+                width={startFullW} height={BOX_H} rx={6}
+                fill={labelBgColor}
+              />
+              <text
+                x={startLabelX + 12} y={startLabelY + 40}
+                fontSize={40}
+                fontFamily="'Helvetica Neue', Arial, sans-serif"
+                fontWeight="700"
+                fill={labelTextColor}
+                letterSpacing={0.4}
+              >
+                {startLabel}
+              </text>
+            </g>
           </g>
           {/* Dot drawn after label so it's always visible on top */}
           <circle cx={startPx[0]} cy={startPx[1]} r={6} fill={lineColor} />
@@ -362,22 +424,24 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {/* ── End marker (fades in when line arrives) ───────────────────── */}
         {labelMode !== 'off' && (
         <g opacity={endO}>
-          <g clipPath="url(#endClip)">
-            <rect
-              x={endLabelX} y={endLabelY}
-              width={endFullW} height={BOX_H} rx={6}
-              fill={labelBgColor}
-            />
-            <text
-              x={endLabelX + 12} y={endLabelY + 40}
-              fontSize={40}
-              fontFamily="'Helvetica Neue', Arial, sans-serif"
-              fontWeight="700"
-              fill={labelTextColor}
-              letterSpacing={0.4}
-            >
-              {endLabel}
-            </text>
+          <g clipPath="url(#endClip)" opacity={endAnim.opacity}>
+            <g transform={endAnim.transform || undefined}>
+              <rect
+                x={endLabelX} y={endLabelY}
+                width={endFullW} height={BOX_H} rx={6}
+                fill={labelBgColor}
+              />
+              <text
+                x={endLabelX + 12} y={endLabelY + 40}
+                fontSize={40}
+                fontFamily="'Helvetica Neue', Arial, sans-serif"
+                fontWeight="700"
+                fill={labelTextColor}
+                letterSpacing={0.4}
+              >
+                {endLabel}
+              </text>
+            </g>
           </g>
           {/* Dot drawn after label so it's always visible on top */}
           <circle cx={endPx[0]} cy={endPx[1]} r={6} fill={lineColor} />

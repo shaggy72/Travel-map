@@ -13,6 +13,7 @@ export const schema = z.object({
   startLabel:   z.string().default("Ghent"),
   endLabel:     z.string().default("Lauris"),
   mapStyle:     z.string().default("shaggy72/cmpma5agg000101qr4tt68gad"),
+  mapBgColor:   zColor().default("#ffffff"),
   zoomMode:     z.enum(["auto", "manual"]).default("auto"),
   zoom:         z.number().min(1).max(20).multipleOf(0.1).default(5.5),
   lineColor:    zColor().default("#e53935"),
@@ -20,6 +21,7 @@ export const schema = z.object({
   lineStyle:      z.enum(["solid", "dashed", "dotted", "long-dash", "dash-dot", "pencil"]).default("solid"),
   pencilStrength: z.number().min(1).max(10).default(5),
   labelMode:       z.enum(["animated", "on", "off"]).default("animated"),
+  labelAnimation:  z.enum(["left-to-right", "right-to-left", "fade", "scale", "slide-up", "typewriter", "wipe-from-dot"]).default("left-to-right"),
   labelBgColor:    zColor().default("#555555"),
   labelTextColor:  zColor().default("#ffffff"),
   minPopulation:   z.number().min(0).max(15_000_000).default(100_000), // city label filter

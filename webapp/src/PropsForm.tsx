@@ -125,6 +125,7 @@ const MAP_STYLE_OPTIONS: { value: string; label: string }[] = [
   { value: 'mapbox/light-v11',                   label: 'Light' },
   { value: 'mapbox/dark-v11',                    label: 'Dark' },
   { value: 'mapbox/satellite-streets-v12',        label: 'Satellite' },
+  { value: 'none',                               label: 'No map' },
 ];
 
 function MapStylePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -354,6 +355,71 @@ function LabelModePicker({ value, onChange }: { value: Props['labelMode']; onCha
   );
 }
 
+// ── Label Animation Picker ────────────────────────────────────────────────
+
+const LABEL_ANIM_OPTIONS: { value: string; label: string }[] = [
+  { value: 'left-to-right', label: 'Left → right' },
+  { value: 'right-to-left', label: 'Right → left' },
+  { value: 'fade',          label: 'Fade in' },
+  { value: 'scale',         label: 'Scale in' },
+  { value: 'slide-up',      label: 'Slide up' },
+  { value: 'typewriter',    label: 'Typewriter' },
+  { value: 'wipe-from-dot', label: 'Wipe from dot' },
+];
+
+function LabelAnimationPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open,     setOpen]     = useState(false);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+
+  function openPanel() {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 160 });
+    }
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [open]);
+
+  const current = LABEL_ANIM_OPTIONS.find(o => o.value === value) ?? LABEL_ANIM_OPTIONS[0];
+
+  return (
+    <div className="ls-picker">
+      <button
+        ref={triggerRef}
+        className="ls-trigger"
+        onClick={() => open ? setOpen(false) : openPanel()}
+      >
+        <span className="ls-label">{current.label}</span>
+        <span className="ls-arrow">▾</span>
+      </button>
+      {open && (
+        <div ref={panelRef} className="ls-panel" style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}>
+          {LABEL_ANIM_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              className={`ls-option${opt.value === value ? ' selected' : ''}`}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+            >
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Font Picker ───────────────────────────────────────────────────────────
 
 const FONT_OPTIONS: { value: string; label: string; family: string }[] = [
@@ -560,6 +626,15 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             onChange={v => upd('mapStyle', v)}
           />
         </div>
+
+        {props.mapStyle === 'none' && (
+          <ColorField
+            label="Background"
+            value={props.mapBgColor}
+            onChange={v => upd('mapBgColor', v)}
+          />
+        )}
+
         <div className="field">
           <label>Zoom mode</label>
           <div className="radio-group">
@@ -709,6 +784,16 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             onChange={v => upd('labelMode', v)}
           />
         </div>
+
+        {props.labelMode === 'animated' && (
+          <div className="field">
+            <label>Animation</label>
+            <LabelAnimationPicker
+              value={props.labelAnimation}
+              onChange={v => upd('labelAnimation', v)}
+            />
+          </div>
+        )}
 
         {props.labelMode !== 'off' && (<>
           <div className="field-row">
