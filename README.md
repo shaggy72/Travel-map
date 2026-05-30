@@ -1,49 +1,13 @@
 # Travel Map Animation
 
-A web app that lets you configure a travel-route animation and export it as an MP4 video. You pick a start and end point (or upload a GPX track), choose a map style, travel mode, line and label appearance, and the app renders a smooth animated map using [Remotion](https://www.remotion.dev/).
+A web app that lets you configure a travel-route animation and export it as an MP4 video. Pick a start and end point (or upload a GPX track), choose a map style, travel mode, line and label appearance, and the app renders a smooth animated map using [Remotion](https://www.remotion.dev/).
 
 ---
 
 ## Prerequisites
 
 - **Node.js ≥ 18**
-- A **Mapbox account** (free tier is enough) — you need an access token for:
-  - Map tile backgrounds (Mapbox Static Images API)
-  - Address geocoding (Mapbox Geocoding API)
-  - Driving directions (Mapbox Directions API)
-
-  → Copy `.env.example` to `.env` and paste your token there:
-  ```
-  MAPBOX_TOKEN=pk.your_token_here
-  ```
-  The `.env` file is gitignored and never committed.
-
----
-
-## Project structure
-
-```
-europe-map-animation/
-├── src/                  Remotion composition (the animation itself)
-│   ├── MapComposition.tsx    Main animated component (SVG map, route, labels, cities)
-│   ├── schema.ts             Zod schema — all configurable props with defaults
-│   ├── mapData.ts            Map maths, projection, API URL builders
-│   ├── useMapboxImages.ts    React hooks: tile fetch, geocoding, GPX parse, route fetch
-│   ├── easing.ts             Easing and timing utilities
-│   └── Root.tsx              Remotion composition entry point
-│
-├── webapp/src/           React config UI + live preview player
-│   ├── App.tsx               App shell: auth, render button, layout
-│   ├── PropsForm.tsx         Sidebar form with all animation controls
-│   ├── PreviewPlayer.tsx     Remotion Player wrapper (lazy-loaded)
-│   ├── ColorPicker.tsx       Custom HSV color picker with alpha support
-│   ├── types.ts              TypeScript mirror of schema.ts (no Zod dependency)
-│   └── styles.css            All UI styles
-│
-├── public/               GPX track files (served at / in dev, /public in prod)
-├── server/               Upload server — handles GPX file uploads + render triggers
-└── scripts/              Helper scripts (sync GPX file list, etc.)
-```
+- A **Mapbox account** (free tier is enough) — needed for map tiles, geocoding, and driving directions. Get a token at [account.mapbox.com](https://account.mapbox.com/access-tokens/).
 
 ---
 
@@ -51,7 +15,22 @@ europe-map-animation/
 
 ```bash
 npm install
+cp .env.example .env   # then edit .env with your values
 ```
+
+### Environment variables (`.env`)
+
+```
+# Required
+MAPBOX_TOKEN=pk.your_mapbox_token_here   # Mapbox API token
+
+# Optional — server auth (defaults shown)
+APP_USERNAME=admin        # Login username for the webapp
+APP_PASSWORD=changeme     # Login password — change this!
+PORT=3002                 # Upload/render server port
+```
+
+`.env` is gitignored and never committed. See `.env.example` for a copy-paste template.
 
 ---
 
@@ -61,11 +40,11 @@ npm install
 npm run dev
 ```
 
-This starts two processes concurrently:
-- **Config webapp** on `http://localhost:5173` — the main UI
-- **Upload server** on `http://localhost:3002` — handles GPX uploads and render API calls
+Starts two processes concurrently:
+- **Config webapp** → `http://localhost:5173`
+- **Upload/render server** → `http://localhost:3002`
 
-Alternatively, run the Remotion Studio (frame-scrubber preview):
+To use Remotion's own Studio (frame-scrubber, useful for debugging animations):
 
 ```bash
 npm start
@@ -73,47 +52,111 @@ npm start
 
 ---
 
+## How it works — end-to-end data flow
+
+```
+User edits form (PropsForm.tsx)
+        │
+        ▼
+  Props object (types.ts)
+        │ passed as inputProps
+        ▼
+  Remotion Player (PreviewPlayer.tsx)     ← live preview in browser
+        │ re-renders on every prop change
+        ▼
+  MapComposition.tsx                      ← the animation itself
+    ├── useGeocode()      address → [lng, lat] via Mapbox Geocoding API
+    ├── useRoute()        coordinates → route polyline via Mapbox or OSRM
+    ├── useMapboxImage()  center + zoom → map tile PNG via Mapbox Static Images
+    └── useGpxTrack()     .gpx file → [lng, lat][] array (GPX mode only)
+        │
+        ▼ SVG rendered frame-by-frame
+
+User clicks "Render & Download"
+        │
+        ▼
+  POST /api/render  (App.tsx → server/index.cjs)
+        │ server runs: remotion render --props='...'
+        ▼
+  Remotion CLI renders all frames headlessly
+        │ same MapComposition.tsx, same data flow as preview
+        ▼
+  MP4 streamed back → browser downloads travel-map.mp4
+```
+
+**Key insight:** the preview and the final render use the exact same React component (`MapComposition.tsx`). The only difference is that the preview runs frame-by-frame in the browser via Remotion Player, while the render runs headlessly via the Remotion CLI on the server.
+
+---
+
 ## Configuring a route
 
 1. Open `http://localhost:5173` and log in
-2. **Mode — Directions**: enter a start and end address, pick travel mode (Car / Bike / Walk)
-3. **Mode — GPX**: upload a `.gpx` track file and select it from the dropdown
-4. Adjust **Map style**, **Line** (color, width, style), **Labels** (animation, colors)
-5. Set **Duration** (seconds) and optionally adjust city label density
-6. The live preview on the right updates as you change settings
+2. **Directions mode** — enter start and end addresses, pick travel mode:
+   - 🚗 **Car** — Mapbox Directions API (fast, accurate, any distance)
+   - 🚲 **Bike** — routing.openstreetmap.de/routed-bike (no key, handles long distances)
+   - 🚶 **Walk** — routing.openstreetmap.de/routed-foot (no key, handles long distances)
+   - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
+3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
+4. Adjust **Map style**, **Line** (color, width, style), **Labels** (animation, colors, font)
+5. Set **Duration** (seconds) and city label density
+6. The live preview updates as you change settings
 
 ---
 
 ## Rendering to MP4
 
-**Via the webapp:** click **⬇ Render & Download MP4** in the sidebar. Rendering takes roughly 2–5 minutes for a 5-second animation. The file downloads automatically when done.
+**Via the webapp:** click **⬇ Render & Download MP4**. Takes ~2–5 min for a 5-second animation.
 
-**Via CLI:**
+**Via CLI** (runs on the current `defaultProps` in `src/Root.tsx`):
 ```bash
 npm run build
 ```
 
 ---
 
-## Key services
+## Key files explained
 
-| Service | Used for | API key needed? |
-|---|---|---|
-| Mapbox Static Images | Map tile background | Yes (`MAPBOX_TOKEN`) |
-| Mapbox Geocoding | Address → coordinates | Yes (same token) |
-| Mapbox Directions | Driving routes | Yes (same token) |
-| routing.openstreetmap.de | Cycling & walking routes | **No** |
-| Google Fonts | UI font (Inter) + travel mode icons (Material Symbols) | No |
+### `src/schema.ts`
+Defines every configurable prop using [Zod](https://zod.dev). This is the single source of truth — Remotion validates props against it, and the webapp mirrors it in `webapp/src/types.ts`. Every field has a JSDoc comment explaining its purpose.
 
-Cycling and walking use OpenStreetMap's OSRM backends (`routed-bike` / `routed-foot`) because Mapbox Directions rejects long-distance cycling/walking routes.
+### `src/MapComposition.tsx`
+The animation component. Renders an SVG at 1080×1920px (9:16 portrait). On each frame it:
+1. Draws the Mapbox tile as a background `<image>`
+2. Draws the route as an animated SVG `<path>` (draw-on effect)
+3. Draws city dots + labels (filtered by population)
+4. Draws start/end pin markers with animated label boxes
+
+All async data (tile, geocoding, route) is fetched via `delayRender`/`continueRender` hooks so Remotion waits for them before rendering each frame.
+
+### `src/useMapboxImages.ts`
+Four custom hooks used by `MapComposition`:
+- `useMapboxImage(url)` — fetches a Mapbox static tile and returns a data URL
+- `useGeocode(address)` — geocodes a place name to `[lng, lat]`
+- `useGpxTrack(filename)` — parses a GPX file from `/public`
+- `useRoute(url)` — fetches a route polyline from Mapbox or OSRM; clears stale coords immediately when URL changes (travel mode switch)
+
+### `server/index.cjs`
+Express server (port 3002) that:
+- Authenticates the webapp via a session cookie
+- Accepts GPX file uploads (`POST /api/upload`)
+- Triggers Remotion renders (`POST /api/render`) and streams the MP4 back
+- Serves the list of available GPX files (`GET /api/gpx-files`)
+
+### `webapp/src/PropsForm.tsx`
+The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling.
 
 ---
 
 ## Adding GPX tracks
 
-1. Drop `.gpx` files into the `/public` folder
-2. Run `npm run sync-gpx` — this regenerates `src/gpxFiles.ts` so the files appear in the UI dropdown
-3. Or use the **Upload GPX** button in the webapp (calls the upload server at :3002)
+```bash
+# Option 1 — manual
+cp your-track.gpx public/
+npm run sync-gpx          # regenerates src/gpxFiles.ts
+
+# Option 2 — via the webapp
+# Use the "Upload GPX" button in the sidebar (calls POST /api/upload)
+```
 
 ---
 
@@ -122,7 +165,39 @@ Cycling and walking use OpenStreetMap's OSRM backends (`routed-bike` / `routed-f
 | Library | Role |
 |---|---|
 | [Remotion v4](https://remotion.dev) | Frame-by-frame React → MP4 rendering |
-| Vite + React 18 | Config webapp bundler + UI |
+| Vite 8 + React 18 | Config webapp bundler + UI |
 | [D3-geo](https://github.com/d3/d3-geo) | Mercator map projection |
 | [Zod](https://zod.dev) | Prop schema definition and validation |
-| TypeScript | Type safety across both the animation and webapp |
+| TypeScript | Type safety across animation and webapp |
+| Express | Upload and render API server |
+
+---
+
+## Troubleshooting
+
+**Mapbox tile is a grey square / "No token" error**
+→ Check that `MAPBOX_TOKEN` is set in `.env` and the dev server was restarted after editing `.env`.
+
+**Render fails with "No route found"**
+→ Mapbox Directions rejects very long cycling/walking routes. Switch to Car, or the app will automatically use OSRM for Bike/Walk.
+
+**Port 5173 or 3002 already in use**
+→ Kill the process using that port, or set `PORT=xxxx` in `.env` to change the server port.
+
+**GPX file doesn't appear in the dropdown**
+→ Run `npm run sync-gpx` after adding files to `/public`. The dropdown is driven by `src/gpxFiles.ts` which must be regenerated.
+
+**Preview works but render produces a black video**
+→ This usually means an async fetch didn't resolve before rendering. Check the terminal for `[Directions]` or `[Geocoding]` errors.
+
+**Login fails with default credentials**
+→ The default username is `admin` and password is `changeme`. Set `APP_USERNAME` and `APP_PASSWORD` in `.env`.
+
+---
+
+## Contributing
+
+- **Code style** — TypeScript strict mode, no `any` except where unavoidable (e.g. Node stream piping). Prettier is not configured; match the surrounding style.
+- **Adding a new prop** — add it to `src/schema.ts` (with JSDoc), mirror it in `webapp/src/types.ts` and `DEFAULT_PROPS`, then wire it up in `MapComposition.tsx` and `PropsForm.tsx`.
+- **Adding a new line style** — extend the `lineStyle` enum in `schema.ts` and add the SVG rendering case in `MapComposition.tsx` where `lineStyle` is consumed.
+- **Commits** — one logical change per commit, present-tense imperative subject line (e.g. `Add wipe animation style`).
