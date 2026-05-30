@@ -195,6 +195,16 @@ npm run sync-gpx          # regenerates src/gpxFiles.ts
 
 ---
 
+## Design system
+
+The webapp UI uses a hand-crafted CSS design system (no component library). See **[DESIGN.md](./DESIGN.md)** for:
+- All CSS custom properties (colour tokens, spacing, shadows)
+- Layout structure (sidebar + preview panel)
+- Every component pattern: field pill, radio toggle, custom dropdown, range slider, color picker, buttons
+- How to add a new control following the existing patterns
+
+---
+
 ## Contributing
 
 - **Code style** — TypeScript strict mode, no `any` except where unavoidable (e.g. Node stream piping). Prettier is not configured; match the surrounding style.
