@@ -1,3 +1,19 @@
+/**
+ * App.tsx — root component for the Travel Map config webapp.
+ *
+ * Auth flow:
+ *   On mount, GET /api/me to verify the session cookie.
+ *   A 5-second AbortController timeout guards against a hung server.
+ *   Result: 'loading' → 'logged-in' (show main UI) or 'logged-out' (show LoginPage).
+ *
+ * Render pipeline:
+ *   "Render & Download" POSTs the current props to /api/render (server/index.cjs).
+ *   The server runs `remotion render` as a child process and streams the MP4 back
+ *   as a blob. The browser triggers a file download via a temporary object URL.
+ *
+ * PreviewPlayer is lazy-loaded (React.lazy) because the Remotion bundle is large
+ * (~2 MB) and a load failure should not crash the whole app — hence the ErrorBoundary.
+ */
 import React, { useState, useEffect, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import LoginPage from './LoginPage';
 import PropsForm from './PropsForm';

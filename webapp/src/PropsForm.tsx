@@ -1,3 +1,23 @@
+/**
+ * PropsForm.tsx — sidebar form that exposes all animation props for editing.
+ *
+ * Key patterns used throughout this file:
+ *
+ *  upd(key, value)
+ *    Shorthand for onChange({ ...props, [key]: value }). Every control calls
+ *    this to produce a new Props object and bubble it up to App.tsx.
+ *
+ *  Custom ls-picker dropdowns (not native <select>)
+ *    Native selects can't be styled consistently across browsers. All dropdowns
+ *    use the ls-picker pattern: a button trigger + absolutely positioned panel
+ *    with keyboard/click-outside dismiss. See MapStylePicker for a reference impl.
+ *
+ *  CITY_STEPS discrete slider
+ *    City label density uses a fixed set of population thresholds
+ *    (10k / 50k / 100k / 500k / 1M / 2M / off) rather than a continuous range,
+ *    because intermediate values produce the same visual result and the steps map
+ *    to meaningful city tiers (town / large town / city / major city / etc.).
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { Props } from './types';
 import { ColorPicker } from './ColorPicker';
@@ -116,41 +136,11 @@ function CitySlider({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
-// ── Travel Mode Icons ─────────────────────────────────────────────────────
+// ── Travel Mode Icons (Material Symbols) ─────────────────────────────────
 
-function CarIcon() {
-  return (
-    <svg viewBox="0 0 22 13" width="22" height="13" fill="none" aria-hidden="true"
-         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 8h18v2.5H2z"/>
-      <path d="M4 8l2.5-4h9L18 8"/>
-      <circle cx="6.5" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
-      <circle cx="15.5" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
-    </svg>
-  );
-}
-
-function BikeIcon() {
-  return (
-    <svg viewBox="0 0 22 14" width="22" height="14" fill="none" aria-hidden="true"
-         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5" cy="10" r="3.5"/>
-      <circle cx="17" cy="10" r="3.5"/>
-      <path d="M5 10L9.5 4h3M12.5 4L17 10M9.5 4L11 10"/>
-    </svg>
-  );
-}
-
-function WalkIcon() {
-  return (
-    <svg viewBox="0 0 12 18" width="10" height="14" fill="none" aria-hidden="true"
-         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="7" cy="2.5" r="1.8" fill="currentColor" stroke="none"/>
-      <path d="M7 5L5 9.5L3 15M5 9.5L8.5 11.5L7 15.5"/>
-      <path d="M5.5 6.5L9.5 8"/>
-    </svg>
-  );
-}
+function CarIcon()  { return <span className="material-symbols-outlined">directions_car</span>;  }
+function BikeIcon() { return <span className="material-symbols-outlined">directions_bike</span>; }
+function WalkIcon() { return <span className="material-symbols-outlined">directions_walk</span>; }
 
 // ── Map Style Picker ──────────────────────────────────────────────────────
 
