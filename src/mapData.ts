@@ -7,8 +7,10 @@ export const FPS = 30;
 export const DURATION_FRAMES = 5 * FPS; // 150 frames
 
 // ── Mapbox token ──────────────────────────────────────────────────────────
-export const MAPBOX_TOKEN =
-  "pk.eyJ1Ijoic2hhZ2d5NzIiLCJhIjoiY2xpMXgzMTI4MjIyaTNqbXc3anBzdjRhOCJ9.hOwQMWt6jnBUnpBm078-6Q";
+// Read from the MAPBOX_TOKEN environment variable (set in .env, which is gitignored).
+// Vite substitutes process.env.MAPBOX_TOKEN at build time via vite.config.ts `define`.
+// Remotion's bundler does the same substitution automatically.
+export const MAPBOX_TOKEN: string = process.env.MAPBOX_TOKEN ?? '';
 
 // ── Mapbox style slug ─────────────────────────────────────────────────────
 export const MAPBOX_STYLE = "shaggy72/cmpma5agg000101qr4tt68gad";

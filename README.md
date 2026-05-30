@@ -12,9 +12,11 @@ A web app that lets you configure a travel-route animation and export it as an M
   - Address geocoding (Mapbox Geocoding API)
   - Driving directions (Mapbox Directions API)
 
-  → Paste your token into `src/mapData.ts`, replacing the value of `MAPBOX_TOKEN`.
-
-> **Keep the repository private** — the Mapbox token is currently stored in source code.
+  → Copy `.env.example` to `.env` and paste your token there:
+  ```
+  MAPBOX_TOKEN=pk.your_token_here
+  ```
+  The `.env` file is gitignored and never committed.
 
 ---
 
