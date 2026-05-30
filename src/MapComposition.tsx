@@ -4,7 +4,7 @@ import {
   CANVAS_W, CANVAS_H,
   MAJOR_CITIES,
   calcZoomAndCenter, calcZoomAndCenterFromPoints,
-  buildProjection, buildMapUrl, buildDirectionsUrl,
+  buildProjection, buildMapUrl, buildDirectionsUrl, buildOsrmUrl,
 } from "./mapData";
 import { easeInOutCubic, easeOutCubic, windowT } from "./easing";
 import { useMapboxImage, useGeocode, useGpxTrack, useRoute } from "./useMapboxImages";
@@ -134,7 +134,7 @@ export const MapComposition: React.FC<MapSchema> = (props) => {
 };
 
 const MapCompositionInner: React.FC<MapSchema> = ({
-  mode, startAddress, endAddress, startLabel, endLabel,
+  mode, travelMode, startAddress, endAddress, startLabel, endLabel,
   mapStyle, mapBgColor,
   zoomMode, zoom: manualZoom, gpxFile,
   labelMode, labelAnimation,
@@ -198,7 +198,12 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const tileUrl = useMapboxImage(mapUrl);
 
   // ── Route: directions fetches API; GPX uses parsed coords directly ─────
-  const routeUrl = directionsReady ? buildDirectionsUrl(startCoords!, endCoords!) : null;
+  // Mapbox rejects long cycling/walking routes — use OSRM for those profiles
+  const routeUrl = directionsReady
+    ? travelMode === 'driving'
+      ? buildDirectionsUrl(startCoords!, endCoords!)
+      : buildOsrmUrl(startCoords!, endCoords!, travelMode === 'cycling' ? 'cycling' : 'foot')
+    : null;
   const rawRoute = useRoute(routeUrl);
   const rawCoords = mode === "directions" ? rawRoute : gpxCoords;
 

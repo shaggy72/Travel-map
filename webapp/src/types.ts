@@ -1,6 +1,7 @@
 /** Mirror of src/schema.ts — plain TypeScript, no Zod dependency. */
 export interface Props {
   mode:           'directions' | 'gpx';
+  travelMode:     'driving' | 'cycling' | 'walking';
   gpxFile:        string;
   startAddress:   string;
   endAddress:     string;
@@ -32,6 +33,7 @@ export interface Props {
 
 export const DEFAULT_PROPS: Props = {
   mode:           'directions',
+  travelMode:     'driving',
   gpxFile:        '',
   startAddress:   'Ghent, Belgium',
   endAddress:     'Lauris, France',

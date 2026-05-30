@@ -100,32 +100,62 @@ export function useGpxTrack(filename: string | null): [number, number][] | null 
 
 /** Fetches a Mapbox Directions route and returns raw [lng, lat] coordinates (or null while loading).
  *  Projection is intentionally NOT applied here — do it in the component so zoom changes
- *  re-project without re-fetching. Pass null url to skip fetching. */
+ *  re-project without re-fetching. Pass null url to skip fetching.
+ *
+ *  State tracks {url, coords} together so that when the URL changes (e.g. travel mode switch)
+ *  the old coords are cleared immediately — preventing stale routes from showing. */
 export function useRoute(url: string | null): [number, number][] | null {
   const [handle] = useState(() => delayRender("Fetching road route"));
-  const [coords, setCoords] = useState<[number, number][] | null>(null);
+  // Store {url, coords} together so we can clear coords the moment url changes
+  const [entry, setEntry] = useState<{ url: string | null; coords: [number, number][] | null }>({
+    url: null,
+    coords: null,
+  });
 
   useEffect(() => {
-    if (!url) return; // wait until URL is ready
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.routes || data.routes.length === 0) {
-          cancelRender(
-            new Error(
-              `Mapbox Directions API returned no routes. Response: ${JSON.stringify(data)}`
-            )
+    const short = url ? url.replace(/access_token=.*/, '…token').substring(0, 80) : 'null';
+    console.log('[useRoute] url changed →', short);
+
+    if (!url) return;
+
+    // Clear coords immediately so the old route disappears while the new one loads
+    setEntry({ url, coords: null });
+
+    let active = true;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const r = await fetch(url, { signal: controller.signal });
+        const data = await r.json();
+        if (!active) return;
+        if (!r.ok || !data.routes || data.routes.length === 0) {
+          console.warn(
+            `[Directions] no route returned (status=${r.status} code=${data.code ?? '—'} msg="${data.message ?? ''}")`
           );
+          continueRender(handle);
           return;
         }
         const raw: [number, number][] = data.routes[0].geometry.coordinates.map(
           (c: number[]) => [c[0], c[1]] as [number, number]
         );
-        setCoords(raw);
+        console.log('[useRoute] got', raw.length, 'points');
+        setEntry({ url, coords: raw });
         continueRender(handle);
-      })
-      .catch((err) => cancelRender(err));
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('[Directions] fetch error:', err);
+          continueRender(handle);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [url]);
 
-  return coords;
+  // Only return coords that belong to the current URL — never serve stale data
+  return entry.url === url ? entry.coords : null;
 }

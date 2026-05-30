@@ -8,6 +8,7 @@ const gpxOptions = ["", ...GPX_FILES] as [string, ...string[]];
 export const schema = z.object({
   mode:         z.enum(["directions", "gpx"]).default("directions"),
   gpxFile:      z.enum(gpxOptions).default(""),
+  travelMode:   z.enum(["driving", "cycling", "walking"]).default("driving"),
   startAddress: z.string().default("Ghent, Belgium"),
   endAddress:   z.string().default("Lauris, France"),
   startLabel:   z.string().default("Ghent"),

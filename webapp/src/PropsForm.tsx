@@ -116,6 +116,42 @@ function CitySlider({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
+// ── Travel Mode Icons ─────────────────────────────────────────────────────
+
+function CarIcon() {
+  return (
+    <svg viewBox="0 0 22 13" width="22" height="13" fill="none" aria-hidden="true"
+         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 8h18v2.5H2z"/>
+      <path d="M4 8l2.5-4h9L18 8"/>
+      <circle cx="6.5" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
+      <circle cx="15.5" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
+    </svg>
+  );
+}
+
+function BikeIcon() {
+  return (
+    <svg viewBox="0 0 22 14" width="22" height="14" fill="none" aria-hidden="true"
+         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="10" r="3.5"/>
+      <circle cx="17" cy="10" r="3.5"/>
+      <path d="M5 10L9.5 4h3M12.5 4L17 10M9.5 4L11 10"/>
+    </svg>
+  );
+}
+
+function WalkIcon() {
+  return (
+    <svg viewBox="0 0 12 18" width="10" height="14" fill="none" aria-hidden="true"
+         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7" cy="2.5" r="1.8" fill="currentColor" stroke="none"/>
+      <path d="M7 5L5 9.5L3 15M5 9.5L8.5 11.5L7 15.5"/>
+      <path d="M5.5 6.5L9.5 8"/>
+    </svg>
+  );
+}
+
 // ── Map Style Picker ──────────────────────────────────────────────────────
 
 const MAP_STYLE_OPTIONS: { value: string; label: string }[] = [
@@ -556,6 +592,32 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             <label htmlFor="mode-gpx">GPX track</label>
           </div>
         </div>
+
+        {/* ── Travel mode (Directions only) ────────────────────────── */}
+        {props.mode === 'directions' && (
+          <div className="field">
+            <label>Travel</label>
+            <div className="radio-group travel-mode-group">
+              <input type="radio" id="travel-driving" name="travelMode"
+                checked={props.travelMode === 'driving'}
+                onChange={() => upd('travelMode', 'driving')}
+              />
+              <label htmlFor="travel-driving" title="Car"><CarIcon /></label>
+
+              <input type="radio" id="travel-cycling" name="travelMode"
+                checked={props.travelMode === 'cycling'}
+                onChange={() => upd('travelMode', 'cycling')}
+              />
+              <label htmlFor="travel-cycling" title="Bike"><BikeIcon /></label>
+
+              <input type="radio" id="travel-walking" name="travelMode"
+                checked={props.travelMode === 'walking'}
+                onChange={() => upd('travelMode', 'walking')}
+              />
+              <label htmlFor="travel-walking" title="Walk"><WalkIcon /></label>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Route (Directions mode) ───────────────────────────────── */}

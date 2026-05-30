@@ -588,6 +588,18 @@ select {
   padding-right: 0;
 }
 
+/* ── Travel mode icon pills ─────────────────────────────────────────────── */
+.field > .travel-mode-group label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 14px;
+}
+
+.field > .travel-mode-group label:last-child {
+  padding-right: 14px;
+}
+
 .field > .radio-group input[type="radio"]:checked + label {
   background: none;
   color: var(--accent);

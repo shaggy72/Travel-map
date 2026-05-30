@@ -71,15 +71,33 @@ export function buildMapUrl(center: [number, number], zoom: number, style: strin
   );
 }
 
-/** Build the Mapbox Directions API URL. */
+/** Build the Mapbox Directions API URL (driving only — Mapbox rejects long cycling/walking routes). */
 export function buildDirectionsUrl(
   start: [number, number],
-  end: [number, number]
+  end: [number, number],
 ): string {
   return (
     `https://api.mapbox.com/directions/v5/mapbox/driving/` +
     `${start[0]},${start[1]};${end[0]},${end[1]}` +
     `?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`
+  );
+}
+
+/** Build an OSRM URL for cycling or walking.
+ *  Uses routing.openstreetmap.de which runs separate OSRM backends per profile
+ *  (routed-bike / routed-foot) — the same servers that power openstreetmap.org routing.
+ *  router.project-osrm.org only has a car profile and ignores cycling/foot requests.
+ *  The path segment is always "driving" because each server has one compiled profile. */
+export function buildOsrmUrl(
+  start: [number, number],
+  end: [number, number],
+  profile: 'cycling' | 'foot',
+): string {
+  const backend = profile === 'cycling' ? 'routed-bike' : 'routed-foot';
+  return (
+    `https://routing.openstreetmap.de/${backend}/route/v1/driving/` +
+    `${start[0]},${start[1]};${end[0]},${end[1]}` +
+    `?overview=full&geometries=geojson`
   );
 }
 
