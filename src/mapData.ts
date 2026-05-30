@@ -1,6 +1,8 @@
 import { geoMercator } from "d3-geo";
 
-// ── Canvas (portrait 9:16) ────────────────────────────────────────────────
+// ── Canvas (portrait 9:16, default) ──────────────────────────────────────
+// These constants stay for backward compatibility but functions now accept
+// explicit w/h so all three output formats work correctly.
 export const CANVAS_W = 1080;
 export const CANVAS_H = 1920;
 export const FPS = 30;
@@ -13,7 +15,20 @@ export const DURATION_FRAMES = 5 * FPS; // 150 frames
 export const MAPBOX_TOKEN: string = process.env.MAPBOX_TOKEN ?? '';
 
 // ── Mapbox style slug ─────────────────────────────────────────────────────
-export const MAPBOX_STYLE = "shaggy72/cmpma5agg000101qr4tt68gad";
+// Read from MAPBOX_STYLE env var (set in .env). Falls back to the public
+// mapbox/light-v11 style so the app works without a personal style configured.
+export const MAPBOX_STYLE: string = process.env.MAPBOX_STYLE || 'mapbox/light-v11';
+
+// ── Output format → canvas dimensions ─────────────────────────────────────
+/** Return pixel dimensions for a given output format.
+ *  portrait  (default) = 1080 × 1920 — 9:16 vertical social video
+ *  landscape           = 1920 × 1080 — 16:9 YouTube / widescreen
+ *  square              = 1080 × 1080 — 1:1 Instagram feed */
+export function getDimensions(format: 'portrait' | 'landscape' | 'square'): { w: number; h: number } {
+  if (format === 'landscape') return { w: 1920, h: 1080 };
+  if (format === 'square')    return { w: 1080, h: 1080 };
+  return { w: 1080, h: 1920 }; // portrait (default)
+}
 
 // ── Projection utilities ──────────────────────────────────────────────────
 // For @2x Mapbox static images: scale = 162.98 × 2^zoom
@@ -22,10 +37,13 @@ const SCALE_BASE = 162.98;
 const mercY = (lat: number) =>
   Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
 
-/** Calculate the map center and zoom level to fit two coordinates in the canvas. */
+/** Calculate the map center and zoom level to fit two coordinates in the canvas.
+ *  Pass the canvas width and height so the calculation works for any output format. */
 export function calcZoomAndCenter(
   a: [number, number],
-  b: [number, number]
+  b: [number, number],
+  w: number = CANVAS_W,
+  h: number = CANVAS_H,
 ): { center: [number, number]; zoom: number } {
   // Mercator midpoint
   const centerLng = (a[0] + b[0]) / 2;
@@ -37,39 +55,60 @@ export function calcZoomAndCenter(
   const dLng     = Math.abs(a[0] - b[0]) * (Math.PI / 180);
   const dMercY   = Math.abs(mercY(a[1]) - mercY(b[1]));
 
-  const scaleFromLng = dLng  > 0 ? CANVAS_W * PAD / dLng  : Infinity;
-  const scaleFromLat = dMercY > 0 ? CANVAS_H * PAD / dMercY : Infinity;
+  const scaleFromLng = dLng  > 0 ? w * PAD / dLng  : Infinity;
+  const scaleFromLat = dMercY > 0 ? h * PAD / dMercY : Infinity;
   const scale = Math.min(scaleFromLng, scaleFromLat);
   const zoom  = Math.log2(scale / SCALE_BASE);
 
   return { center: [centerLng, centerLat], zoom };
 }
 
-/** Calculate center and zoom to fit an array of coordinates (e.g. a GPX track). */
+/** Calculate center and zoom to fit an array of coordinates (e.g. a GPX track).
+ *  Pass the canvas width and height so the calculation works for any output format. */
 export function calcZoomAndCenterFromPoints(
-  points: [number, number][]
+  points: [number, number][],
+  w: number = CANVAS_W,
+  h: number = CANVAS_H,
 ): { center: [number, number]; zoom: number } {
   const minLng = Math.min(...points.map((p) => p[0]));
   const maxLng = Math.max(...points.map((p) => p[0]));
   const minLat = Math.min(...points.map((p) => p[1]));
   const maxLat = Math.max(...points.map((p) => p[1]));
-  return calcZoomAndCenter([minLng, minLat], [maxLng, maxLat]);
+  return calcZoomAndCenter([minLng, minLat], [maxLng, maxLat], w, h);
 }
 
-/** Build a d3-geo Mercator projection matching a Mapbox @2x static tile. */
-export function buildProjection(center: [number, number], zoom: number) {
+/** Build a d3-geo Mercator projection matching a Mapbox @2x static tile.
+ *  Pass the canvas width and height so the translate origin is centred correctly
+ *  for all output formats (portrait, landscape, square). */
+export function buildProjection(
+  center: [number, number],
+  zoom: number,
+  w: number = CANVAS_W,
+  h: number = CANVAS_H,
+) {
   return geoMercator()
     .center(center)
     .scale(SCALE_BASE * Math.pow(2, zoom))
-    .translate([CANVAS_W / 2, CANVAS_H / 2]);
+    .translate([w / 2, h / 2]);
 }
 
-/** Build the Mapbox Static Images API URL. */
-export function buildMapUrl(center: [number, number], zoom: number, style: string = MAPBOX_STYLE): string {
-  const z = zoom.toFixed(2);
+/** Build the Mapbox Static Images API URL.
+ *  The tile size is w/2 × h/2 at @2x so the final rendered image is w × h pixels.
+ *  Pass the canvas dimensions so the tile matches the output format exactly. */
+export function buildMapUrl(
+  center: [number, number],
+  zoom: number,
+  style: string = MAPBOX_STYLE,
+  w: number = CANVAS_W,
+  h: number = CANVAS_H,
+): string {
+  const z    = zoom.toFixed(2);
+  // Mapbox @2x tiles: request at half the final resolution so the retina image is pixel-perfect
+  const tw   = Math.round(w / 2);
+  const th   = Math.round(h / 2);
   return (
     `https://api.mapbox.com/styles/v1/${style}/static/` +
-    `${center[0]},${center[1]},${z}/540x960@2x?access_token=${MAPBOX_TOKEN}`
+    `${center[0]},${center[1]},${z}/${tw}x${th}@2x?access_token=${MAPBOX_TOKEN}`
   );
 }
 

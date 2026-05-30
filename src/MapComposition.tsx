@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, delayRender, continueRender } from "remotion";
 import {
-  CANVAS_W, CANVAS_H,
   MAJOR_CITIES,
   calcZoomAndCenter, calcZoomAndCenterFromPoints,
   buildProjection, buildMapUrl, buildDirectionsUrl, buildOsrmUrl,
@@ -182,19 +181,22 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const ready           = directionsReady || gpxReady;
 
   const { center, zoom: autoZoom } = (() => {
-    if (directionsReady) return calcZoomAndCenter(startCoords!, endCoords!);
-    if (gpxReady)        return calcZoomAndCenterFromPoints(gpxCoords!);
+    // Pass width/height so the fit-to-bounds calculation works for every format
+    if (directionsReady) return calcZoomAndCenter(startCoords!, endCoords!, width, height);
+    if (gpxReady)        return calcZoomAndCenterFromPoints(gpxCoords!, width, height);
     return { center: [4.52, 47.37] as [number, number], zoom: 5.5 };
   })();
 
   const zoom = zoomMode === "auto" ? autoZoom : manualZoom;
-  const proj = buildProjection(center, zoom);
+  // Build projection centred on the actual canvas dimensions (not the portrait default)
+  const proj = buildProjection(center, zoom, width, height);
 
   // ── Fetch map tile ─────────────────────────────────────────────────────
   // Always build a URL (even when mapStyle === 'none') so the delayRender
   // handle inside useMapboxImage always resolves.  We use a cheap fallback
   // style when "No map" is selected so the fetch doesn't error out.
-  const mapUrl  = buildMapUrl(center, zoom, mapStyle === 'none' ? 'mapbox/light-v11' : mapStyle);
+  // Pass width/height so the tile request matches the output format exactly.
+  const mapUrl  = buildMapUrl(center, zoom, mapStyle === 'none' ? 'mapbox/light-v11' : mapStyle, width, height);
   const tileUrl = useMapboxImage(mapUrl);
 
   // ── Route: directions fetches API; GPX uses parsed coords directly ─────
@@ -258,11 +260,11 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const DOT_R      = 6;
   const LABEL_GAP  = 8;  // clear gap between dot edge and label box
 
-  // Horizontal: clamp so right edge stays within canvas
+  // Horizontal: clamp so right edge stays within canvas (use dynamic width for all formats)
   const startLabelX = Math.max(LABEL_EDGE,
-    Math.min(startPx[0] - 2, CANVAS_W - LABEL_EDGE - startFullW));
+    Math.min(startPx[0] - 2, width - LABEL_EDGE - startFullW));
   const endLabelX   = Math.max(LABEL_EDGE,
-    Math.min(endPx[0] - 2,   CANVAS_W - LABEL_EDGE - endFullW));
+    Math.min(endPx[0] - 2,   width - LABEL_EDGE - endFullW));
 
   // Vertical: label sits above the dot with a gap; flips below if too close to top
   const startLabelY = startPx[1] - DOT_R - LABEL_GAP - BOX_H >= LABEL_EDGE
@@ -286,7 +288,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
       <svg
         width={width}
         height={height}
-        viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+        viewBox={`0 0 ${width} ${height}`}
         style={{ position: "absolute", inset: 0 }}
       >
         <defs>
@@ -319,7 +321,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
           <image
             href={tileUrl}
             x={0} y={0}
-            width={CANVAS_W} height={CANVAS_H}
+            width={width} height={height}
             preserveAspectRatio="none"
             opacity={mapOpacity}
           />
@@ -332,7 +334,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
             const px = proj(lnglat);
             if (!px) return null;
             const [cx, cy] = px;
-            if (cx < 0 || cx > CANVAS_W || cy < 0 || cy > CANVAS_H) return null;
+            if (cx < 0 || cx > width || cy < 0 || cy > height) return null;
 
             // ── Three-tier font sizing ─────────────────────────────────────
             const isBig    = pop > 1_000_000;

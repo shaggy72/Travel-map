@@ -36,8 +36,10 @@ export const schema = z.object({
 
   /** Mapbox style slug (e.g. "mapbox/streets-v12") or "none" for a plain background.
    *  When "none", the map tile is not rendered and mapBgColor is used instead.
-   *  Custom styles use the format "username/styleId" from your Mapbox account. */
-  mapStyle: z.string().default("shaggy72/cmpma5agg000101qr4tt68gad"),
+   *  Custom styles use the format "username/styleId" from your Mapbox account.
+   *  Reads MAPBOX_STYLE from .env; falls back to the public "mapbox/light-v11" style
+   *  so the app works out-of-the-box without a personal style. */
+  mapStyle: z.string().default(process.env.MAPBOX_STYLE || 'mapbox/light-v11'),
 
   /** Background color shown when mapStyle === "none". Ignored otherwise. */
   mapBgColor: zColor().default("#ffffff"),
@@ -114,6 +116,12 @@ export const schema = z.object({
 
   /** Total animation duration in seconds. Affects render length and animation timing. */
   duration: z.number().min(1).max(60).default(5),
+
+  /** Output canvas format. Controls width × height passed to Remotion.
+   *  portrait  = 1080 × 1920 (9:16 — vertical, default — short-form social video)
+   *  landscape = 1920 × 1080 (16:9 — YouTube / widescreen)
+   *  square    = 1080 × 1080 (1:1 — Instagram feed) */
+  outputFormat: z.enum(['portrait', 'landscape', 'square']).default('portrait'),
 });
 
 export type MapSchema = z.infer<typeof schema>;

@@ -29,6 +29,9 @@ export interface Props {
   citySizeMedium: number;
   citySizeSmall:  number;
   duration:       number;
+  /** Output canvas format — controls width × height of the rendered video.
+   *  portrait = 1080×1920 (9:16), landscape = 1920×1080 (16:9), square = 1080×1080 */
+  outputFormat:   'portrait' | 'landscape' | 'square';
 }
 
 export const DEFAULT_PROPS: Props = {
@@ -39,7 +42,7 @@ export const DEFAULT_PROPS: Props = {
   endAddress:     'Lauris, France',
   startLabel:     'Ghent',
   endLabel:       'Lauris',
-  mapStyle:       'shaggy72/cmpma5agg000101qr4tt68gad',
+  mapStyle:       process.env.MAPBOX_STYLE || 'mapbox/light-v11',
   mapBgColor:     '#ffffff',
   zoomMode:       'auto',
   zoom:           5.5,
@@ -61,4 +64,5 @@ export const DEFAULT_PROPS: Props = {
   citySizeMedium: 31,
   citySizeSmall:  22,
   duration:       5,
+  outputFormat:   'portrait',
 };

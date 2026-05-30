@@ -1,9 +1,35 @@
+/**
+ * useMapboxImages.ts — React hooks that fetch all async data required by MapComposition.
+ *
+ * All four hooks use Remotion's `delayRender` / `continueRender` mechanism so that
+ * the Remotion renderer waits for the fetch to complete before capturing each frame.
+ * Without these, the renderer would capture a blank or stale frame.
+ *
+ * Hooks:
+ *   useMapboxImage  — fetches a Mapbox static tile and returns a data URL
+ *   useGeocode      — geocodes a place name to [lng, lat] via Mapbox Geocoding API
+ *   useGpxTrack     — parses a .gpx file from /public into [lng, lat] coordinates
+ *   useRoute        — fetches a driving/cycling/walking route and returns coordinates
+ */
 import { delayRender, continueRender, cancelRender, staticFile } from "remotion";
 import { useEffect, useState } from "react";
 import { MAPBOX_TOKEN } from "./mapData";
 
-/** Fetches a single Mapbox static image and returns a data URL (or null while loading).
- *  Pass null to skip fetching (e.g. while geocoding is still in progress). */
+/**
+ * Fetches a single Mapbox Static Images tile and returns a `data:` URL (or null while loading).
+ *
+ * Why a data URL instead of a plain `src` attribute?
+ * Remotion's headless renderer runs in Puppeteer and may not have network access to
+ * external URLs during frame capture.  Converting the tile to a data URL via FileReader
+ * embeds the image bytes directly in the DOM, guaranteeing it is available on every frame.
+ *
+ * The `delayRender` handle is created once on mount (via `useState` initialiser) and
+ * released in `continueRender` when the image is ready.  `cancelRender` is called on
+ * network errors so Remotion aborts instead of hanging indefinitely.
+ *
+ * @param url - Mapbox Static Images API URL, or null to skip (e.g. while geocoding is pending)
+ * @returns   Base64 data URL for the tile image, or null while loading
+ */
 export function useMapboxImage(url: string | null): string | null {
   const [handle] = useState(() => delayRender("Fetching Mapbox tile"));
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -33,8 +59,20 @@ export function useMapboxImage(url: string | null): string | null {
   return imageUrl;
 }
 
-/** Geocodes a place name to [lng, lat] using the Mapbox Geocoding API.
- *  Pass null to skip (e.g. in GPX mode) — no delayRender handle is created. */
+/**
+ * Geocodes a free-text address to [lng, lat] using the Mapbox Geocoding API.
+ *
+ * The fetch is triggered once on mount — the address is expected to be stable
+ * (debounced upstream in MapComposition via a `key` prop change), so a `[]`
+ * dependency array is correct here.  Re-geocoding on every render would cause
+ * a new `delayRender` handle to accumulate on each keystroke.
+ *
+ * Pass null to skip entirely (e.g. in GPX mode) — no handle is created and
+ * no fetch is fired, which avoids blocking the renderer on unused data.
+ *
+ * @param address - Human-readable place name, or null to skip
+ * @returns       [longitude, latitude] pair, or null while geocoding is in progress
+ */
 export function useGeocode(address: string | null): [number, number] | null {
   const [handle] = useState(() =>
     address ? delayRender(`Geocoding: ${address}`) : null
@@ -58,13 +96,25 @@ export function useGeocode(address: string | null): [number, number] | null {
         continueRender(handle);
       })
       .catch((err) => cancelRender(err));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return coords;
 }
 
-/** Parses a GPX file from the /public folder and returns raw [lng, lat] coordinates.
- *  Pass null to skip. */
+/**
+ * Parses a GPX track file from the /public folder and returns raw [lng, lat] coordinates.
+ *
+ * `staticFile(filename)` resolves to `/filename` which is served from /public in both
+ * the Vite dev server (via the custom `serve-gpx` middleware) and the Remotion renderer
+ * (which reads directly from the filesystem).
+ *
+ * The GPX file is parsed with DOMParser using the `application/xml` MIME type.
+ * All `<trkpt>` elements are extracted and mapped to [lon, lat] pairs — note that
+ * GPX uses `lon` for the longitude attribute, not `lng`.
+ *
+ * @param filename - GPX filename (e.g. "my-track.gpx") or null to skip
+ * @returns        Array of [longitude, latitude] points, or null while loading
+ */
 export function useGpxTrack(filename: string | null): [number, number][] | null {
   const [handle] = useState(() =>
     filename ? delayRender(`Parsing GPX: ${filename}`) : null
@@ -93,17 +143,35 @@ export function useGpxTrack(filename: string | null): [number, number][] | null 
         continueRender(handle);
       })
       .catch((err) => cancelRender(err));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return coords;
 }
 
-/** Fetches a Mapbox Directions route and returns raw [lng, lat] coordinates (or null while loading).
- *  Projection is intentionally NOT applied here — do it in the component so zoom changes
- *  re-project without re-fetching. Pass null url to skip fetching.
+/**
+ * Fetches a route from the Mapbox Directions API (driving) or OSRM (cycling/walking)
+ * and returns raw [lng, lat] coordinates — projection is NOT applied here so that
+ * zoom changes re-project the polyline without re-fetching the route.
  *
- *  State tracks {url, coords} together so that when the URL changes (e.g. travel mode switch)
- *  the old coords are cleared immediately — preventing stale routes from showing. */
+ * Stale-route prevention:
+ *   State tracks `{url, coords}` together.  When the URL changes (e.g. travel mode
+ *   switch), `coords` is cleared to `null` immediately in the same `setEntry` call,
+ *   so the old route disappears from the screen before the new one arrives.
+ *   The hook returns `null` whenever the stored url doesn't match the current url.
+ *
+ * AbortController:
+ *   Each effect run creates a new AbortController.  The cleanup function aborts any
+ *   in-flight fetch when the URL changes or the component unmounts, preventing
+ *   setState calls on stale requests.
+ *
+ * Why OSRM for cycling/walking?
+ *   Mapbox Directions rejects routes longer than ~24 h travel time.  Long cycling or
+ *   hiking trips exceed that limit.  routing.openstreetmap.de runs separate OSRM
+ *   backends per profile (routed-bike / routed-foot) and has no such restriction.
+ *
+ * @param url - Route API URL (Mapbox or OSRM), or null to skip
+ * @returns   Array of [longitude, latitude] route coordinates, or null while loading
+ */
 export function useRoute(url: string | null): [number, number][] | null {
   const [handle] = useState(() => delayRender("Fetching road route"));
   // Store {url, coords} together so we can clear coords the moment url changes

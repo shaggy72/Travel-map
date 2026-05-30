@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
     // the gitignored .env file, just as Remotion's esbuild bundler does.
     define: {
       'process.env.MAPBOX_TOKEN': JSON.stringify(env.MAPBOX_TOKEN ?? ''),
+      // Expose the optional custom style slug — schema.ts falls back to mapbox/light-v11 when empty
+      'process.env.MAPBOX_STYLE': JSON.stringify(env.MAPBOX_STYLE ?? ''),
     },
 
     build: {

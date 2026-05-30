@@ -178,7 +178,12 @@ export default function App() {
       {/* ── Preview panel ────────────────────────────────────────────── */}
       <main className="preview-panel">
         <div className="preview-label">Live Preview</div>
-        <div className="preview-player-wrapper">
+        {/* aspect-ratio is set inline so switching format updates the wrapper immediately */}
+        <div className="preview-player-wrapper" style={{
+          aspectRatio: props.outputFormat === 'landscape' ? '16/9'
+                     : props.outputFormat === 'square'    ? '1/1'
+                     : '9/16',
+        }}>
           <PlayerErrorBoundary>
             <Suspense fallback={
               <div style={{ display:'flex', alignItems:'center', justifyContent:'center',

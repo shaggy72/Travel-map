@@ -108,10 +108,11 @@ html, body, #root {
   letter-spacing: 0.08em;
 }
 
+/* aspect-ratio is set inline in App.tsx based on props.outputFormat
+   so that portrait (9/16), landscape (16/9) and square (1/1) all work correctly. */
 .preview-player-wrapper {
   height: calc(100vh - 180px);
   max-height: 560px;
-  aspect-ratio: 9 / 16;
   box-shadow: var(--shadow-md);
   border-radius: var(--radius);
   overflow: hidden;

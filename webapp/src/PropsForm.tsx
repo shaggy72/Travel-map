@@ -882,6 +882,32 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Animation ────────────────────────────────────────────── */}
       <div className="form-section">
         <div className="section-title">Animation</div>
+
+        {/* Output format — controls canvas dimensions (width × height) of the render */}
+        <div className="field">
+          <label>Format</label>
+          <div className="radio-group">
+            <input
+              type="radio" id="fmt-portrait" name="outputFormat"
+              checked={props.outputFormat === 'portrait'}
+              onChange={() => upd('outputFormat', 'portrait')}
+            />
+            <label htmlFor="fmt-portrait" title="1080×1920 (9:16)">Portrait</label>
+            <input
+              type="radio" id="fmt-landscape" name="outputFormat"
+              checked={props.outputFormat === 'landscape'}
+              onChange={() => upd('outputFormat', 'landscape')}
+            />
+            <label htmlFor="fmt-landscape" title="1920×1080 (16:9)">Landscape</label>
+            <input
+              type="radio" id="fmt-square" name="outputFormat"
+              checked={props.outputFormat === 'square'}
+              onChange={() => upd('outputFormat', 'square')}
+            />
+            <label htmlFor="fmt-square" title="1080×1080 (1:1)">Square</label>
+          </div>
+        </div>
+
         <RangeField
           label="Duration"
           value={props.duration}

@@ -24,6 +24,9 @@ cp .env.example .env   # then edit .env with your values
 # Required
 MAPBOX_TOKEN=pk.your_mapbox_token_here   # Mapbox API token
 
+# Optional — custom map style (defaults to public mapbox/light-v11)
+MAPBOX_STYLE=username/styleId            # Your personal Mapbox style slug
+
 # Optional — server auth (defaults shown)
 APP_USERNAME=admin        # Login username for the webapp
 APP_PASSWORD=changeme     # Login password — change this!
@@ -98,7 +101,7 @@ User clicks "Render & Download"
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
 4. Adjust **Map style**, **Line** (color, width, style), **Labels** (animation, colors, font)
-5. Set **Duration** (seconds) and city label density
+5. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
 6. The live preview updates as you change settings
 
 ---
