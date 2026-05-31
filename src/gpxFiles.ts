@@ -4,6 +4,7 @@
 
 export const GPX_FILES = [
   "Glenha-Bikerafting-Loop.gpx",
+  "Green_Divide.gpx",
   "ghent-to-lauris.gpx"
 ] as const;
 export type GpxFileName = typeof GPX_FILES[number];

@@ -36,6 +36,13 @@ export function useMapboxImage(url: string | null): string | null {
 
   useEffect(() => {
     if (!url) return; // wait until URL is ready
+
+    // Guard against stale fetches: if the URL changes while a previous fetch is
+    // still in flight, ignore its result.  Without this, a slow fallback tile
+    // (loaded before geocoding completes) can arrive *after* the correct tile
+    // and overwrite it — misaligning the route with the map.
+    let cancelled = false;
+
     fetch(url)
       .then((r) => {
         if (!r.ok) {
@@ -48,12 +55,15 @@ export function useMapboxImage(url: string | null): string | null {
       .then((b) => {
         const reader = new FileReader();
         reader.onload = () => {
+          if (cancelled) return; // discard result — a newer fetch has superseded this one
           setImageUrl(reader.result as string);
           continueRender(handle);
         };
         reader.readAsDataURL(b as Blob);
       })
-      .catch((err) => cancelRender(err));
+      .catch((err) => { if (!cancelled) cancelRender(err); });
+
+    return () => { cancelled = true; };
   }, [url]);
 
   return imageUrl;
