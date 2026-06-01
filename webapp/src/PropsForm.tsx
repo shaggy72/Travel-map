@@ -141,7 +141,13 @@ function CitySlider({ value, onChange }: { value: number; onChange: (v: number) 
 function CarIcon()    { return <span className="material-symbols-outlined">directions_car</span>;  }
 function BikeIcon()   { return <span className="material-symbols-outlined">directions_bike</span>; }
 function WalkIcon()   { return <span className="material-symbols-outlined">directions_walk</span>; }
-function FlightIcon() { return <span className="material-symbols-outlined">flight</span>;          }
+function FlightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
+      <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+    </svg>
+  );
+}
 
 // ── Map Style Picker ──────────────────────────────────────────────────────
 
