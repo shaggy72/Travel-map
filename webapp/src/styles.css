@@ -3,22 +3,26 @@
 
 :root {
   --font:        'Inter', system-ui, -apple-system, sans-serif;
-  --bg:          #edeae4;       /* warm beige — preview panel bg          */
-  --sidebar-bg:  #e8e4de;       /* slightly deeper beige — sidebar        */
-  --field-bg:    #f8f6f2;       /* near-white — individual field cards    */
-  --border:      #d0cbc3;       /* warm gray border                       */
-  --border-hover:#b8b2aa;
-  --text:        #26211a;       /* dark warm brown-black                  */
-  --text-muted:  #8c7e6e;       /* warm muted brown — values / labels     */
-  --text-light:  #b4a898;
-  --accent:      #a06840;       /* warm brown — selected / active         */
-  --accent-hover:#8a5530;
-  --accent-light:#f2e9de;
-  --danger:      #b83c3c;
+
+  /* ── tweakcn "Claude" theme tokens ───────────────────────────────────── */
+  /* Source: https://tweakcn.com/r/themes/claude.json                       */
+  --bg:          oklch(0.9818 0.0054 95.0986);  /* --background  warm near-white panel bg  */
+  --sidebar-bg:  oklch(0.9663 0.0080 98.8792);  /* --sidebar     sidebar bg                */
+  --field-bg:    oklch(1.0000 0 0);             /* --popover     pure-white field cards     */
+  --border:      oklch(0.8847 0.0069 97.3627);  /* --border      subtle warm border        */
+  --border-hover:oklch(0.7621 0.0156 98.3528);  /* --input       border on hover           */
+  --text:        oklch(0.3438 0.0269 95.7226);  /* --foreground  primary text              */
+  --text-muted:  oklch(0.6059 0.0075 97.4233);  /* --muted-fg    labels / secondary        */
+  --text-light:  oklch(0.7500 0.0100 97.0000);  /* interpolated  tertiary / arrows         */
+  --accent:      oklch(0.6171 0.1375 39.0427);  /* --primary     Claude orange             */
+  --accent-hover:oklch(0.5300 0.1375 39.0427);  /* --primary ↓   accent on hover           */
+  --accent-light:oklch(0.9245 0.0138 92.9892);  /* --secondary   selected option bg        */
+  --danger:      oklch(0.6368 0.2078 25.3313);  /* destructive   errors (dark-mode red)    */
   --success:     #4a7a50;
-  --field-hover: #e8e1d6;       /* warm beige on field hover              */
-  --radius:      6px;
-  --radius-lg:   10px;
+  --field-hover: oklch(0.9341 0.0153 90.2390);  /* --muted       field pill on hover       */
+  --radius:      0.5rem;                        /* --radius      ≈ 8 px (rounder than 6)   */
+  --radius-lg:   0.75rem;                       /* scaled        ≈ 12 px for larger panels */
+
   --shadow:      0 1px 2px rgba(0,0,0,.05);
   --shadow-md:   0 2px 16px rgba(0,0,0,.10);
   --sidebar-w:   280px;
@@ -117,7 +121,7 @@ html, body, #root {
   border-radius: var(--radius);
   overflow: hidden;
   flex-shrink: 0;
-  background: #ddd8d0;
+  background: var(--border); /* neutral tile placeholder while map loads */
 }
 
 /* ── Form Sections ────────────────────────────────────────────────────── */
@@ -245,7 +249,7 @@ select:focus,
 input[type="email"]:focus,
 input[type="password"]:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(160,104,64,.14);
+  box-shadow: 0 0 0 3px oklch(0.6171 0.1375 39.0427 / 0.18);
 }
 
 select {
@@ -864,8 +868,8 @@ select {
 .login-error {
   font-size: 13px;
   color: var(--danger);
-  background: rgba(184,60,60,.08);
-  border: 1px solid rgba(184,60,60,.25);
+  background: oklch(0.6368 0.2078 25.3313 / 0.08);
+  border: 1px solid oklch(0.6368 0.2078 25.3313 / 0.25);
   border-radius: var(--radius);
   padding: 8px 12px;
   margin-bottom: 14px;
