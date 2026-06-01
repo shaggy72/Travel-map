@@ -194,7 +194,12 @@ export function useRoute(url: string | null): [number, number][] | null {
     const short = url ? url.replace(/access_token=.*/, '…token').substring(0, 80) : 'null';
     console.log('[useRoute] url changed →', short);
 
-    if (!url) return;
+    // No route URL needed (flight mode, GPX mode) — release the handle immediately
+    // so the Remotion renderer is not blocked waiting for a fetch that will never happen.
+    if (!url) {
+      continueRender(handle);
+      return;
+    }
 
     // Clear coords immediately so the old route disappears while the new one loads
     setEntry({ url, coords: null });

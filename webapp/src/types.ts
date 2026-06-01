@@ -1,7 +1,7 @@
 /** Mirror of src/schema.ts — plain TypeScript, no Zod dependency. */
 export interface Props {
   mode:           'directions' | 'gpx';
-  travelMode:     'driving' | 'cycling' | 'walking';
+  travelMode:     'driving' | 'cycling' | 'walking' | 'flight';
   gpxFile:        string;
   startAddress:   string;
   endAddress:     string;

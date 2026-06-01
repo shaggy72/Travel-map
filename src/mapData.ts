@@ -1,4 +1,4 @@
-import { geoMercator } from "d3-geo";
+import { geoMercator, geoInterpolate } from "d3-geo";
 
 // ── Canvas (portrait 9:16, default) ──────────────────────────────────────
 // These constants stay for backward compatibility but functions now accept
@@ -109,6 +109,21 @@ export function buildMapUrl(
   return (
     `https://api.mapbox.com/styles/v1/${style}/static/` +
     `${center[0]},${center[1]},${z}/${tw}x${th}@2x?access_token=${MAPBOX_TOKEN}`
+  );
+}
+
+/** Compute a great-circle arc between two [lng, lat] coordinates.
+ *  Returns `steps + 1` evenly-spaced points along the shortest path on the sphere.
+ *  Projecting these through the Mercator projection naturally produces a curved line —
+ *  no API call needed. Uses d3-geo's geoInterpolate for spherically correct slerp. */
+export function buildFlightArc(
+  start: [number, number],
+  end:   [number, number],
+  steps = 120,
+): [number, number][] {
+  const interp = geoInterpolate(start, end);
+  return Array.from({ length: steps + 1 }, (_, i) =>
+    interp(i / steps) as [number, number]
   );
 }
 

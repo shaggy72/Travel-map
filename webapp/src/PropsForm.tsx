@@ -138,9 +138,10 @@ function CitySlider({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ── Travel Mode Icons (Material Symbols) ─────────────────────────────────
 
-function CarIcon()  { return <span className="material-symbols-outlined">directions_car</span>;  }
-function BikeIcon() { return <span className="material-symbols-outlined">directions_bike</span>; }
-function WalkIcon() { return <span className="material-symbols-outlined">directions_walk</span>; }
+function CarIcon()    { return <span className="material-symbols-outlined">directions_car</span>;  }
+function BikeIcon()   { return <span className="material-symbols-outlined">directions_bike</span>; }
+function WalkIcon()   { return <span className="material-symbols-outlined">directions_walk</span>; }
+function FlightIcon() { return <span className="material-symbols-outlined">flight</span>;          }
 
 // ── Map Style Picker ──────────────────────────────────────────────────────
 
@@ -605,6 +606,12 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 onChange={() => upd('travelMode', 'walking')}
               />
               <label htmlFor="travel-walking" title="Walk"><WalkIcon /></label>
+
+              <input type="radio" id="travel-flight" name="travelMode"
+                checked={props.travelMode === 'flight'}
+                onChange={() => upd('travelMode', 'flight')}
+              />
+              <label htmlFor="travel-flight" title="Flight"><FlightIcon /></label>
             </div>
           </div>
         )}

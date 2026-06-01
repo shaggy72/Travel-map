@@ -3,7 +3,7 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, delayRender, continueRen
 import {
   MAJOR_CITIES,
   calcZoomAndCenter, calcZoomAndCenterFromPoints,
-  buildProjection, buildMapUrl, buildDirectionsUrl, buildOsrmUrl,
+  buildProjection, buildMapUrl, buildDirectionsUrl, buildOsrmUrl, buildFlightArc,
 } from "./mapData";
 import { easeInOutCubic, easeOutCubic, windowT } from "./easing";
 import { useMapboxImage, useGeocode, useGpxTrack, useRoute } from "./useMapboxImages";
@@ -199,15 +199,21 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const mapUrl  = buildMapUrl(center, zoom, mapStyle === 'none' ? 'mapbox/light-v11' : mapStyle, width, height);
   const tileUrl = useMapboxImage(mapUrl);
 
-  // ── Route: directions fetches API; GPX uses parsed coords directly ─────
-  // Mapbox rejects long cycling/walking routes — use OSRM for those profiles
-  const routeUrl = directionsReady
+  // ── Route: directions fetches API; flight uses a local arc; GPX uses parsed coords ──
+  // Mapbox rejects long cycling/walking routes — use OSRM for those profiles.
+  // Flight mode computes a great-circle arc synchronously — no API call needed.
+  const routeUrl = directionsReady && travelMode !== 'flight'
     ? travelMode === 'driving'
       ? buildDirectionsUrl(startCoords!, endCoords!)
       : buildOsrmUrl(startCoords!, endCoords!, travelMode === 'cycling' ? 'cycling' : 'foot')
     : null;
-  const rawRoute = useRoute(routeUrl);
-  const rawCoords = mode === "directions" ? rawRoute : gpxCoords;
+  const rawRoute  = useRoute(routeUrl);
+  const flightArc = directionsReady && travelMode === 'flight'
+    ? buildFlightArc(startCoords!, endCoords!)
+    : null;
+  const rawCoords = mode === 'gpx' ? gpxCoords
+                  : travelMode === 'flight' ? flightArc
+                  : rawRoute;
 
   // Project at render time so zoom changes re-project without re-fetching
   const routePoints = rawCoords

@@ -19,8 +19,9 @@ export const schema = z.object({
    *  driving  → Mapbox Directions API (fast, accurate, any distance)
    *  cycling  → routing.openstreetmap.de/routed-bike (no API key, handles long distances)
    *  walking  → routing.openstreetmap.de/routed-foot (no API key, handles long distances)
+   *  flight   → great-circle arc computed locally via d3-geo (no API call, always available)
    *  Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h. */
-  travelMode: z.enum(["driving", "cycling", "walking"]).default("driving"),
+  travelMode: z.enum(["driving", "cycling", "walking", "flight"]).default("driving"),
 
   /** Start location as a free-text address. Geocoded via Mapbox Geocoding API. */
   startAddress: z.string().default("Ghent, Belgium"),
