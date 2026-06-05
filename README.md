@@ -103,7 +103,7 @@ User clicks "Render & Download"
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
 4. Adjust **Map style**, **Line** (color, width, style), **Labels** (animation, colors, font)
 5. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
-6. The live preview updates as you change settings
+6. The live preview updates as you change settings and plays automatically in a loop
 
 ---
 
@@ -148,7 +148,7 @@ Express server (port 3002) that:
 - In production, serves the built webapp from `webapp/dist`
 
 ### `webapp/src/PropsForm.tsx`
-The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling.
+The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; Mode, Route, and Track line are open by default.
 
 ---
 
