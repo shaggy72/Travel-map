@@ -681,6 +681,38 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         </div>
       )}
 
+      {/* ── Track line ───────────────────────────────────────────── */}
+      <div className="form-section">
+        <div className="section-title">Track line</div>
+        <div className="field">
+          <label>Style</label>
+          <LineStylePicker
+            value={props.lineStyle}
+            lineColor={props.lineColor}
+            onChange={v => upd('lineStyle', v)}
+          />
+        </div>
+        {props.lineStyle === 'pencil' && (
+          <RangeField
+            label="Pencil strength"
+            value={props.pencilStrength}
+            min={1} max={10}
+            onChange={v => upd('pencilStrength', v)}
+          />
+        )}
+        <ColorField
+          label="Line color"
+          value={props.lineColor}
+          onChange={v => upd('lineColor', v)}
+        />
+        <RangeField
+          label="Line width"
+          value={props.lineWidth}
+          min={1} max={20}
+          onChange={v => upd('lineWidth', v)}
+        />
+      </div>
+
       {/* ── Map ──────────────────────────────────────────────────── */}
       <div className="form-section">
         <div className="section-title">Map</div>
@@ -727,121 +759,9 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         )}
       </div>
 
-      {/* ── City labels ──────────────────────────────────────────── */}
+      {/* ── Route labels ─────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">City labels</div>
-
-        <div className="field">
-          <label>Show</label>
-          <CitySlider
-            value={props.minPopulation}
-            onChange={v => upd('minPopulation', v)}
-          />
-        </div>
-
-        {props.minPopulation > 0 && (<>
-          <div className="field">
-            <label>Font</label>
-            <FontPicker
-              value={props.cityFont}
-              onChange={v => upd('cityFont', v as Props['cityFont'])}
-            />
-          </div>
-
-          <div className="field">
-            <label>Case</label>
-            <div className="radio-group">
-              <input
-                type="radio" id="city-case-normal" name="cityUppercase"
-                checked={!props.cityUppercase}
-                onChange={() => upd('cityUppercase', false)}
-              />
-              <label htmlFor="city-case-normal">Normal</label>
-              <input
-                type="radio" id="city-case-upper" name="cityUppercase"
-                checked={props.cityUppercase}
-                onChange={() => upd('cityUppercase', true)}
-              />
-              <label htmlFor="city-case-upper">ALL CAPS</label>
-            </div>
-          </div>
-
-          <div className="city-tier-label">Big <span>(pop &gt; 1M)</span></div>
-          <ColorField
-            label="Color"
-            value={props.cityColorBig}
-            onChange={v => upd('cityColorBig', v)}
-          />
-          <RangeField
-            label="Size"
-            value={props.citySizeBig}
-            min={10} max={80}
-            onChange={v => upd('citySizeBig', v)}
-          />
-
-          <div className="city-tier-label">Medium <span>(200k – 1M)</span></div>
-          <ColorField
-            label="Color"
-            value={props.cityColorMedium}
-            onChange={v => upd('cityColorMedium', v)}
-          />
-          <RangeField
-            label="Size"
-            value={props.citySizeMedium}
-            min={8} max={60}
-            onChange={v => upd('citySizeMedium', v)}
-          />
-
-          <div className="city-tier-label">Small <span>(&lt; 200k)</span></div>
-          <ColorField
-            label="Color"
-            value={props.cityColorSmall}
-            onChange={v => upd('cityColorSmall', v)}
-          />
-          <RangeField
-            label="Size"
-            value={props.citySizeSmall}
-            min={6} max={44}
-            onChange={v => upd('citySizeSmall', v)}
-          />
-        </>)}
-      </div>
-
-      {/* ── Track line ───────────────────────────────────────────── */}
-      <div className="form-section">
-        <div className="section-title">Track line</div>
-        <div className="field">
-          <label>Style</label>
-          <LineStylePicker
-            value={props.lineStyle}
-            lineColor={props.lineColor}
-            onChange={v => upd('lineStyle', v)}
-          />
-        </div>
-        {props.lineStyle === 'pencil' && (
-          <RangeField
-            label="Pencil strength"
-            value={props.pencilStrength}
-            min={1} max={10}
-            onChange={v => upd('pencilStrength', v)}
-          />
-        )}
-        <ColorField
-          label="Line color"
-          value={props.lineColor}
-          onChange={v => upd('lineColor', v)}
-        />
-        <RangeField
-          label="Line width"
-          value={props.lineWidth}
-          min={1} max={20}
-          onChange={v => upd('lineWidth', v)}
-        />
-      </div>
-
-      {/* ── Labels ───────────────────────────────────────────────── */}
-      <div className="form-section">
-        <div className="section-title">Labels</div>
+        <div className="section-title">Route labels</div>
         <div className="field">
           <label>Labels</label>
           <LabelModePicker
@@ -927,6 +847,86 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
           min={1} max={60} unit="s"
           onChange={v => upd('duration', v)}
         />
+      </div>
+
+      {/* ── City labels ──────────────────────────────────────────── */}
+      <div className="form-section">
+        <div className="section-title">City labels</div>
+
+        <div className="field">
+          <label>Show</label>
+          <CitySlider
+            value={props.minPopulation}
+            onChange={v => upd('minPopulation', v)}
+          />
+        </div>
+
+        {props.minPopulation > 0 && (<>
+          <div className="field">
+            <label>Font</label>
+            <FontPicker
+              value={props.cityFont}
+              onChange={v => upd('cityFont', v as Props['cityFont'])}
+            />
+          </div>
+
+          <div className="field">
+            <label>Case</label>
+            <div className="radio-group">
+              <input
+                type="radio" id="city-case-normal" name="cityUppercase"
+                checked={!props.cityUppercase}
+                onChange={() => upd('cityUppercase', false)}
+              />
+              <label htmlFor="city-case-normal">Normal</label>
+              <input
+                type="radio" id="city-case-upper" name="cityUppercase"
+                checked={props.cityUppercase}
+                onChange={() => upd('cityUppercase', true)}
+              />
+              <label htmlFor="city-case-upper">ALL CAPS</label>
+            </div>
+          </div>
+
+          <div className="city-tier-label">Big <span>(pop &gt; 1M)</span></div>
+          <ColorField
+            label="Color"
+            value={props.cityColorBig}
+            onChange={v => upd('cityColorBig', v)}
+          />
+          <RangeField
+            label="Size"
+            value={props.citySizeBig}
+            min={10} max={80}
+            onChange={v => upd('citySizeBig', v)}
+          />
+
+          <div className="city-tier-label">Medium <span>(200k – 1M)</span></div>
+          <ColorField
+            label="Color"
+            value={props.cityColorMedium}
+            onChange={v => upd('cityColorMedium', v)}
+          />
+          <RangeField
+            label="Size"
+            value={props.citySizeMedium}
+            min={8} max={60}
+            onChange={v => upd('citySizeMedium', v)}
+          />
+
+          <div className="city-tier-label">Small <span>(&lt; 200k)</span></div>
+          <ColorField
+            label="Color"
+            value={props.cityColorSmall}
+            onChange={v => upd('cityColorSmall', v)}
+          />
+          <RangeField
+            label="Size"
+            value={props.citySizeSmall}
+            min={6} max={44}
+            onChange={v => upd('citySizeSmall', v)}
+          />
+        </>)}
       </div>
     </div>
   );
