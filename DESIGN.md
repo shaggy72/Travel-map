@@ -6,7 +6,9 @@ All UI styles live in `webapp/src/styles.css`. There is no external component li
 
 ## Design language
 
-The UI uses a **warm beige/brown palette** — intentionally muted so the map preview is always the focal point. The sidebar is compact (280 px wide, 11 px base font) to give as much space as possible to the preview panel.
+The UI uses the **tweakcn "Claude" theme** — a warm cream/white palette with Claude's signature terracotta orange as the accent colour. Colours are defined in [OKLCH](https://oklch.com/) colour space for perceptual uniformity. The sidebar is compact (280 px wide, 11 px base font) to give as much space as possible to the map preview.
+
+Source: [`https://tweakcn.com/r/themes/claude.json`](https://tweakcn.com/r/themes/claude.json)
 
 ---
 
@@ -16,29 +18,31 @@ Defined in `:root` in `styles.css`. Use these variables everywhere — never har
 
 ### Colours
 
-| Variable | Value | Used for |
-|---|---|---|
-| `--bg` | `#edeae4` | Preview panel background |
-| `--sidebar-bg` | `#e8e4de` | Sidebar background, picker inputs |
-| `--field-bg` | `#f8f6f2` | Field pill background, floating panels |
-| `--border` | `#d0cbc3` | All borders |
-| `--border-hover` | `#b8b2aa` | Border on hover (not widely used) |
-| `--text` | `#26211a` | Primary text (dark warm brown-black) |
-| `--text-muted` | `#8c7e6e` | Labels, secondary values |
-| `--text-light` | `#b4a898` | Tertiary text, arrows |
-| `--accent` | `#a06840` | Active/selected state, slider thumb, primary button |
-| `--accent-hover` | `#8a5530` | Accent on hover |
-| `--accent-light` | `#f2e9de` | Selected option background in dropdowns |
-| `--danger` | `#b83c3c` | Error messages |
-| `--success` | `#4a7a50` | Upload success message |
-| `--field-hover` | `#e8e1d6` | Field pill on hover |
+All values use OKLCH. Map to tweakcn token shown in comments.
+
+| Variable | OKLCH value | tweakcn token | Used for |
+|---|---|---|---|
+| `--bg` | `oklch(0.9818 0.0054 95.0986)` | `--background` | Preview panel background |
+| `--sidebar-bg` | `oklch(0.9663 0.0080 98.8792)` | `--sidebar` | Sidebar background |
+| `--field-bg` | `oklch(1.0000 0 0)` | `--popover` | Field pill background, floating panels |
+| `--border` | `oklch(0.8847 0.0069 97.3627)` | `--border` | All borders |
+| `--border-hover` | `oklch(0.7621 0.0156 98.3528)` | `--input` | Border on hover |
+| `--text` | `oklch(0.3438 0.0269 95.7226)` | `--foreground` | Primary text |
+| `--text-muted` | `oklch(0.6059 0.0075 97.4233)` | `--muted-foreground` | Labels, secondary values |
+| `--text-light` | `oklch(0.7500 0.0100 97.0000)` | interpolated | Tertiary text, arrows |
+| `--accent` | `oklch(0.6171 0.1375 39.0427)` | `--primary` | Active/selected state, slider thumb, primary button (Claude orange) |
+| `--accent-hover` | `oklch(0.5300 0.1375 39.0427)` | `--primary` darkened | Accent on hover |
+| `--accent-light` | `oklch(0.9245 0.0138 92.9892)` | `--secondary` | Selected option background in dropdowns |
+| `--danger` | `oklch(0.6368 0.2078 25.3313)` | `--destructive` (dark) | Error messages |
+| `--success` | `#4a7a50` | — | Upload success message |
+| `--field-hover` | `oklch(0.9341 0.0153 90.2390)` | `--muted` | Field pill on hover |
 
 ### Shape & shadow
 
 | Variable | Value | Used for |
 |---|---|---|
-| `--radius` | `6px` | Default border radius (fields, buttons, panels) |
-| `--radius-lg` | `10px` | Larger panels (color picker, login card) |
+| `--radius` | `0.5rem` (≈ 8 px) | Default border radius (fields, buttons, panels) |
+| `--radius-lg` | `0.75rem` (≈ 12 px) | Larger panels (color picker, login card) |
 | `--shadow` | `0 1px 2px rgba(0,0,0,.05)` | Subtle lift |
 | `--shadow-md` | `0 2px 16px rgba(0,0,0,.10)` | Floating panels, preview player |
 
@@ -61,7 +65,7 @@ Defined in `:root` in `styles.css`. Use these variables everywhere — never har
 │  │              │  │  centred column               ││
 │  │ .sidebar-    │  │                               ││
 │  │  header      │  │  .preview-player-wrapper      ││
-│  │              │  │  aspect-ratio: 9/16           ││
+│  │              │  │  aspect-ratio: dynamic        ││
 │  │ .sidebar-    │  │                               ││
 │  │  body        │  │                               ││
 │  │  (scrollable)│  │                               ││
@@ -73,6 +77,11 @@ Defined in `:root` in `styles.css`. Use these variables everywhere — never har
 ```
 
 The sidebar is a flex column: header (fixed) + body (scrollable, `flex: 1`) + footer (fixed).
+
+`.preview-player-wrapper` has no hardcoded `aspect-ratio` in CSS. It is set inline in `App.tsx` based on `props.outputFormat`:
+- `portrait` → `9/16`
+- `landscape` → `16/9`
+- `square` → `1/1`
 
 ---
 
@@ -254,6 +263,27 @@ Two variants:
 | `.btn.btn-ghost` | `--field-bg` background, bordered | Secondary actions |
 
 Disabled state: `opacity: 0.5`, `cursor: not-allowed`, no transform on active.
+
+---
+
+### Travel mode icon group — `.travel-mode-group`
+
+The travel mode selector is a `.radio-group` inside a `.field` pill, using icon-only labels instead of text. Material Symbols icons are used for car/bike/walk; the flight icon is an inline SVG (the Material Symbols ligature for "flight" does not load reliably in subsetted fonts).
+
+```jsx
+<div className="field">
+  <label>Travel</label>
+  <div className="radio-group travel-mode-group">
+    <input type="radio" id="travel-driving" name="travelMode" ... />
+    <label htmlFor="travel-driving" title="Car"><CarIcon /></label>
+    {/* repeat for cycling, walking, flight */}
+  </div>
+</div>
+```
+
+Labels use reduced horizontal padding (`7px`) so all four icons fit within the pill width. Icon size: 20 px for car/flight, 15 px for bike/walk (slightly smaller for visual balance).
+
+To add a new travel mode: add a radio input + label here, and add the icon as either a `material-symbols-outlined` span (if the ligature is reliable) or an inline SVG.
 
 ---
 

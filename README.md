@@ -98,6 +98,7 @@ User clicks "Render & Download"
    - 🚗 **Car** — Mapbox Directions API (fast, accurate, any distance)
    - 🚲 **Bike** — routing.openstreetmap.de/routed-bike (no key, handles long distances)
    - 🚶 **Walk** — routing.openstreetmap.de/routed-foot (no key, handles long distances)
+   - ✈️ **Flight** — great-circle arc computed locally via d3-geo (no API call, always instant)
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
 4. Adjust **Map style**, **Line** (color, width, style), **Labels** (animation, colors, font)
@@ -123,9 +124,9 @@ npm run build
 Defines every configurable prop using [Zod](https://zod.dev). This is the single source of truth — Remotion validates props against it, and the webapp mirrors it in `webapp/src/types.ts`. Every field has a JSDoc comment explaining its purpose.
 
 ### `src/MapComposition.tsx`
-The animation component. Renders an SVG at 1080×1920px (9:16 portrait). On each frame it:
+The animation component. Canvas dimensions are dynamic — 1080×1920 (portrait), 1920×1080 (landscape), or 1080×1080 (square) — resolved at render time via `useVideoConfig()`. On each frame it:
 1. Draws the Mapbox tile as a background `<image>`
-2. Draws the route as an animated SVG `<path>` (draw-on effect)
+2. Draws the route as an animated SVG `<path>` (draw-on effect) — or a great-circle arc for flight mode
 3. Draws city dots + labels (filtered by population)
 4. Draws start/end pin markers with animated label boxes
 
@@ -133,20 +134,41 @@ All async data (tile, geocoding, route) is fetched via `delayRender`/`continueRe
 
 ### `src/useMapboxImages.ts`
 Four custom hooks used by `MapComposition`:
-- `useMapboxImage(url)` — fetches a Mapbox static tile and returns a data URL
+- `useMapboxImage(url)` — fetches a Mapbox static tile and returns a data URL; stale fetches are cancelled so old tiles never overwrite newer ones
 - `useGeocode(address)` — geocodes a place name to `[lng, lat]`
 - `useGpxTrack(filename)` — parses a GPX file from `/public`
-- `useRoute(url)` — fetches a route polyline from Mapbox or OSRM; clears stale coords immediately when URL changes (travel mode switch)
+- `useRoute(url)` — fetches a route polyline from Mapbox or OSRM; clears stale coords immediately when URL changes; releases its `delayRender` handle immediately when `url` is null (flight mode, GPX mode)
 
 ### `server/index.cjs`
 Express server (port 3002) that:
 - Authenticates the webapp via a session cookie
-- Accepts GPX file uploads (`POST /api/upload`)
+- Accepts GPX file uploads (`POST /api/upload-gpx`)
 - Triggers Remotion renders (`POST /api/render`) and streams the MP4 back
 - Serves the list of available GPX files (`GET /api/gpx-files`)
+- In production, serves the built webapp from `webapp/dist`
 
 ### `webapp/src/PropsForm.tsx`
 The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling.
+
+---
+
+## Deploying to a server (Linux / Mint / Ubuntu)
+
+A `deploy.sh` script handles everything in one command — Node.js, PM2, build, Remotion browser, and auto-start on reboot.
+
+**First deployment:**
+```bash
+# On the server:
+bash <(curl -s https://raw.githubusercontent.com/shaggy72/Travel-map/main/deploy.sh)
+```
+The script pauses and asks you to fill in `.env` if it's missing, then re-run.
+
+**Updating after a code change:**
+```bash
+bash ~/Travel-map/deploy.sh
+```
+
+The app runs on port 3002. To add HTTPS or host multiple apps, put nginx in front as a reverse proxy.
 
 ---
 
@@ -213,4 +235,5 @@ The webapp UI uses a hand-crafted CSS design system (no component library). See 
 - **Code style** — TypeScript strict mode, no `any` except where unavoidable (e.g. Node stream piping). Prettier is not configured; match the surrounding style.
 - **Adding a new prop** — add it to `src/schema.ts` (with JSDoc), mirror it in `webapp/src/types.ts` and `DEFAULT_PROPS`, then wire it up in `MapComposition.tsx` and `PropsForm.tsx`.
 - **Adding a new line style** — extend the `lineStyle` enum in `schema.ts` and add the SVG rendering case in `MapComposition.tsx` where `lineStyle` is consumed.
+- **Adding a new travel mode** — add the value to the `travelMode` enum in `schema.ts` and `types.ts`, handle the route/arc logic in `MapComposition.tsx`, add an icon + radio button in `PropsForm.tsx`.
 - **Commits** — one logical change per commit, present-tense imperative subject line (e.g. `Add wipe animation style`).
