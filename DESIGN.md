@@ -185,14 +185,15 @@ Groups related fields. Sections are separated by a top border + margin. Each sec
 
 **Collapse state** is a `Set<string>` in `PropsForm` (`closed`), toggled by `toggle(id)`. Default closed sections: `map`, `routeLabels`, `animation`, `cityLabels`. Default open: `mode`, `route`, `gpx`, `trackLine`.
 
-**CSS animation** uses the grid-row trick — no need to know content height:
+**CSS animation** uses `max-height` + `overflow: hidden` (battle-tested approach):
 ```css
-.section-body              { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.2s ease; }
-.section-body--open        { grid-template-rows: 1fr; }
-.section-body-inner        { overflow: hidden; }
+.section-body        { overflow: hidden; max-height: 0;      transition: max-height 0.22s ease; }
+.section-body--open  { max-height: 1500px; }
+.section-body-inner  { padding-bottom: 2px; }
 ```
+The CSS grid `0fr` technique was tried first but causes the first child's 1px border to bleed past the collapsed track in some browsers regardless of `overflow: hidden` settings. `max-height: 0` clips unconditionally. 1500px is a safe ceiling above the tallest possible section.
 
-**Chevron** (`.section-chevron`) sits before the label text (flex row, `gap: 5px`). It rotates from −90° (▸, collapsed) to 0° (▾, open) with a 0.18s ease transition. Size: 11px (≈ 20% larger than the 9px section title text for visibility). `overflow: hidden` on `.section-body` (not just `.section-body-inner`) prevents the 1px border of the first child `.field` from bleeding past the collapsed 0fr grid track.
+**Chevron** (`.section-chevron`) sits before the label text (flex row, `gap: 5px`). It rotates from −90° (▸, collapsed) to 0° (▾, open) with a 0.18s ease transition. Size: 11px (≈ 20% larger than the 9px section title text for visibility).
 
 ---
 

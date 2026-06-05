@@ -172,22 +172,23 @@ html, body, #root {
   transform: rotate(0deg);     /* ▾ points down = expanded */
 }
 
-/* Collapsible section body — uses CSS grid-row animation so no height is needed.
-   0fr = collapsed (zero height), 1fr = expanded (natural height).
-   overflow:hidden on the OUTER element is required: without it, the first 1px
-   border of child .field elements can bleed past the 0fr grid track.         */
+/* Collapsible section body.
+   max-height: 0 + overflow: hidden is the battle-tested approach for this.
+   The CSS grid / 0fr technique causes the first child border to bleed past
+   the collapsed track in some browsers regardless of overflow settings.
+   1500px is safely above the tallest section (City labels ≈ 400px in the
+   280px sidebar) so all content is revealed on open.                        */
 .section-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  overflow: hidden;   /* clips content past the 0fr track (fixes border bleed) */
-  transition: grid-template-rows 0.2s ease;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.22s ease;
 }
 .section-body--open {
-  grid-template-rows: 1fr;
+  max-height: 1500px;
 }
 .section-body-inner {
-  overflow: hidden;
-  padding-bottom: 2px; /* prevents bottom fields from clipping at the edge */
+  /* padding so the last field's bottom edge isn't flush against the clip */
+  padding-bottom: 2px;
 }
 
 /* ── Field cards ──────────────────────────────────────────────────────── */
