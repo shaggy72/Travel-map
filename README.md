@@ -101,7 +101,7 @@ User clicks "Render & Download"
    - ✈️ **Flight** — great-circle arc computed locally via d3-geo (no API call, always instant)
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
-4. Adjust **Map style**, **Line** (color, width, style), **Labels** (animation, colors, font)
+4. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, colors, font)
 5. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
 6. The live preview updates as you change settings and plays automatically in a loop
 
@@ -163,7 +163,10 @@ bash <(curl -s https://raw.githubusercontent.com/shaggy72/Travel-map/main/deploy
 ```
 The script pauses and asks you to fill in `.env` if it's missing, then re-run.
 
-**Updating after a code change:**
+**Updating after a code change — option A (from the browser):**
+Once the app is running, an **"🔄 Update available"** banner appears automatically in the sidebar whenever a new commit is pushed to GitHub. Click **Install** to pull + rebuild, then **Restart now** to apply. The page reloads itself once the server is back up.
+
+**Updating after a code change — option B (SSH):**
 ```bash
 bash ~/Travel-map/deploy.sh
 ```

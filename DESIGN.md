@@ -304,6 +304,21 @@ Usage:
 
 ---
 
+### Update banner — `.update-banner`
+
+Appears inside `.sidebar-header` when a new GitHub commit is detected. Hidden (`updateState === 'idle'`) otherwise. Four visual states driven by `updateState` in `App.tsx`:
+
+| State | Class modifier | Colour | Content |
+|---|---|---|---|
+| `available` | `--available` | amber | "🔄 Update available [Install]" |
+| `updating` | `--updating` | amber | spinner + "Installing update…" |
+| `restart-needed` | `--restart-needed` | green | "✅ Updated. [Restart now]" |
+| `restarting` | `--restarting` | neutral | spinner + "Restarting…" |
+
+The inline **Install** / **Restart now** buttons use `.update-banner button` (accent background, not `.btn`). Install is disabled while a render is in progress. After restart the client polls `GET /api/me` every 2 s and reloads when the server responds. `.spinner--dark` is a modifier for the standard `.spinner` that works on light (non-white) backgrounds.
+
+---
+
 ### Buttons — `.btn`
 
 Two variants:

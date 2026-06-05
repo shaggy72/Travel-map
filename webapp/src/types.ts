@@ -47,7 +47,7 @@ export const DEFAULT_PROPS: Props = {
   zoomMode:       'auto',
   zoom:           5.5,
   lineColor:      '#e53935',
-  lineWidth:      4,
+  lineWidth:      10,
   lineStyle:      'solid',
   pencilStrength: 5,
   labelMode:      'animated',

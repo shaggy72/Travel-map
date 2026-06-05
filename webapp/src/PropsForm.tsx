@@ -786,7 +786,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             <RangeField
               label="Line width"
               value={props.lineWidth}
-              min={1} max={20}
+              min={1} max={30}
               onChange={v => upd('lineWidth', v)}
             />
           </div>

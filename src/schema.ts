@@ -57,7 +57,7 @@ export const schema = z.object({
   lineColor: zColor().default("#e53935"),
 
   /** Stroke width of the route line in SVG units (~pixels at 1080px canvas width). */
-  lineWidth: z.number().min(1).max(20).default(4),
+  lineWidth: z.number().min(1).max(30).default(10),
 
   /** Visual style of the route line.
    *  solid, dashed, dotted, long-dash, dash-dot = standard SVG stroke patterns
