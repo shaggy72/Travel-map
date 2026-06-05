@@ -118,8 +118,13 @@ ok "Webapp built → webapp/dist"
 step "Remotion browser"
 echo "Installing system libraries..."
 
+# Refresh apt cache before querying it — on update runs Node is already installed
+# so the earlier NodeSource setup script is skipped, leaving the cache potentially
+# stale. A stale cache causes resolve_pkg() to miss t64 variants (e.g. libasound2t64).
+sudo apt-get update -qq
+
 # Ubuntu 24.04+ renamed several packages with a t64 suffix (64-bit time_t transition).
-# Detect which variant exists and install the right one.
+# Detect which variant exists in the (now-fresh) cache and install the right one.
 resolve_pkg() {
   # If the t64 variant exists in apt cache, use it; otherwise use the plain name.
   apt-cache show "${1}t64" &>/dev/null 2>&1 && echo "${1}t64" || echo "$1"
