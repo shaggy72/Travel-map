@@ -28,6 +28,7 @@ export default function PreviewPlayer({ props }: PreviewPlayerProps) {
       style={{ width: '100%', height: '100%' }}
       controls
       loop
+      autoPlay /* start playing as soon as the component mounts */
     />
   );
 }
