@@ -5,7 +5,9 @@ const path     = require('path');
 const fs       = require('fs');
 const os       = require('os');
 const crypto   = require('crypto');
-const { execSync } = require('child_process');
+const { execSync, exec } = require('child_process');
+const { promisify }      = require('util');
+const execAsync          = promisify(exec); // async version used for update/build steps
 const express  = require('express');
 const multer   = require('multer');
 require('dotenv').config();
@@ -73,6 +75,17 @@ function clearSessionCookie(res) {
 function requireAuth(req, res, next) {
   if (isValidSession(getSessionToken(req))) return next();
   res.status(401).json({ error: 'Unauthorized' });
+}
+
+// ── Auto-update ───────────────────────────────────────────────────────────
+// Read the current git commit hash once on startup. The hash stays fixed until
+// the process restarts (after an update + pm2 restart it becomes the new hash).
+let localHash = '';
+try {
+  localHash = execSync('git rev-parse HEAD', { cwd: ROOT_DIR }).toString().trim();
+  console.log(`[update] Running commit: ${localHash.slice(0, 7)}`);
+} catch {
+  console.warn('[update] Not a git repo — update check disabled.');
 }
 
 // ── Remotion bundle cache ─────────────────────────────────────────────────
@@ -211,6 +224,73 @@ app.post('/api/render', requireAuth, async (req, res) => {
   } finally {
     isRendering = false;
   }
+});
+
+// ── Update endpoints ──────────────────────────────────────────────────────
+
+/**
+ * GET /api/update-check
+ * Does a live call to the GitHub API to compare the remote main branch hash
+ * against the local hash captured at startup. Called by the webapp on each
+ * page load; no background polling on the server side.
+ */
+app.get('/api/update-check', requireAuth, async (_req, res) => {
+  if (!localHash) {
+    return res.json({ updateAvailable: false, localHash: '', remoteHash: '' });
+  }
+  try {
+    const ghRes = await fetch(
+      'https://api.github.com/repos/shaggy72/Travel-map/commits/main',
+      { headers: { 'User-Agent': 'travel-map-server' } }
+    );
+    if (!ghRes.ok) {
+      return res.json({ updateAvailable: false, localHash, remoteHash: '' });
+    }
+    const { sha: remoteHash } = await ghRes.json();
+    res.json({ updateAvailable: remoteHash !== localHash, localHash, remoteHash });
+  } catch {
+    // GitHub unreachable — report no update rather than an error
+    res.json({ updateAvailable: false, localHash, remoteHash: '' });
+  }
+});
+
+/**
+ * POST /api/update
+ * Pulls the latest code, installs dependencies, and rebuilds the webapp.
+ * The response is sent only after all steps complete (or fail). Typical
+ * duration is 30–90 seconds; the client shows a spinner while waiting.
+ */
+app.post('/api/update', requireAuth, async (_req, res) => {
+  console.log('[update] Starting update…');
+  try {
+    const opts = { cwd: ROOT_DIR };
+    console.log('[update] git pull…');
+    await execAsync('git pull --ff-only', opts);
+    console.log('[update] npm install…');
+    await execAsync('npm install', opts);
+    console.log('[update] build:webapp…');
+    await execAsync('npm run build:webapp', opts);
+    // Refresh local hash so the check endpoint is accurate after update
+    localHash = execSync('git rev-parse HEAD', { cwd: ROOT_DIR }).toString().trim();
+    console.log(`[update] Done. Now at ${localHash.slice(0, 7)}`);
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = (err instanceof Error ? err.message : String(err)).slice(0, 500);
+    console.error('[update] Failed:', msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * POST /api/restart
+ * Responds immediately, then exits after a short delay.
+ * PM2 (the process manager) detects the exit and restarts the server,
+ * which picks up the freshly built webapp from webapp/dist.
+ */
+app.post('/api/restart', requireAuth, (_req, res) => {
+  res.json({ ok: true });
+  console.log('[update] Restarting via process.exit(0) — PM2 will restart.');
+  setTimeout(() => process.exit(0), 200);
 });
 
 // ── Serve frontend (production build) ─────────────────────────────────────

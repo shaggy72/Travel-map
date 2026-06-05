@@ -63,6 +63,10 @@ export default function App() {
   const [renderErr, setRenderErr] = useState('');
   // Mobile tab switcher — only visible on screens ≤ 640px (controlled via CSS)
   const [mobileTab, setMobileTab] = useState<'settings' | 'preview'>('settings');
+  // Update banner — tracks the lifecycle of a server-side update
+  type UpdateState = 'idle' | 'available' | 'updating' | 'restart-needed' | 'restarting';
+  const [updateState, setUpdateState] = useState<UpdateState>('idle');
+  const [updateErr,   setUpdateErr]   = useState('');
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -72,7 +76,7 @@ export default function App() {
     fetch('/api/me', { signal: ctrl.signal })
       .then(r => {
         clearTimeout(timer);
-        if (r.ok) { setAuth('logged-in'); fetchGpxFiles(); }
+        if (r.ok) { setAuth('logged-in'); fetchGpxFiles(); checkForUpdate(); }
         else       { setAuth('logged-out'); }
       })
       .catch(() => { clearTimeout(timer); setAuth('logged-out'); });
@@ -85,6 +89,54 @@ export default function App() {
       const r = await fetch('/api/gpx-files');
       if (r.ok) setGpxFiles(await r.json());
     } catch { /* ignore */ }
+  }
+
+  /** Called once after login / on mount. Hits the server which checks GitHub live. */
+  async function checkForUpdate() {
+    try {
+      const r = await fetch('/api/update-check');
+      if (r.ok) {
+        const { updateAvailable } = await r.json();
+        if (updateAvailable) setUpdateState('available');
+      }
+    } catch { /* server may be too old or offline — silently ignore */ }
+  }
+
+  /** Pull latest code, reinstall deps, rebuild webapp. */
+  async function handleUpdate() {
+    setUpdateState('updating');
+    setUpdateErr('');
+    try {
+      const r = await fetch('/api/update', { method: 'POST' });
+      if (r.ok) {
+        setUpdateState('restart-needed');
+      } else {
+        const body = await r.json().catch(() => ({}));
+        setUpdateErr(body.error ?? 'Update failed');
+        setUpdateState('available');
+      }
+    } catch {
+      setUpdateErr('Network error during update');
+      setUpdateState('available');
+    }
+  }
+
+  /**
+   * Tell the server to exit (PM2 restarts it), then poll /api/me every 2 s
+   * until the server is back up, then reload the page.
+   */
+  async function handleRestart() {
+    setUpdateState('restarting');
+    await fetch('/api/restart', { method: 'POST' }).catch(() => {});
+    for (let i = 0; i < 30; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        const r = await fetch('/api/me');
+        if (r.ok) { window.location.reload(); return; }
+      } catch { /* server still coming back up */ }
+    }
+    // Fallback: reload after 60 s regardless
+    window.location.reload();
   }
 
   async function handleLogout() {
@@ -132,7 +184,7 @@ export default function App() {
   }
 
   if (auth === 'logged-out') {
-    return <LoginPage onLogin={() => { setAuth('logged-in'); fetchGpxFiles(); }} />;
+    return <LoginPage onLogin={() => { setAuth('logged-in'); fetchGpxFiles(); checkForUpdate(); }} />;
   }
 
   // ── Main app ─────────────────────────────────────────────────────────────
@@ -146,6 +198,29 @@ export default function App() {
             <button className="logout-btn" onClick={handleLogout}>Sign out</button>
           </div>
           <p>Configure and preview your animation</p>
+
+          {/* ── Update banner — hidden when idle ────────────────────── */}
+          {updateState !== 'idle' && (
+            <div className={`update-banner update-banner--${updateState}`}>
+              {updateState === 'available' && (
+                <>🔄 Update available&nbsp;
+                  <button onClick={handleUpdate} disabled={rendering}>Install</button>
+                </>
+              )}
+              {updateState === 'updating' && (
+                <><span className="spinner spinner--dark" />&nbsp;Installing update…</>
+              )}
+              {updateState === 'restart-needed' && (
+                <>✅ Updated.&nbsp;
+                  <button onClick={handleRestart}>Restart now</button>
+                </>
+              )}
+              {updateState === 'restarting' && (
+                <><span className="spinner spinner--dark" />&nbsp;Restarting…</>
+              )}
+              {updateErr && <span className="update-err">{updateErr}</span>}
+            </div>
+          )}
         </div>
 
         <div className="sidebar-body">
