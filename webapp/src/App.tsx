@@ -61,6 +61,8 @@ export default function App() {
   const [gpxFiles,  setGpxFiles]  = useState<string[]>([]);
   const [rendering, setRendering] = useState(false);
   const [renderErr, setRenderErr] = useState('');
+  // Mobile tab switcher — only visible on screens ≤ 640px (controlled via CSS)
+  const [mobileTab, setMobileTab] = useState<'settings' | 'preview'>('settings');
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -135,7 +137,7 @@ export default function App() {
 
   // ── Main app ─────────────────────────────────────────────────────────────
   return (
-    <div className="layout">
+    <div className={`layout${mobileTab === 'preview' ? ' layout--preview' : ''}`}>
       {/* ── Sidebar ──────────────────────────────────────────────────── */}
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -199,6 +201,22 @@ export default function App() {
           Preview uses your browser — no server needed
         </div>
       </main>
+
+      {/* ── Mobile tab bar — hidden on desktop via CSS ───────────────── */}
+      <nav className="mobile-tab-bar">
+        <button
+          className={`mobile-tab${mobileTab === 'settings' ? ' active' : ''}`}
+          onClick={() => setMobileTab('settings')}
+        >
+          ⚙ Settings
+        </button>
+        <button
+          className={`mobile-tab${mobileTab === 'preview' ? ' active' : ''}`}
+          onClick={() => setMobileTab('preview')}
+        >
+          ▶ Preview
+        </button>
+      </nav>
     </div>
   );
 }

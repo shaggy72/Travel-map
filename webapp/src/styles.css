@@ -895,3 +895,72 @@ select {
   align-items: baseline;
   justify-content: space-between;
 }
+
+/* ── Mobile layout (≤ 640px) ─────────────────────────────────────────────── */
+/* Tab bar is hidden on desktop; the media query re-shows it on small screens */
+.mobile-tab-bar { display: none; }
+
+@media (max-width: 640px) {
+  /* Stack sidebar and preview vertically */
+  .layout {
+    flex-direction: column;
+  }
+
+  /* Sidebar: full width */
+  .sidebar {
+    order: 1;
+    width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex: 1;
+    overflow: hidden; /* sidebar-body already scrolls internally */
+  }
+
+  /* Preview panel: full width, reduced padding */
+  .preview-panel {
+    order: 2;
+    flex: 1;
+    padding: 16px;
+  }
+
+  /* Preview wrapper: let aspect-ratio drive the size */
+  .preview-player-wrapper {
+    height: auto;
+    /* 100svh = small viewport height — excludes iOS Safari chrome bar.
+       Falls back gracefully to 100vh on browsers that don't support svh. */
+    max-height: calc(100svh - 140px);
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Bottom tab bar */
+  .mobile-tab-bar {
+    display: flex;
+    order: 3;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--sidebar-bg);
+  }
+  .mobile-tab {
+    flex: 1;
+    padding: 13px 8px;
+    background: none;
+    border: none;
+    font: 600 12px/1 var(--font);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  .mobile-tab.active {
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+  .mobile-tab:hover:not(.active) {
+    color: var(--text);
+  }
+
+  /* Show only the active panel — toggle via .layout--preview class set in App.tsx */
+  .layout:not(.layout--preview) .preview-panel { display: none; }
+  .layout.layout--preview .sidebar            { display: none; }
+}
