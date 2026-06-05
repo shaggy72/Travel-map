@@ -136,7 +136,7 @@ html, body, #root {
 }
 
 /* Section title doubles as a collapse toggle button — reset all button styles
-   and lay out the text + chevron as a flex row.                              */
+   and lay out the chevron + text as a flex row.                              */
 .section-title {
   font-size: 9px;
   font-weight: 600;
@@ -147,7 +147,7 @@ html, body, #root {
   /* button reset */
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 5px;           /* chevron sits to the left of the label */
   width: 100%;
   background: none;
   border: none;
@@ -158,30 +158,33 @@ html, body, #root {
 }
 .section-title:hover { color: var(--text); }
 
-/* Chevron indicator — rotated right (▸) when collapsed, down (▾) when open */
+/* Chevron indicator — rotated right (▸) when collapsed, down (▾) when open.
+   11px = original 9px + ~20%.                                                */
 .section-chevron {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-light);
   transition: transform 0.18s ease;
-  transform: rotate(-90deg);
+  transform: rotate(-90deg);   /* ▸ points right = collapsed */
   flex-shrink: 0;
   line-height: 1;
 }
 .section-chevron.open {
-  transform: rotate(0deg);
+  transform: rotate(0deg);     /* ▾ points down = expanded */
 }
 
 /* Collapsible section body — uses CSS grid-row animation so no height is needed.
-   0fr = collapsed (zero height), 1fr = expanded (natural height).             */
+   0fr = collapsed (zero height), 1fr = expanded (natural height).
+   overflow:hidden on the OUTER element is required: without it, the first 1px
+   border of child .field elements can bleed past the 0fr grid track.         */
 .section-body {
   display: grid;
   grid-template-rows: 0fr;
+  overflow: hidden;   /* clips content past the 0fr track (fixes border bleed) */
   transition: grid-template-rows 0.2s ease;
 }
 .section-body--open {
   grid-template-rows: 1fr;
 }
-/* overflow:hidden clips content during the animation */
 .section-body-inner {
   overflow: hidden;
   padding-bottom: 2px; /* prevents bottom fields from clipping at the edge */

@@ -589,8 +589,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Mode ─────────────────────────────────────────────────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('mode')} aria-expanded={isOpen('mode')}>
-          Mode
           <span className={`section-chevron${isOpen('mode') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Mode
         </button>
         <div className={`section-body${isOpen('mode') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -654,8 +654,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {props.mode === 'directions' && (
         <div className="form-section">
           <button className="section-title" onClick={() => toggle('route')} aria-expanded={isOpen('route')}>
-            Route
             <span className={`section-chevron${isOpen('route') ? ' open' : ''}`} aria-hidden="true">▾</span>
+            Route
           </button>
           <div className={`section-body${isOpen('route') ? ' section-body--open' : ''}`}>
             <div className="section-body-inner">
@@ -686,8 +686,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {props.mode === 'gpx' && (
         <div className="form-section">
           <button className="section-title" onClick={() => toggle('gpx')} aria-expanded={isOpen('gpx')}>
-            GPX file
             <span className={`section-chevron${isOpen('gpx') ? ' open' : ''}`} aria-hidden="true">▾</span>
+            GPX file
           </button>
           <div className={`section-body${isOpen('gpx') ? ' section-body--open' : ''}`}>
             <div className="section-body-inner">
@@ -725,8 +725,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Track line ───────────────────────────────────────────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('trackLine')} aria-expanded={isOpen('trackLine')}>
-          Track line
           <span className={`section-chevron${isOpen('trackLine') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Track line
         </button>
         <div className={`section-body${isOpen('trackLine') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -764,8 +764,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Map ──────────────────────────────────────────────────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('map')} aria-expanded={isOpen('map')}>
-          Map
           <span className={`section-chevron${isOpen('map') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Map
         </button>
         <div className={`section-body${isOpen('map') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -817,8 +817,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Route labels ─────────────────────────────────────────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('routeLabels')} aria-expanded={isOpen('routeLabels')}>
-          Route labels
           <span className={`section-chevron${isOpen('routeLabels') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Route labels
         </button>
         <div className={`section-body${isOpen('routeLabels') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -877,8 +877,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Animation ────────────────────────────────────────────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('animation')} aria-expanded={isOpen('animation')}>
-          Animation
           <span className={`section-chevron${isOpen('animation') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Animation
         </button>
         <div className={`section-body${isOpen('animation') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -920,8 +920,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── City labels ──────────────────────────────────────────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('cityLabels')} aria-expanded={isOpen('cityLabels')}>
-          City labels
           <span className={`section-chevron${isOpen('cityLabels') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          City labels
         </button>
         <div className={`section-body${isOpen('cityLabels') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">

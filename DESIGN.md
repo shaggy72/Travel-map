@@ -170,8 +170,8 @@ Groups related fields. Sections are separated by a top border + margin. Each sec
 <div className="form-section">
   {/* title is a <button> — clicking it calls toggle(id) */}
   <button className="section-title" onClick={() => toggle('route')} aria-expanded={isOpen('route')}>
-    Route
     <span className={`section-chevron${isOpen('route') ? ' open' : ''}`} aria-hidden="true">▾</span>
+    Route
   </button>
 
   {/* body animates open/closed via CSS grid-template-rows transition */}
@@ -192,7 +192,7 @@ Groups related fields. Sections are separated by a top border + margin. Each sec
 .section-body-inner        { overflow: hidden; }
 ```
 
-**Chevron** (`.section-chevron`) rotates from −90° (▸, collapsed) to 0° (▾, open) with an 0.18s ease transition.
+**Chevron** (`.section-chevron`) sits before the label text (flex row, `gap: 5px`). It rotates from −90° (▸, collapsed) to 0° (▾, open) with a 0.18s ease transition. Size: 11px (≈ 20% larger than the 9px section title text for visibility). `overflow: hidden` on `.section-body` (not just `.section-body-inner`) prevents the 1px border of the first child `.field` from bleeding past the collapsed 0fr grid track.
 
 ---
 
