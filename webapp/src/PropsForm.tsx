@@ -905,19 +905,19 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               checked={props.outputFormat === 'portrait'}
               onChange={() => upd('outputFormat', 'portrait')}
             />
-            <label htmlFor="fmt-portrait" title="1080×1920 (9:16)">Portrait</label>
+            <label htmlFor="fmt-portrait"  title="Portrait (1080×1920)">9:16</label>
             <input
               type="radio" id="fmt-landscape" name="outputFormat"
               checked={props.outputFormat === 'landscape'}
               onChange={() => upd('outputFormat', 'landscape')}
             />
-            <label htmlFor="fmt-landscape" title="1920×1080 (16:9)">Landscape</label>
+            <label htmlFor="fmt-landscape" title="Landscape (1920×1080)">16:9</label>
             <input
               type="radio" id="fmt-square" name="outputFormat"
               checked={props.outputFormat === 'square'}
               onChange={() => upd('outputFormat', 'square')}
             />
-            <label htmlFor="fmt-square" title="1080×1080 (1:1)">Square</label>
+            <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
           </div>
         </div>
 
