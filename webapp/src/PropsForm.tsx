@@ -17,6 +17,13 @@
  *    (10k / 50k / 100k / 500k / 1M / 2M / off) rather than a continuous range,
  *    because intermediate values produce the same visual result and the steps map
  *    to meaningful city tiers (town / large town / city / major city / etc.).
+ *
+ *  Collapsible sections
+ *    Each .form-section has a <button className="section-title"> toggle. A Set of
+ *    closed section IDs is stored in state. The section body uses a CSS grid-rows
+ *    transition (0fr ↔ 1fr) for a smooth open/close animation without needing to
+ *    know the content height. Default open: Mode, Route, Track line.
+ *    Default closed: Map, Route labels, Animation, City labels.
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Props } from './types';
@@ -527,6 +534,18 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'ok' | 'error'>('idle');
   const [uploadMsg,    setUploadMsg]    = useState('');
 
+  // ── Collapsible sections ─────────────────────────────────────────────────
+  // Sections NOT in this set are open. Mode / Route / Track line start open.
+  // Map, Route labels, Animation, City labels start collapsed.
+  const [closed, setClosed] = useState<Set<string>>(
+    () => new Set(['map', 'routeLabels', 'animation', 'cityLabels'])
+  );
+  /** Toggle a section open/closed by its ID. */
+  const toggle = (id: string) =>
+    setClosed(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  /** Returns true when the section with the given ID is expanded. */
+  const isOpen = (id: string) => !closed.has(id);
+
   function upd<K extends keyof Props>(key: K, value: Props[K]) {
     onChange(set(props, key, value));
   }
@@ -566,84 +585,99 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
 
   return (
     <div>
+
       {/* ── Mode ─────────────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">Mode</div>
-        <div className="field">
-          <div className="radio-group">
-            <input
-              type="radio" id="mode-dir" name="mode"
-              checked={props.mode === 'directions'}
-              onChange={() => upd('mode', 'directions')}
-            />
-            <label htmlFor="mode-dir">Directions</label>
-            <input
-              type="radio" id="mode-gpx" name="mode"
-              checked={props.mode === 'gpx'}
-              onChange={() => {
-                // Auto-select first available GPX file if none chosen yet
-                const gpxFile = props.gpxFile || (gpxFiles[0] ?? '');
-                onChange({ ...props, mode: 'gpx', gpxFile });
-              }}
-            />
-            <label htmlFor="mode-gpx">GPX track</label>
+        <button className="section-title" onClick={() => toggle('mode')} aria-expanded={isOpen('mode')}>
+          Mode
+          <span className={`section-chevron${isOpen('mode') ? ' open' : ''}`} aria-hidden="true">▾</span>
+        </button>
+        <div className={`section-body${isOpen('mode') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <div className="radio-group">
+                <input
+                  type="radio" id="mode-dir" name="mode"
+                  checked={props.mode === 'directions'}
+                  onChange={() => upd('mode', 'directions')}
+                />
+                <label htmlFor="mode-dir">Directions</label>
+                <input
+                  type="radio" id="mode-gpx" name="mode"
+                  checked={props.mode === 'gpx'}
+                  onChange={() => {
+                    // Auto-select first available GPX file if none chosen yet
+                    const gpxFile = props.gpxFile || (gpxFiles[0] ?? '');
+                    onChange({ ...props, mode: 'gpx', gpxFile });
+                  }}
+                />
+                <label htmlFor="mode-gpx">GPX track</label>
+              </div>
+            </div>
+
+            {/* ── Travel mode (Directions only) ────────────────────── */}
+            {props.mode === 'directions' && (
+              <div className="field">
+                <label>Travel</label>
+                <div className="radio-group travel-mode-group">
+                  <input type="radio" id="travel-driving" name="travelMode"
+                    checked={props.travelMode === 'driving'}
+                    onChange={() => upd('travelMode', 'driving')}
+                  />
+                  <label htmlFor="travel-driving" title="Car"><CarIcon /></label>
+
+                  <input type="radio" id="travel-cycling" name="travelMode"
+                    checked={props.travelMode === 'cycling'}
+                    onChange={() => upd('travelMode', 'cycling')}
+                  />
+                  <label htmlFor="travel-cycling" title="Bike"><BikeIcon /></label>
+
+                  <input type="radio" id="travel-walking" name="travelMode"
+                    checked={props.travelMode === 'walking'}
+                    onChange={() => upd('travelMode', 'walking')}
+                  />
+                  <label htmlFor="travel-walking" title="Walk"><WalkIcon /></label>
+
+                  <input type="radio" id="travel-flight" name="travelMode"
+                    checked={props.travelMode === 'flight'}
+                    onChange={() => upd('travelMode', 'flight')}
+                  />
+                  <label htmlFor="travel-flight" title="Flight"><FlightIcon /></label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* ── Travel mode (Directions only) ────────────────────────── */}
-        {props.mode === 'directions' && (
-          <div className="field">
-            <label>Travel</label>
-            <div className="radio-group travel-mode-group">
-              <input type="radio" id="travel-driving" name="travelMode"
-                checked={props.travelMode === 'driving'}
-                onChange={() => upd('travelMode', 'driving')}
-              />
-              <label htmlFor="travel-driving" title="Car"><CarIcon /></label>
-
-              <input type="radio" id="travel-cycling" name="travelMode"
-                checked={props.travelMode === 'cycling'}
-                onChange={() => upd('travelMode', 'cycling')}
-              />
-              <label htmlFor="travel-cycling" title="Bike"><BikeIcon /></label>
-
-              <input type="radio" id="travel-walking" name="travelMode"
-                checked={props.travelMode === 'walking'}
-                onChange={() => upd('travelMode', 'walking')}
-              />
-              <label htmlFor="travel-walking" title="Walk"><WalkIcon /></label>
-
-              <input type="radio" id="travel-flight" name="travelMode"
-                checked={props.travelMode === 'flight'}
-                onChange={() => upd('travelMode', 'flight')}
-              />
-              <label htmlFor="travel-flight" title="Flight"><FlightIcon /></label>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Route (Directions mode) ───────────────────────────────── */}
       {props.mode === 'directions' && (
         <div className="form-section">
-          <div className="section-title">Route</div>
-          <div className="field">
-            <label>Start address</label>
-            <input
-              type="text"
-              value={props.startAddress}
-              onChange={e => upd('startAddress', e.target.value)}
-              placeholder="e.g. Ghent, Belgium"
-            />
-          </div>
-          <div className="field">
-            <label>End address</label>
-            <input
-              type="text"
-              value={props.endAddress}
-              onChange={e => upd('endAddress', e.target.value)}
-              placeholder="e.g. Paris, France"
-            />
+          <button className="section-title" onClick={() => toggle('route')} aria-expanded={isOpen('route')}>
+            Route
+            <span className={`section-chevron${isOpen('route') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          </button>
+          <div className={`section-body${isOpen('route') ? ' section-body--open' : ''}`}>
+            <div className="section-body-inner">
+              <div className="field">
+                <label>Start address</label>
+                <input
+                  type="text"
+                  value={props.startAddress}
+                  onChange={e => upd('startAddress', e.target.value)}
+                  placeholder="e.g. Ghent, Belgium"
+                />
+              </div>
+              <div className="field">
+                <label>End address</label>
+                <input
+                  type="text"
+                  value={props.endAddress}
+                  onChange={e => upd('endAddress', e.target.value)}
+                  placeholder="e.g. Paris, France"
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -651,283 +685,324 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── GPX file (GPX mode) ───────────────────────────────────── */}
       {props.mode === 'gpx' && (
         <div className="form-section">
-          <div className="section-title">GPX file</div>
-          <div className="field">
-            <label>Select track</label>
-            <select
-              value={props.gpxFile}
-              onChange={e => upd('gpxFile', e.target.value)}
-            >
-              <option value="">— choose a file —</option>
-              {gpxFiles.map(f => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Upload new GPX</label>
-            <div className="upload-area">
-              <input
-                type="file"
-                accept=".gpx"
-                onChange={handleFileUpload}
-              />
-              Click to upload a .gpx file
+          <button className="section-title" onClick={() => toggle('gpx')} aria-expanded={isOpen('gpx')}>
+            GPX file
+            <span className={`section-chevron${isOpen('gpx') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          </button>
+          <div className={`section-body${isOpen('gpx') ? ' section-body--open' : ''}`}>
+            <div className="section-body-inner">
+              <div className="field">
+                <label>Select track</label>
+                <select
+                  value={props.gpxFile}
+                  onChange={e => upd('gpxFile', e.target.value)}
+                >
+                  <option value="">— choose a file —</option>
+                  {gpxFiles.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>Upload new GPX</label>
+                <div className="upload-area">
+                  <input
+                    type="file"
+                    accept=".gpx"
+                    onChange={handleFileUpload}
+                  />
+                  Click to upload a .gpx file
+                </div>
+              </div>
+              {uploadMsg && (
+                <div className={`upload-status ${uploadStatus}`}>{uploadMsg}</div>
+              )}
             </div>
           </div>
-          {uploadMsg && (
-            <div className={`upload-status ${uploadStatus}`}>{uploadMsg}</div>
-          )}
         </div>
       )}
 
       {/* ── Track line ───────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">Track line</div>
-        <div className="field">
-          <label>Style</label>
-          <LineStylePicker
-            value={props.lineStyle}
-            lineColor={props.lineColor}
-            onChange={v => upd('lineStyle', v)}
-          />
+        <button className="section-title" onClick={() => toggle('trackLine')} aria-expanded={isOpen('trackLine')}>
+          Track line
+          <span className={`section-chevron${isOpen('trackLine') ? ' open' : ''}`} aria-hidden="true">▾</span>
+        </button>
+        <div className={`section-body${isOpen('trackLine') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <label>Style</label>
+              <LineStylePicker
+                value={props.lineStyle}
+                lineColor={props.lineColor}
+                onChange={v => upd('lineStyle', v)}
+              />
+            </div>
+            {props.lineStyle === 'pencil' && (
+              <RangeField
+                label="Pencil strength"
+                value={props.pencilStrength}
+                min={1} max={10}
+                onChange={v => upd('pencilStrength', v)}
+              />
+            )}
+            <ColorField
+              label="Line color"
+              value={props.lineColor}
+              onChange={v => upd('lineColor', v)}
+            />
+            <RangeField
+              label="Line width"
+              value={props.lineWidth}
+              min={1} max={20}
+              onChange={v => upd('lineWidth', v)}
+            />
+          </div>
         </div>
-        {props.lineStyle === 'pencil' && (
-          <RangeField
-            label="Pencil strength"
-            value={props.pencilStrength}
-            min={1} max={10}
-            onChange={v => upd('pencilStrength', v)}
-          />
-        )}
-        <ColorField
-          label="Line color"
-          value={props.lineColor}
-          onChange={v => upd('lineColor', v)}
-        />
-        <RangeField
-          label="Line width"
-          value={props.lineWidth}
-          min={1} max={20}
-          onChange={v => upd('lineWidth', v)}
-        />
       </div>
 
       {/* ── Map ──────────────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">Map</div>
-        <div className="field">
-          <label>Style</label>
-          <MapStylePicker
-            value={props.mapStyle}
-            onChange={v => upd('mapStyle', v)}
-          />
-        </div>
+        <button className="section-title" onClick={() => toggle('map')} aria-expanded={isOpen('map')}>
+          Map
+          <span className={`section-chevron${isOpen('map') ? ' open' : ''}`} aria-hidden="true">▾</span>
+        </button>
+        <div className={`section-body${isOpen('map') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <label>Style</label>
+              <MapStylePicker
+                value={props.mapStyle}
+                onChange={v => upd('mapStyle', v)}
+              />
+            </div>
 
-        {props.mapStyle === 'none' && (
-          <ColorField
-            label="Background"
-            value={props.mapBgColor}
-            onChange={v => upd('mapBgColor', v)}
-          />
-        )}
+            {props.mapStyle === 'none' && (
+              <ColorField
+                label="Background"
+                value={props.mapBgColor}
+                onChange={v => upd('mapBgColor', v)}
+              />
+            )}
 
-        <div className="field">
-          <label>Zoom mode</label>
-          <div className="radio-group">
-            <input
-              type="radio" id="zoom-auto" name="zoomMode"
-              checked={props.zoomMode === 'auto'}
-              onChange={() => upd('zoomMode', 'auto')}
-            />
-            <label htmlFor="zoom-auto">Auto</label>
-            <input
-              type="radio" id="zoom-manual" name="zoomMode"
-              checked={props.zoomMode === 'manual'}
-              onChange={() => upd('zoomMode', 'manual')}
-            />
-            <label htmlFor="zoom-manual">Manual</label>
+            <div className="field">
+              <label>Zoom mode</label>
+              <div className="radio-group">
+                <input
+                  type="radio" id="zoom-auto" name="zoomMode"
+                  checked={props.zoomMode === 'auto'}
+                  onChange={() => upd('zoomMode', 'auto')}
+                />
+                <label htmlFor="zoom-auto">Auto</label>
+                <input
+                  type="radio" id="zoom-manual" name="zoomMode"
+                  checked={props.zoomMode === 'manual'}
+                  onChange={() => upd('zoomMode', 'manual')}
+                />
+                <label htmlFor="zoom-manual">Manual</label>
+              </div>
+            </div>
+            {props.zoomMode === 'manual' && (
+              <RangeField
+                label="Zoom level"
+                value={props.zoom}
+                min={1} max={20} step={1}
+                onChange={v => upd('zoom', v)}
+              />
+            )}
           </div>
         </div>
-        {props.zoomMode === 'manual' && (
-          <RangeField
-            label="Zoom level"
-            value={props.zoom}
-            min={1} max={20} step={1}
-            onChange={v => upd('zoom', v)}
-          />
-        )}
       </div>
 
       {/* ── Route labels ─────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">Route labels</div>
-        <div className="field">
-          <label>Labels</label>
-          <LabelModePicker
-            value={props.labelMode}
-            onChange={v => upd('labelMode', v)}
-          />
+        <button className="section-title" onClick={() => toggle('routeLabels')} aria-expanded={isOpen('routeLabels')}>
+          Route labels
+          <span className={`section-chevron${isOpen('routeLabels') ? ' open' : ''}`} aria-hidden="true">▾</span>
+        </button>
+        <div className={`section-body${isOpen('routeLabels') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <label>Labels</label>
+              <LabelModePicker
+                value={props.labelMode}
+                onChange={v => upd('labelMode', v)}
+              />
+            </div>
+
+            {props.labelMode === 'animated' && (
+              <div className="field">
+                <label>Animation</label>
+                <LabelAnimationPicker
+                  value={props.labelAnimation}
+                  onChange={v => upd('labelAnimation', v)}
+                />
+              </div>
+            )}
+
+            {props.labelMode !== 'off' && (<>
+              <div className="field-row">
+                <div className="field">
+                  <label>Start label</label>
+                  <input
+                    type="text"
+                    value={props.startLabel}
+                    onChange={e => upd('startLabel', e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>End label</label>
+                  <input
+                    type="text"
+                    value={props.endLabel}
+                    onChange={e => upd('endLabel', e.target.value)}
+                  />
+                </div>
+              </div>
+              <ColorField
+                label="Background"
+                value={props.labelBgColor}
+                onChange={v => upd('labelBgColor', v)}
+              />
+              <ColorField
+                label="Text color"
+                value={props.labelTextColor}
+                onChange={v => upd('labelTextColor', v)}
+              />
+            </>)}
+          </div>
         </div>
-
-        {props.labelMode === 'animated' && (
-          <div className="field">
-            <label>Animation</label>
-            <LabelAnimationPicker
-              value={props.labelAnimation}
-              onChange={v => upd('labelAnimation', v)}
-            />
-          </div>
-        )}
-
-        {props.labelMode !== 'off' && (<>
-          <div className="field-row">
-            <div className="field">
-              <label>Start label</label>
-              <input
-                type="text"
-                value={props.startLabel}
-                onChange={e => upd('startLabel', e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label>End label</label>
-              <input
-                type="text"
-                value={props.endLabel}
-                onChange={e => upd('endLabel', e.target.value)}
-              />
-            </div>
-          </div>
-          <ColorField
-            label="Background"
-            value={props.labelBgColor}
-            onChange={v => upd('labelBgColor', v)}
-          />
-          <ColorField
-            label="Text color"
-            value={props.labelTextColor}
-            onChange={v => upd('labelTextColor', v)}
-          />
-        </>)}
       </div>
 
       {/* ── Animation ────────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">Animation</div>
+        <button className="section-title" onClick={() => toggle('animation')} aria-expanded={isOpen('animation')}>
+          Animation
+          <span className={`section-chevron${isOpen('animation') ? ' open' : ''}`} aria-hidden="true">▾</span>
+        </button>
+        <div className={`section-body${isOpen('animation') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            {/* Output format — controls canvas dimensions (width × height) of the render */}
+            <div className="field">
+              <label>Format</label>
+              <div className="radio-group">
+                <input
+                  type="radio" id="fmt-portrait" name="outputFormat"
+                  checked={props.outputFormat === 'portrait'}
+                  onChange={() => upd('outputFormat', 'portrait')}
+                />
+                <label htmlFor="fmt-portrait"  title="Portrait (1080×1920)">9:16</label>
+                <input
+                  type="radio" id="fmt-landscape" name="outputFormat"
+                  checked={props.outputFormat === 'landscape'}
+                  onChange={() => upd('outputFormat', 'landscape')}
+                />
+                <label htmlFor="fmt-landscape" title="Landscape (1920×1080)">16:9</label>
+                <input
+                  type="radio" id="fmt-square" name="outputFormat"
+                  checked={props.outputFormat === 'square'}
+                  onChange={() => upd('outputFormat', 'square')}
+                />
+                <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
+              </div>
+            </div>
 
-        {/* Output format — controls canvas dimensions (width × height) of the render */}
-        <div className="field">
-          <label>Format</label>
-          <div className="radio-group">
-            <input
-              type="radio" id="fmt-portrait" name="outputFormat"
-              checked={props.outputFormat === 'portrait'}
-              onChange={() => upd('outputFormat', 'portrait')}
+            <RangeField
+              label="Duration"
+              value={props.duration}
+              min={1} max={60} unit="s"
+              onChange={v => upd('duration', v)}
             />
-            <label htmlFor="fmt-portrait"  title="Portrait (1080×1920)">9:16</label>
-            <input
-              type="radio" id="fmt-landscape" name="outputFormat"
-              checked={props.outputFormat === 'landscape'}
-              onChange={() => upd('outputFormat', 'landscape')}
-            />
-            <label htmlFor="fmt-landscape" title="Landscape (1920×1080)">16:9</label>
-            <input
-              type="radio" id="fmt-square" name="outputFormat"
-              checked={props.outputFormat === 'square'}
-              onChange={() => upd('outputFormat', 'square')}
-            />
-            <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
           </div>
         </div>
-
-        <RangeField
-          label="Duration"
-          value={props.duration}
-          min={1} max={60} unit="s"
-          onChange={v => upd('duration', v)}
-        />
       </div>
 
       {/* ── City labels ──────────────────────────────────────────── */}
       <div className="form-section">
-        <div className="section-title">City labels</div>
-
-        <div className="field">
-          <label>Show</label>
-          <CitySlider
-            value={props.minPopulation}
-            onChange={v => upd('minPopulation', v)}
-          />
-        </div>
-
-        {props.minPopulation > 0 && (<>
-          <div className="field">
-            <label>Font</label>
-            <FontPicker
-              value={props.cityFont}
-              onChange={v => upd('cityFont', v as Props['cityFont'])}
-            />
-          </div>
-
-          <div className="field">
-            <label>Case</label>
-            <div className="radio-group">
-              <input
-                type="radio" id="city-case-normal" name="cityUppercase"
-                checked={!props.cityUppercase}
-                onChange={() => upd('cityUppercase', false)}
+        <button className="section-title" onClick={() => toggle('cityLabels')} aria-expanded={isOpen('cityLabels')}>
+          City labels
+          <span className={`section-chevron${isOpen('cityLabels') ? ' open' : ''}`} aria-hidden="true">▾</span>
+        </button>
+        <div className={`section-body${isOpen('cityLabels') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <label>Show</label>
+              <CitySlider
+                value={props.minPopulation}
+                onChange={v => upd('minPopulation', v)}
               />
-              <label htmlFor="city-case-normal">Normal</label>
-              <input
-                type="radio" id="city-case-upper" name="cityUppercase"
-                checked={props.cityUppercase}
-                onChange={() => upd('cityUppercase', true)}
-              />
-              <label htmlFor="city-case-upper">ALL CAPS</label>
             </div>
+
+            {props.minPopulation > 0 && (<>
+              <div className="field">
+                <label>Font</label>
+                <FontPicker
+                  value={props.cityFont}
+                  onChange={v => upd('cityFont', v as Props['cityFont'])}
+                />
+              </div>
+
+              <div className="field">
+                <label>Case</label>
+                <div className="radio-group">
+                  <input
+                    type="radio" id="city-case-normal" name="cityUppercase"
+                    checked={!props.cityUppercase}
+                    onChange={() => upd('cityUppercase', false)}
+                  />
+                  <label htmlFor="city-case-normal">Normal</label>
+                  <input
+                    type="radio" id="city-case-upper" name="cityUppercase"
+                    checked={props.cityUppercase}
+                    onChange={() => upd('cityUppercase', true)}
+                  />
+                  <label htmlFor="city-case-upper">ALL CAPS</label>
+                </div>
+              </div>
+
+              <div className="city-tier-label">Big <span>(pop &gt; 1M)</span></div>
+              <ColorField
+                label="Color"
+                value={props.cityColorBig}
+                onChange={v => upd('cityColorBig', v)}
+              />
+              <RangeField
+                label="Size"
+                value={props.citySizeBig}
+                min={10} max={80}
+                onChange={v => upd('citySizeBig', v)}
+              />
+
+              <div className="city-tier-label">Medium <span>(200k – 1M)</span></div>
+              <ColorField
+                label="Color"
+                value={props.cityColorMedium}
+                onChange={v => upd('cityColorMedium', v)}
+              />
+              <RangeField
+                label="Size"
+                value={props.citySizeMedium}
+                min={8} max={60}
+                onChange={v => upd('citySizeMedium', v)}
+              />
+
+              <div className="city-tier-label">Small <span>(&lt; 200k)</span></div>
+              <ColorField
+                label="Color"
+                value={props.cityColorSmall}
+                onChange={v => upd('cityColorSmall', v)}
+              />
+              <RangeField
+                label="Size"
+                value={props.citySizeSmall}
+                min={6} max={44}
+                onChange={v => upd('citySizeSmall', v)}
+              />
+            </>)}
           </div>
-
-          <div className="city-tier-label">Big <span>(pop &gt; 1M)</span></div>
-          <ColorField
-            label="Color"
-            value={props.cityColorBig}
-            onChange={v => upd('cityColorBig', v)}
-          />
-          <RangeField
-            label="Size"
-            value={props.citySizeBig}
-            min={10} max={80}
-            onChange={v => upd('citySizeBig', v)}
-          />
-
-          <div className="city-tier-label">Medium <span>(200k – 1M)</span></div>
-          <ColorField
-            label="Color"
-            value={props.cityColorMedium}
-            onChange={v => upd('cityColorMedium', v)}
-          />
-          <RangeField
-            label="Size"
-            value={props.citySizeMedium}
-            min={8} max={60}
-            onChange={v => upd('citySizeMedium', v)}
-          />
-
-          <div className="city-tier-label">Small <span>(&lt; 200k)</span></div>
-          <ColorField
-            label="Color"
-            value={props.cityColorSmall}
-            onChange={v => upd('cityColorSmall', v)}
-          />
-          <RangeField
-            label="Size"
-            value={props.citySizeSmall}
-            min={6} max={44}
-            onChange={v => upd('citySizeSmall', v)}
-          />
-        </>)}
+        </div>
       </div>
+
     </div>
   );
 }

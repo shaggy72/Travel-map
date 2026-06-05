@@ -135,6 +135,8 @@ html, body, #root {
   border-top: 1px solid var(--border);
 }
 
+/* Section title doubles as a collapse toggle button — reset all button styles
+   and lay out the text + chevron as a flex row.                              */
 .section-title {
   font-size: 9px;
   font-weight: 600;
@@ -142,6 +144,47 @@ html, body, #root {
   letter-spacing: 0.09em;
   color: var(--text-muted);
   margin-bottom: 6px;
+  /* button reset */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+}
+.section-title:hover { color: var(--text); }
+
+/* Chevron indicator — rotated right (▸) when collapsed, down (▾) when open */
+.section-chevron {
+  font-size: 9px;
+  color: var(--text-light);
+  transition: transform 0.18s ease;
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.section-chevron.open {
+  transform: rotate(0deg);
+}
+
+/* Collapsible section body — uses CSS grid-row animation so no height is needed.
+   0fr = collapsed (zero height), 1fr = expanded (natural height).             */
+.section-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+.section-body--open {
+  grid-template-rows: 1fr;
+}
+/* overflow:hidden clips content during the animation */
+.section-body-inner {
+  overflow: hidden;
+  padding-bottom: 2px; /* prevents bottom fields from clipping at the edge */
 }
 
 /* ── Field cards ──────────────────────────────────────────────────────── */

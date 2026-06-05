@@ -164,14 +164,35 @@ The label takes 38% of the width. The control (`input`, `.range-row`, `.color-ro
 
 ### Form section — `.form-section`
 
-Groups related fields. Sections are separated by a top border + margin. Each section has a `.section-title` heading.
+Groups related fields. Sections are separated by a top border + margin. Each section has a collapsible body toggled by a `.section-title` button.
 
 ```jsx
 <div className="form-section">
-  <div className="section-title">Route</div>
-  <div className="field">...</div>
+  {/* title is a <button> — clicking it calls toggle(id) */}
+  <button className="section-title" onClick={() => toggle('route')} aria-expanded={isOpen('route')}>
+    Route
+    <span className={`section-chevron${isOpen('route') ? ' open' : ''}`} aria-hidden="true">▾</span>
+  </button>
+
+  {/* body animates open/closed via CSS grid-template-rows transition */}
+  <div className={`section-body${isOpen('route') ? ' section-body--open' : ''}`}>
+    <div className="section-body-inner">
+      <div className="field">...</div>
+    </div>
+  </div>
 </div>
 ```
+
+**Collapse state** is a `Set<string>` in `PropsForm` (`closed`), toggled by `toggle(id)`. Default closed sections: `map`, `routeLabels`, `animation`, `cityLabels`. Default open: `mode`, `route`, `gpx`, `trackLine`.
+
+**CSS animation** uses the grid-row trick — no need to know content height:
+```css
+.section-body              { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.2s ease; }
+.section-body--open        { grid-template-rows: 1fr; }
+.section-body-inner        { overflow: hidden; }
+```
+
+**Chevron** (`.section-chevron`) rotates from −90° (▸, collapsed) to 0° (▾, open) with an 0.18s ease transition.
 
 ---
 
