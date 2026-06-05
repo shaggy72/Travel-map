@@ -837,7 +837,9 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 36px 32px;
-  width: 360px;
+  /* fluid on mobile: fills viewport with a max cap on desktop */
+  width: 100%;
+  max-width: 360px;
   box-shadow: var(--shadow-md);
 }
 
@@ -963,4 +965,23 @@ select {
   /* Show only the active panel — toggle via .layout--preview class set in App.tsx */
   .layout:not(.layout--preview) .preview-panel { display: none; }
   .layout.layout--preview .sidebar            { display: none; }
+
+  /* ── Login page on mobile ───────────────────────────────────────────── */
+  /* Add horizontal gutter so the card never touches the screen edge */
+  .login-page {
+    padding: 0 16px;
+    min-height: 100svh; /* excludes iOS Safari chrome bar */
+  }
+
+  /* Tighten card padding and reduce corner radius on narrow screens */
+  .login-card {
+    padding: 28px 20px;
+  }
+
+  /* iOS Safari zooms into any focused input with font-size < 16px.
+     Override the global 10px base only for login fields. */
+  .login-field input {
+    font-size: 16px;
+    padding: 8px 10px; /* slightly taller tap target to match the larger font */
+  }
 }
