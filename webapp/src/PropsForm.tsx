@@ -669,12 +669,28 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 />
               </div>
               <div className="field">
+                <label>Start label</label>
+                <input
+                  type="text"
+                  value={props.startLabel}
+                  onChange={e => upd('startLabel', e.target.value)}
+                />
+              </div>
+              <div className="field">
                 <label>End address</label>
                 <input
                   type="text"
                   value={props.endAddress}
                   onChange={e => upd('endAddress', e.target.value)}
                   placeholder="e.g. Paris, France"
+                />
+              </div>
+              <div className="field">
+                <label>End label</label>
+                <input
+                  type="text"
+                  value={props.endLabel}
+                  onChange={e => upd('endLabel', e.target.value)}
                 />
               </div>
             </div>
@@ -702,6 +718,22 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                     <option key={f} value={f}>{f}</option>
                   ))}
                 </select>
+              </div>
+              <div className="field">
+                <label>Start label</label>
+                <input
+                  type="text"
+                  value={props.startLabel}
+                  onChange={e => upd('startLabel', e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>End label</label>
+                <input
+                  type="text"
+                  value={props.endLabel}
+                  onChange={e => upd('endLabel', e.target.value)}
+                />
               </div>
               <div className="field">
                 <label>Upload new GPX</label>
@@ -841,24 +873,6 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             )}
 
             {props.labelMode !== 'off' && (<>
-              <div className="field-row">
-                <div className="field">
-                  <label>Start label</label>
-                  <input
-                    type="text"
-                    value={props.startLabel}
-                    onChange={e => upd('startLabel', e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label>End label</label>
-                  <input
-                    type="text"
-                    value={props.endLabel}
-                    onChange={e => upd('endLabel', e.target.value)}
-                  />
-                </div>
-              </div>
               <ColorField
                 label="Background"
                 value={props.labelBgColor}
