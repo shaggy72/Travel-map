@@ -899,8 +899,9 @@ select {
 }
 
 /* ── Mobile layout (≤ 640px) ─────────────────────────────────────────────── */
-/* Tab bar is hidden on desktop; the media query re-shows it on small screens */
-.mobile-tab-bar { display: none; }
+/* Tab bar and render area are hidden on desktop; media query re-shows them   */
+.mobile-tab-bar    { display: none; }
+.mobile-render-area { display: none; }
 
 @media (max-width: 640px) {
   /* Stack sidebar and preview vertically */
@@ -965,6 +966,16 @@ select {
   /* Show only the active panel — toggle via .layout--preview class set in App.tsx */
   .layout:not(.layout--preview) .preview-panel { display: none; }
   .layout.layout--preview .sidebar            { display: none; }
+
+  /* ── Mobile render button (preview tab) ──────────────────────────── */
+  .mobile-render-area {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+    padding: 0 4px;
+  }
 
   /* ── Login page on mobile ───────────────────────────────────────────── */
   /* Add horizontal gutter so the card never touches the screen edge */

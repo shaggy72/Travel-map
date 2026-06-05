@@ -200,6 +200,23 @@ export default function App() {
         <div style={{ fontSize:11, color:'var(--text-light)', textAlign:'center' }}>
           Preview uses your browser — no server needed
         </div>
+
+        {/* ── Mobile-only render button — hidden on desktop via CSS ──────
+            Lets the user trigger a render from the Preview tab without
+            switching back to Settings.                                    */}
+        <div className="mobile-render-area">
+          <button
+            className="btn btn-primary"
+            onClick={handleRender}
+            disabled={rendering}
+          >
+            {rendering
+              ? <><span className="spinner" /> Rendering…</>
+              : '⬇ Render & Download MP4'
+            }
+          </button>
+          {renderErr && <div className="render-error">{renderErr}</div>}
+        </div>
       </main>
 
       {/* ── Mobile tab bar — hidden on desktop via CSS ───────────────── */}
