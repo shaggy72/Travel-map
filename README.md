@@ -109,7 +109,7 @@ User clicks "Render & Download"
 
 ## Rendering to MP4
 
-**Via the webapp:** click **⬇ Render & Download MP4**. Takes ~2–5 min for a 5-second animation.
+**Via the webapp:** click **⬇ Render & Download MP4** in the sidebar footer. On mobile, the same button also appears in the **Preview tab** so you can render without switching back to Settings. Takes ~2–5 min for a 5-second animation.
 
 **Via CLI** (runs on the current `defaultProps` in `src/Root.tsx`):
 ```bash

@@ -83,6 +83,35 @@ The sidebar is a flex column: header (fixed) + body (scrollable, `flex: 1`) + fo
 - `landscape` → `16/9`
 - `square` → `1/1`
 
+### Mobile layout (≤ 640px)
+
+At 640 px and below the layout switches to a tab-based design. A `mobileTab` state in `App.tsx` (`'settings' | 'preview'`) drives a CSS class on `.layout`:
+
+```
+┌─────────────────────────┐
+│  .sidebar  (full width) │  ← visible when mobileTab === 'settings'
+│  or                     │
+│  .preview-panel         │  ← visible when mobileTab === 'preview'
+├─────────────────────────┤
+│  .mobile-tab-bar        │  ← always visible (fixed at bottom)
+│  [ ⚙ Settings ] [ ▶ Preview ]
+└─────────────────────────┘
+```
+
+Key CSS rules inside `@media (max-width: 640px)`:
+- `.layout:not(.layout--preview) .preview-panel { display: none }` — hides preview on Settings tab
+- `.layout.layout--preview .sidebar { display: none }` — hides sidebar on Preview tab
+- `.mobile-tab-bar { display: flex }` — shows the tab bar (hidden via `display: none` on desktop)
+- `.mobile-render-area { display: flex }` — shows the Render button below the preview (hidden on desktop)
+- `.preview-player-wrapper` — `height: auto`, `max-height: calc(100svh - 140px)` to avoid iOS chrome bar
+- `min-height: 100svh` on `.login-page` — excludes iOS Safari chrome bar from viewport height
+
+**`.mobile-render-area`** is a `display: none` wrapper on desktop. On mobile it appears below the preview player and contains the same "Render & Download MP4" button as the sidebar footer, wired to the same `handleRender` handler.
+
+### Login card
+
+`.login-card` uses `width: 100%; max-width: 360px` (not a fixed `width: 360px`) so it fills narrow viewports without overflowing. On mobile, `.login-field input` is set to `font-size: 16px` — below 16 px iOS Safari auto-zooms the viewport on input focus, which is disorienting on a centered card.
+
 ---
 
 ## Typography
