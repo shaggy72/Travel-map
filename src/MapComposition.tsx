@@ -263,7 +263,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   // (capped at 40, minimum 1).  Using only the immediately previous point causes
   // noisy, jittery rotation when route coordinates are densely packed.
   const markerLookback = routePoints
-    ? Math.max(1, Math.min(Math.round(routePoints.length * 0.05), 40, visiblePts.length - 1))
+    ? Math.max(1, Math.min(Math.round(routePoints.length * 0.25), visiblePts.length - 1))
     : 1;
   const markerPrev = markerActive
     ? visiblePts[visiblePts.length - 1 - markerLookback]
