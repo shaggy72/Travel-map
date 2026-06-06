@@ -255,17 +255,28 @@ const MapCompositionInner: React.FC<MapSchema> = ({
 
   // ── Route tip marker ──────────────────────────────────────────────────────
   // The marker badge follows the leading point of the drawn line and rotates to
-  // face the direction of travel.  We need ≥ 2 visible points to compute angle.
+  // face the direction of travel.
   const markerActive = routeMarker !== 'none' && visiblePts.length >= 2;
-  const markerTip  = markerActive ? visiblePts[visiblePts.length - 1] : null;
-  const markerPrev = markerActive ? visiblePts[visiblePts.length - 2] : null;
+  const markerTip = markerActive ? visiblePts[visiblePts.length - 1] : null;
+
+  // Smooth the direction angle by looking back over ~5 % of total route points
+  // (capped at 40, minimum 1).  Using only the immediately previous point causes
+  // noisy, jittery rotation when route coordinates are densely packed.
+  const markerLookback = routePoints
+    ? Math.max(1, Math.min(Math.round(routePoints.length * 0.05), 40, visiblePts.length - 1))
+    : 1;
+  const markerPrev = markerActive
+    ? visiblePts[visiblePts.length - 1 - markerLookback]
+    : null;
   const markerAngle = markerTip && markerPrev
     ? Math.atan2(markerTip[1] - markerPrev[1], markerTip[0] - markerPrev[0]) * (180 / Math.PI)
     : 0;
+
   // Scale factor: design space is ±10 units; badge radius = routeMarkerSize / 2.
-  // Divide by 12 to leave ~20 % padding inside the badge circle.
+  // Divide by 18 so the icon fills ~55 % of the badge diameter, leaving clear
+  // breathing room between the icon silhouette and the badge edge.
   const markerR     = (routeMarkerSize ?? 60) / 2;
-  const markerScale = markerR / 12;
+  const markerScale = markerR / 18;
 
   // ── Endpoint opacities ────────────────────────────────────────────────
   const startO = 1;
