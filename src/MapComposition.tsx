@@ -259,18 +259,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const markerActive = routeMarker !== 'none' && visiblePts.length >= 2;
   const markerTip = markerActive ? visiblePts[visiblePts.length - 1] : null;
 
-  // Smooth the direction angle by looking back over ~5 % of total route points
-  // (capped at 40, minimum 1).  Using only the immediately previous point causes
-  // noisy, jittery rotation when route coordinates are densely packed.
-  const markerLookback = routePoints
-    ? Math.max(1, Math.min(Math.round(routePoints.length * 0.25), visiblePts.length - 1))
-    : 1;
-  const markerPrev = markerActive
-    ? visiblePts[visiblePts.length - 1 - markerLookback]
-    : null;
-  const markerAngle = markerTip && markerPrev
-    ? Math.atan2(markerTip[1] - markerPrev[1], markerTip[0] - markerPrev[0]) * (180 / Math.PI)
-    : 0;
+  // Icon is always upright — no rotation applied.
 
   // Scale factor: design space is ±10 units; badge radius = routeMarkerSize / 2.
   // Divide by 18 so the icon fills ~55 % of the badge diameter, leaving clear
@@ -436,7 +425,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {/* ── Route tip marker badge ────────────────────────────────────── */}
         {/* Rendered above the route line and below start/end pin markers.   */}
         {markerActive && markerTip && (
-          <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)}) rotate(${markerAngle.toFixed(1)})`}>
+          <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
             {/* Badge circle — same colour as the route line */}
             <circle r={markerR} fill={lineColor}/>
             {/* Vehicle icon — white silhouette, scaled to fit inside the badge */}
