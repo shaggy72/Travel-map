@@ -13,8 +13,12 @@ export interface Props {
   zoom:           number;
   lineColor:      string;
   lineWidth:      number;
-  lineStyle:      'solid' | 'dashed' | 'dotted' | 'long-dash' | 'dash-dot' | 'pencil';
-  pencilStrength: number;
+  lineStyle:       'solid' | 'dashed' | 'dotted' | 'long-dash' | 'dash-dot' | 'pencil';
+  pencilStrength:  number;
+  /** Icon at the tip of the route line. 'none' = disabled. */
+  routeMarker:     'none' | 'car' | 'camper' | 'plane' | 'bike' | 'walk';
+  /** Diameter of the circular marker badge in canvas pixels. */
+  routeMarkerSize: number;
   labelMode:      'animated' | 'on' | 'off';
   labelAnimation: string;
   labelBgColor:   string;
@@ -48,8 +52,10 @@ export const DEFAULT_PROPS: Props = {
   zoom:           5.5,
   lineColor:      '#e53935',
   lineWidth:      10,
-  lineStyle:      'solid',
-  pencilStrength: 5,
+  lineStyle:       'solid',
+  pencilStrength:  5,
+  routeMarker:     'none',
+  routeMarkerSize: 60,
   labelMode:      'animated',
   labelAnimation: 'left-to-right',
   labelBgColor:   '#555555',

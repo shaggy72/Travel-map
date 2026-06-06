@@ -7,6 +7,7 @@ import {
 } from "./mapData";
 import { easeInOutCubic, easeOutCubic, windowT } from "./easing";
 import { useMapboxImage, useGeocode, useGpxTrack, useRoute } from "./useMapboxImages";
+import { RouteMarkerIcon } from "./routeIcons";
 import { MapSchema } from "./schema";
 
 // ── City font registry ────────────────────────────────────────────────────
@@ -138,6 +139,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   zoomMode, zoom: manualZoom, gpxFile,
   labelMode, labelAnimation,
   lineColor, lineWidth, lineStyle, pencilStrength, labelBgColor, labelTextColor,
+  routeMarker, routeMarkerSize,
   minPopulation,
   cityFont,
   cityUppercase,
@@ -250,6 +252,20 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const routeD = visiblePts.length > 1
     ? "M " + visiblePts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")
     : "";
+
+  // ── Route tip marker ──────────────────────────────────────────────────────
+  // The marker badge follows the leading point of the drawn line and rotates to
+  // face the direction of travel.  We need ≥ 2 visible points to compute angle.
+  const markerActive = routeMarker !== 'none' && visiblePts.length >= 2;
+  const markerTip  = markerActive ? visiblePts[visiblePts.length - 1] : null;
+  const markerPrev = markerActive ? visiblePts[visiblePts.length - 2] : null;
+  const markerAngle = markerTip && markerPrev
+    ? Math.atan2(markerTip[1] - markerPrev[1], markerTip[0] - markerPrev[0]) * (180 / Math.PI)
+    : 0;
+  // Scale factor: design space is ±10 units; badge radius = routeMarkerSize / 2.
+  // Divide by 12 to leave ~20 % padding inside the badge circle.
+  const markerR     = (routeMarkerSize ?? 60) / 2;
+  const markerScale = markerR / 12;
 
   // ── Endpoint opacities ────────────────────────────────────────────────
   const startO = 1;
@@ -405,6 +421,19 @@ const MapCompositionInner: React.FC<MapSchema> = ({
             );
           })()
         ))}
+
+        {/* ── Route tip marker badge ────────────────────────────────────── */}
+        {/* Rendered above the route line and below start/end pin markers.   */}
+        {markerActive && markerTip && (
+          <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)}) rotate(${markerAngle.toFixed(1)})`}>
+            {/* Badge circle — same colour as the route line */}
+            <circle r={markerR} fill={lineColor}/>
+            {/* Vehicle icon — white silhouette, scaled to fit inside the badge */}
+            <g transform={`scale(${markerScale.toFixed(4)})`}>
+              <RouteMarkerIcon type={routeMarker} color={lineColor}/>
+            </g>
+          </g>
+        )}
 
         {/* ── Start marker ──────────────────────────────────────────────── */}
         {labelMode !== 'off' && (

@@ -185,6 +185,8 @@ Groups related fields. Sections are separated by a top border + margin. Each sec
 
 **Collapse state** is a `Set<string>` in `PropsForm` (`closed`), toggled by `toggle(id)`. Default closed sections: `map`, `routeLabels`, `animation`, `cityLabels`. Default open: `mode`, `route`, `gpx`, `trackLine`.
 
+The Track line section also contains the **End marker** control — a `MarkerPicker` dropdown (same `ls-picker` pattern) followed by a conditional size slider when a marker is active.
+
 **CSS animation** uses `max-height` + `overflow: hidden` (battle-tested approach):
 ```css
 .section-body        { overflow: hidden; max-height: 0;      transition: max-height 0.22s ease; }

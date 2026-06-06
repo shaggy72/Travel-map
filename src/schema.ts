@@ -68,6 +68,16 @@ export const schema = z.object({
    *  Only used when lineStyle === "pencil". */
   pencilStrength: z.number().min(1).max(10).default(5),
 
+  /** Icon rendered at the tip of the route line as it draws across the screen.
+   *  'none' = disabled. All other values show a circular badge (same colour as
+   *  the route line) with a white vehicle silhouette that rotates to follow the
+   *  direction of travel. */
+  routeMarker: z.enum(['none', 'car', 'camper', 'plane', 'bike', 'walk']).default('none'),
+
+  /** Diameter of the circular route marker badge in SVG canvas pixels.
+   *  Only used when routeMarker !== 'none'. */
+  routeMarkerSize: z.number().min(20).max(120).default(60),
+
   /** Whether to show animated labels at the start and end pins.
    *  animated = labels animate in during the video
    *  on       = labels are always fully visible (good for thumbnails)

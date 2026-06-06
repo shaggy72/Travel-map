@@ -102,8 +102,9 @@ User clicks "Render & Download"
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
 4. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, colors, font)
-5. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
-6. The live preview updates as you change settings and plays automatically in a loop
+5. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
+6. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
+7. The live preview updates as you change settings and plays automatically in a loop
 
 ---
 
@@ -149,6 +150,9 @@ Express server (port 3002) that:
 
 ### `webapp/src/PropsForm.tsx`
 The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; Mode, Route, and Track line are open by default.
+
+### `src/routeIcons.tsx`
+Exports `RouteMarkerIcon({ type, color })`, a React component that renders white SVG icon shapes for each supported marker type (car, camper, plane, bike, walk). The `color` parameter is the badge background colour, reused for cutout details (windshields, wheel hubs) to create a transparent-hole effect in the white silhouette.
 
 ---
 

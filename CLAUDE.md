@@ -27,6 +27,7 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `webapp/src/PropsForm.tsx` | Full sidebar form — all sections collapsible via `closed` Set state |
 | `webapp/src/types.ts` | TypeScript mirror of schema + `DEFAULT_PROPS` |
 | `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper; dynamic `compositionWidth/Height`; plays via `useEffect` |
+| `src/routeIcons.tsx` | `RouteMarkerIcon({ type, color })` — white SVG silhouettes for the route tip badge |
 | `webapp/src/styles.css` | All CSS — design tokens (OKLCH) + mobile rules + update banner |
 | `webapp/src/ColorPicker.tsx` | Custom HSV color picker |
 | `deploy.sh` | One-command deploy to Debian/Ubuntu/Mint server |
@@ -91,6 +92,18 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 
 ## Props defaults (key values)
 - `lineWidth`: default **10**, min 1, max **30** (in schema.ts, types.ts, PropsForm slider)
+- `routeMarker`: default **'none'** — set to 'car'|'camper'|'plane'|'bike'|'walk' to show animated badge
+- `routeMarkerSize`: default **60** (badge diameter in canvas pixels), min 20, max 120
+
+## Route tip marker (src/routeIcons.tsx + MapComposition.tsx)
+A circular badge (colour = `lineColor`) with a white vehicle icon follows the leading point of the route line as it draws. The badge rotates to face the direction of travel.
+
+- **Tip position**: `visiblePts[visiblePts.length - 1]` (already projected [x,y])
+- **Angle**: `Math.atan2(dy, dx) * (180/Math.PI)` from last two visible points
+- **Scale**: `markerR / 12` where `markerR = routeMarkerSize / 2` — design space ±10 units
+- **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render
+- Badge is rendered above the route path but below start/end pin markers
+- `RouteMarkerIcon` uses the badge colour (`lineColor`) for cutout details (windshields, wheel hubs) to simulate transparency in the white silhouette
 
 ## Preview player (PreviewPlayer.tsx)
 - Auto-play via `useEffect` + `setTimeout(() => playerRef.current?.play(), 100)` — NOT the `autoPlay` prop

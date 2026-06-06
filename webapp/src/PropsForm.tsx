@@ -334,6 +334,74 @@ function LineStylePicker({ value, lineColor, onChange }: LineStylePickerProps) {
   );
 }
 
+// ── Route Marker Picker ───────────────────────────────────────────────────
+
+type MarkerValue = Props['routeMarker'];
+
+const MARKER_OPTIONS: { value: MarkerValue; label: string }[] = [
+  { value: 'none',   label: 'None' },
+  { value: 'car',    label: '🚗 Car' },
+  { value: 'camper', label: '🚐 Camper' },
+  { value: 'plane',  label: '✈ Plane' },
+  { value: 'bike',   label: '🚲 Bike' },
+  { value: 'walk',   label: '🚶 Walk' },
+];
+
+function MarkerPicker({ value, onChange }: { value: MarkerValue; onChange: (v: MarkerValue) => void }) {
+  const [open,     setOpen]     = useState(false);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+
+  function openPanel() {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 170 });
+    }
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  const current = MARKER_OPTIONS.find(o => o.value === value) ?? MARKER_OPTIONS[0];
+
+  return (
+    <div className="ls-picker">
+      <button ref={triggerRef} className="ls-trigger" onClick={() => open ? setOpen(false) : openPanel()}>
+        <span className="ls-label">{current.label}</span>
+        <span className="ls-arrow">▾</span>
+      </button>
+      {open && (
+        <div
+          ref={panelRef}
+          className="ls-panel"
+          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, width: panelPos.width, zIndex: 9999 }}
+        >
+          {MARKER_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              className={`ls-option${opt.value === value ? ' selected' : ''}`}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Label Mode Picker ─────────────────────────────────────────────────────
 
 const LABEL_MODE_OPTIONS: { value: Props['labelMode']; label: string }[] = [
@@ -789,6 +857,19 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               min={1} max={30}
               onChange={v => upd('lineWidth', v)}
             />
+            {/* Route tip marker — icon that travels along the line */}
+            <div className="field">
+              <label>End marker</label>
+              <MarkerPicker value={props.routeMarker} onChange={v => upd('routeMarker', v)} />
+            </div>
+            {props.routeMarker !== 'none' && (
+              <RangeField
+                label="Marker size"
+                value={props.routeMarkerSize}
+                min={20} max={120}
+                onChange={v => upd('routeMarkerSize', v)}
+              />
+            )}
           </div>
         </div>
       </div>
