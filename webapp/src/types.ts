@@ -13,6 +13,8 @@ export interface Props {
   zoom:           number;
   lineColor:      string;
   lineWidth:      number;
+  /** Radius of the start/end pin dots in canvas pixels. Fill = lineColor. */
+  pinSize:        number;
   lineStyle:       'solid' | 'dashed' | 'dotted' | 'long-dash' | 'dash-dot' | 'pencil';
   pencilStrength:  number;
   /** Icon at the tip of the route line. 'none' = disabled. */
@@ -52,6 +54,7 @@ export const DEFAULT_PROPS: Props = {
   zoom:           5.5,
   lineColor:      '#e53935',
   lineWidth:      10,
+  pinSize:        6,
   lineStyle:       'solid',
   pencilStrength:  5,
   routeMarker:     'none',

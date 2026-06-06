@@ -59,6 +59,10 @@ export const schema = z.object({
   /** Stroke width of the route line in SVG units (~pixels at 1080px canvas width). */
   lineWidth: z.number().min(1).max(30).default(10),
 
+  /** Radius in SVG canvas pixels of the start and end pin dots.
+   *  The fill colour always matches lineColor. */
+  pinSize: z.number().min(2).max(24).default(6),
+
   /** Visual style of the route line.
    *  solid, dashed, dotted, long-dash, dash-dot = standard SVG stroke patterns
    *  pencil = hand-drawn effect with noise (strength controlled by pencilStrength) */

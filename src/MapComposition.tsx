@@ -138,7 +138,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   mapStyle, mapBgColor,
   zoomMode, zoom: manualZoom, gpxFile,
   labelMode, labelAnimation,
-  lineColor, lineWidth, lineStyle, pencilStrength, labelBgColor, labelTextColor,
+  lineColor, lineWidth, pinSize, lineStyle, pencilStrength, labelBgColor, labelTextColor,
   routeMarker, routeMarkerSize,
   minPopulation,
   cityFont,
@@ -279,7 +279,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   // ── Label box positioning — clamped so labels never go off-screen ─────
   const LABEL_EDGE = 20; // min px from canvas edge
   const BOX_H      = 52;
-  const DOT_R      = 6;
+  const DOT_R      = pinSize;  // label positioning adapts to the configured pin size
   const LABEL_GAP  = 8;  // clear gap between dot edge and label box
 
   // Horizontal: clamp so right edge stays within canvas (use dynamic width for all formats)
@@ -457,9 +457,8 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               </text>
             </g>
           </g>
-          {/* Dot drawn after label so it's always visible on top */}
-          <circle cx={startPx[0]} cy={startPx[1]} r={6} fill={lineColor} />
-          <circle cx={startPx[0]} cy={startPx[1]} r={3} fill={C.dot} />
+          {/* Solid pin dot — size and colour configurable via pinSize / lineColor */}
+          <circle cx={startPx[0]} cy={startPx[1]} r={pinSize} fill={lineColor} />
         </g>
         )}
 
@@ -485,9 +484,8 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               </text>
             </g>
           </g>
-          {/* Dot drawn after label so it's always visible on top */}
-          <circle cx={endPx[0]} cy={endPx[1]} r={6} fill={lineColor} />
-          <circle cx={endPx[0]} cy={endPx[1]} r={3} fill={C.dot} />
+          {/* Solid pin dot */}
+          <circle cx={endPx[0]} cy={endPx[1]} r={pinSize} fill={lineColor} />
         </g>
         )}
 

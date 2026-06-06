@@ -857,6 +857,12 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               min={1} max={30}
               onChange={v => upd('lineWidth', v)}
             />
+            <RangeField
+              label="Pin size"
+              value={props.pinSize}
+              min={2} max={24}
+              onChange={v => upd('pinSize', v)}
+            />
             {/* Route tip marker — icon that travels along the line */}
             <div className="field">
               <label>End marker</label>
