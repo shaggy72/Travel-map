@@ -32,22 +32,29 @@ export function RouteMarkerIcon({ type, color }: { type: string; color: string }
         </>
       );
 
-    // ── Camper van (VW Bus silhouette, front at right) ───────────────────────
+    // ── Camper van (VW T1 Bus with surfboard, front at right) ───────────────────
     case 'camper':
       return (
         <>
-          {/* Box-shaped body with angled windshield on the right */}
-          <path d="M-10,4 L-10,-9 L6,-9 L10,-5 L10,4 Z" fill="white"/>
-          {/* Windshield */}
-          <polygon points="5.5,-8.5 9,-5 9,-2 5.5,-2" fill={color}/>
-          {/* Side window */}
-          <rect x="-8" y="-7.5" width="5" height="4.5" rx="1" fill={color}/>
-          {/* Wheels */}
-          <circle cx="-5.5" cy="5" r="4" fill="white"/>
-          <circle cx="5" cy="5" r="4" fill="white"/>
+          {/* Surfboard on roof — tapers at both ends */}
+          <path d="M-8,-6.5 Q0,-8.5 8,-7 L8,-6 Q0,-7.5 -8,-5.5 Z" fill="white"/>
+          {/* Surfboard fin at rear-left end */}
+          <path d="M-6,-6.5 L-8,-9 L-4,-6.5 Z" fill="white"/>
+          {/* Roof rack posts connecting body to surfboard */}
+          <line x1="-2" y1="-6" x2="-2" y2="-6.5" stroke={color} strokeWidth="0.8"/>
+          <line x1="3"  y1="-6" x2="3"  y2="-6.5" stroke={color} strokeWidth="0.8"/>
+          {/* VW Bus body: flat rear + flat roof + rounded front nose */}
+          <path d="M-9,3 L-9,-6 L5,-6 Q9,-6 9,-1 L9,3 Z" fill="white"/>
+          {/* Windshield cutout (badge colour = reads as transparent) */}
+          <polygon points="5,-5.5 8.5,-2 8.5,0.5 5,0.5" fill={color}/>
+          {/* Side window band — three windows across the upper body */}
+          <rect x="-8" y="-5.5" width="11.5" height="3.5" rx="0.5" fill={color}/>
+          {/* Wheels — protrude below body bottom (y = 3) for natural silhouette */}
+          <circle cx="-5"  cy="5.5" r="4"   fill="white"/>
+          <circle cx="4.5" cy="5.5" r="4"   fill="white"/>
           {/* Wheel hubs */}
-          <circle cx="-5.5" cy="5" r="1.5" fill={color}/>
-          <circle cx="5" cy="5" r="1.5" fill={color}/>
+          <circle cx="-5"  cy="5.5" r="1.5" fill={color}/>
+          <circle cx="4.5" cy="5.5" r="1.5" fill={color}/>
         </>
       );
 
