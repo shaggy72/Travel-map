@@ -22,12 +22,12 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `src/useMapboxImages.ts` | Hooks: `useMapboxImage`, `useGeocode`, `useGpxTrack`, `useRoute` |
 | `src/easing.ts` | Timing/easing utilities (`easeInOutCubic`, `windowT`, `interpolateEased`, …) |
 | `src/Root.tsx` | Remotion composition root; `calculateMetadata` sets dynamic width/height |
-| `server/index.cjs` | Express: auth, GPX upload, Remotion render, serves `webapp/dist` in prod |
-| `webapp/src/App.tsx` | Root React app; auth state; mobile tab switcher (`mobileTab` state) |
-| `webapp/src/PropsForm.tsx` | Full sidebar form with all controls |
+| `server/index.cjs` | Express: auth, GPX upload, Remotion render, auto-update endpoints, serves `webapp/dist` in prod |
+| `webapp/src/App.tsx` | Root React app; auth state; mobile tab switcher; update banner (`updateState`) |
+| `webapp/src/PropsForm.tsx` | Full sidebar form — all sections collapsible via `closed` Set state |
 | `webapp/src/types.ts` | TypeScript mirror of schema + `DEFAULT_PROPS` |
-| `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper; dynamic `compositionWidth/Height` |
-| `webapp/src/styles.css` | All CSS — design tokens (OKLCH) + `@media (max-width: 640px)` mobile rules |
+| `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper; dynamic `compositionWidth/Height`; plays via `useEffect` |
+| `webapp/src/styles.css` | All CSS — design tokens (OKLCH) + mobile rules + update banner |
 | `webapp/src/ColorPicker.tsx` | Custom HSV color picker |
 | `deploy.sh` | One-command deploy to Debian/Ubuntu/Mint server |
 
@@ -45,7 +45,7 @@ PORT=3002
 - **Canvas dimensions**: `getDimensions(outputFormat)` → `{w, h}` passed to `buildProjection`, `buildMapUrl`, `calcZoomAndCenter`; component reads `width`/`height` from `useVideoConfig()`
 - **Async Remotion data**: all hooks use `delayRender`/`continueRender`; `cancelled` flag pattern prevents stale results
 - **Route sources**: Mapbox Directions (driving) / routing.openstreetmap.de routed-bike/foot (cycling/walking) / `geoInterpolate` arc (flight — no API)
-- **Mobile layout**: `mobileTab` state in `App.tsx`, `layout--preview` CSS class, `@media (max-width: 640px)` tab switcher
+- **Mobile layout**: `mobileTab` state in `App.tsx`, `layout--preview` CSS class, `@media (max-width: 640px)` tab switcher; mobile render button in `.mobile-render-area`
 
 ## Design system — tweakcn "Claude" theme
 All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
@@ -74,14 +74,44 @@ All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
 
 Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 
-## Form section order (PropsForm.tsx)
+## Form section order + structure (PropsForm.tsx)
 1. Mode (+ Travel sub-section in Directions mode)
-2. Route / GPX file
-3. Track line
-4. Map
-5. Route labels
-6. Animation (format + duration)
-7. City labels
+2. Route (Directions) — Start address → Start label → End address → End label
+3. GPX file (GPX mode) — Select track → Start label → End label → Upload
+4. Track line
+5. Map
+6. Route labels (Labels mode, animation, bg colour, text colour — no start/end label inputs here)
+7. Animation (format + duration)
+8. City labels
+
+**All sections are collapsible.** Default open: Mode, Route/GPX, Track line. Default closed: Map, Route labels, Animation, City labels.
+- State: `const [closed, setClosed] = useState<Set<string>>(() => new Set([...]))` in `PropsForm`
+- Toggle button: `<button className="section-title">` with `<span className="section-chevron">` before the label text
+- Body: `.section-body` + `.section-body-inner`; collapse uses `max-height: 0` / `overflow: hidden` (NOT CSS grid 0fr — that causes 1px border bleed in some browsers)
+
+## Props defaults (key values)
+- `lineWidth`: default **10**, min 1, max **30** (in schema.ts, types.ts, PropsForm slider)
+
+## Preview player (PreviewPlayer.tsx)
+- Auto-play via `useEffect` + `setTimeout(() => playerRef.current?.play(), 100)` — NOT the `autoPlay` prop
+- The `autoPlay` prop caused "shows Pause but frames don't advance" on page refresh (fires before Player is ready)
+
+## Auto-update feature (server/index.cjs + App.tsx)
+### Server endpoints (all `requireAuth`):
+- `GET /api/update-check` — calls GitHub API live, returns `{ updateAvailable, localHash, remoteHash }`
+- `POST /api/update` — runs `git pull --ff-only` → `npm install` → `npm run build:webapp`; returns `{ ok: true }` when done (~30–90 s)
+- `POST /api/restart` — responds `{ ok: true }` then `setTimeout(() => process.exit(0), 200)`; PM2 restarts
+- Local hash read once at startup: `execSync('git rev-parse HEAD')` into `let localHash`
+
+### Client (App.tsx):
+- `updateState`: `'idle' | 'available' | 'updating' | 'restart-needed' | 'restarting'`
+- `checkForUpdate()` called after login and session restore
+- Update banner in `.sidebar-header`; Install disabled while rendering
+- After restart: polls `GET /api/me` every 2 s, then `window.location.reload()`
+
+## Mobile-specific fixes
+- **Login screen**: `.login-card` uses `width: 100%; max-width: 360px`; on mobile `.login-field input` has `font-size: 16px` (prevents iOS Safari auto-zoom); `.login-page` uses `min-height: 100svh`
+- **Mobile render button**: `.mobile-render-area` (hidden on desktop, shown in preview tab on mobile) — same `handleRender` handler as sidebar footer
 
 ## npm scripts
 | Script | Description |
@@ -97,14 +127,18 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 MAPBOX_TOKEN=pk.xxx APP_USERNAME=micha APP_PASSWORD=micha \
   bash <(curl -s https://raw.githubusercontent.com/shaggy72/Travel-map/main/deploy.sh)
 
-# Update after code changes:
+# Update via browser: "🔄 Update available" banner → Install → Restart now
+# Update via SSH:
 bash ~/Travel-map/deploy.sh
 ```
 - Requires passwordless sudo (`echo '$USER ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/$USER`)
-- Ubuntu 24.04: `deploy.sh` uses `resolve_pkg()` to handle `libasound2t64` rename
+- Ubuntu 24.04: `deploy.sh` uses `resolve_pkg()` + runs `apt-get update -qq` before package installs (stale cache caused `libasound2` to fail as virtual package on repeated deploys)
 - App runs on port 3002; add nginx in front for HTTPS / multiple apps
 
 ## Key bug fixes (patterns to remember)
 - **Stale map tile**: `useMapboxImage` uses a `cancelled` flag in effect cleanup — prevents slow fallback fetch from overwriting a newer correct tile after geocoding completes
 - **Route handle leak**: `useRoute` calls `continueRender(handle)` immediately when `url` is null (flight/GPX mode), so Remotion CLI renderer doesn't hang
 - **OSRM server**: always use `routing.openstreetmap.de`, NOT `router.project-osrm.org` (car profile only)
+- **Collapsible section border bleed**: CSS grid `0fr` trick causes 1px child border to bleed past the collapsed track in some browsers — use `max-height: 0; overflow: hidden` instead
+- **Preview autoplay on refresh**: `autoPlay` prop fires before Player is ready → use `useEffect` + `setTimeout(play, 100)` instead
+- **deploy.sh libasound2**: on repeated deploys `apt-cache` is stale (Node already installed, NodeSource skipped) → `apt-get update -qq` before `resolve_pkg` calls fixes it
