@@ -254,15 +254,24 @@ app.get('/api/update-check', requireAuth, async (_req, res) => {
     return res.json({ updateAvailable: false, localHash: '', remoteHash: '' });
   }
   try {
+    // Re-read the current git HEAD each time so that on a dev machine (where
+    // commits are made locally and pushed) the hash stays in sync without a
+    // server restart. On the production server localHash only changes after a
+    // `git pull` + restart, so this is safe there too.
+    let currentHash = localHash;
+    try {
+      currentHash = execSync('git rev-parse HEAD', { cwd: ROOT_DIR }).toString().trim();
+    } catch { /* keep the startup value if git fails */ }
+
     const ghRes = await fetch(
       'https://api.github.com/repos/shaggy72/Travel-map/commits/main',
       { headers: { 'User-Agent': 'travel-map-server' } }
     );
     if (!ghRes.ok) {
-      return res.json({ updateAvailable: false, localHash, remoteHash: '' });
+      return res.json({ updateAvailable: false, localHash: currentHash, remoteHash: '' });
     }
     const { sha: remoteHash } = await ghRes.json();
-    res.json({ updateAvailable: remoteHash !== localHash, localHash, remoteHash });
+    res.json({ updateAvailable: remoteHash !== currentHash, localHash: currentHash, remoteHash });
   } catch {
     // GitHub unreachable — report no update rather than an error
     res.json({ updateAvailable: false, localHash, remoteHash: '' });
