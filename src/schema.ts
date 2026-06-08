@@ -129,6 +129,11 @@ export const schema = z.object({
   /** Font size for small city labels. */
   citySizeSmall: z.number().min(6).max(44).default(22),
 
+  /** How much the flight arc bows away from the straight line (0 = flat great-circle,
+   *  100 = very pronounced arc). Applied in screen space perpendicular to the chord.
+   *  Only used when travelMode === "flight". */
+  flightCurve: z.number().min(0).max(100).default(40),
+
   /** Total animation duration in seconds. Affects render length and animation timing. */
   duration: z.number().min(1).max(60).default(5),
 

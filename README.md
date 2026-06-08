@@ -102,7 +102,8 @@ User clicks "Render & Download"
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
 4. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, colors, font)
-5. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
+5. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
+6. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
 6. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
 7. The live preview updates as you change settings and plays automatically in a loop
 

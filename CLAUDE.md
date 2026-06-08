@@ -95,6 +95,14 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 - `routeMarker`: default **'none'** — set to 'car'|'camper'|'plane'|'bike'|'walk' to show animated badge
 - `routeMarkerSize`: default **60** (badge diameter in canvas pixels), min 20, max 120
 
+## Flight arc curve (flightCurve prop)
+- Only active when `travelMode === 'flight'`
+- Applied **in screen space** after projecting the great-circle points
+- Lifts each point perpendicular to the start→end chord by `sin(π*t) * maxLift`
+- `maxLift = (flightCurve/100) * chordLength * 0.5` — so value 100 = half-chord lift
+- Perpendicular direction: CW rotation of chord `(dy/len, -dx/len)` = upward on screen for east-west routes (conventional flight-path look)
+- Slider (0–100, step 5) shown in PropsForm only when `travelMode === 'flight'`
+
 ## Route tip marker (src/routeIcons.tsx + MapComposition.tsx)
 A circular badge (colour = `lineColor`) with a white vehicle icon follows the leading point of the route line as it draws. The badge rotates to face the direction of travel.
 

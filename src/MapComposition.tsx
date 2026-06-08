@@ -140,6 +140,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   labelMode, labelAnimation,
   lineColor, lineWidth, pinSize, lineStyle, pencilStrength, labelBgColor, labelTextColor,
   routeMarker, routeMarkerSize,
+  flightCurve,
   minPopulation,
   cityFont,
   cityUppercase,
@@ -218,10 +219,35 @@ const MapCompositionInner: React.FC<MapSchema> = ({
                   : rawRoute;
 
   // Project at render time so zoom changes re-project without re-fetching
-  const routePoints = rawCoords
+  const projectedPoints = rawCoords
     ? rawCoords.map((c) => proj(c) as [number, number] | null)
                .filter((p): p is [number, number] => p !== null)
     : null;
+
+  // For flight mode, bow the arc away from the straight chord in screen space.
+  // Each point is lifted perpendicular to the start→end vector by a sine curve —
+  // maxLift = (flightCurve/100) * chordLength, peaking at the midpoint.
+  // Perpendicular direction: CW rotation of chord = (dy, -dx) → upward on screen
+  // for a left-to-right route, which matches the conventional flight-path look.
+  const routePoints = (() => {
+    if (!projectedPoints || projectedPoints.length < 2) return projectedPoints;
+    if (travelMode !== 'flight' || !flightCurve) return projectedPoints;
+    const [x0, y0] = projectedPoints[0];
+    const [x1, y1] = projectedPoints[projectedPoints.length - 1];
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const chordLen = Math.sqrt(dx * dx + dy * dy);
+    if (chordLen === 0) return projectedPoints;
+    // CW perpendicular (upward on screen for east→west routes)
+    const px = dy / chordLen;
+    const py = -dx / chordLen;
+    const maxLift = (flightCurve / 100) * chordLen * 0.5; // 0.5 so value 100 = half chord
+    return projectedPoints.map(([x, y], i) => {
+      const t = i / (projectedPoints.length - 1);
+      const lift = maxLift * Math.sin(Math.PI * t);
+      return [x + px * lift, y + py * lift] as [number, number];
+    });
+  })();
 
   // ── Marker pixel positions ─────────────────────────────────────────────
   const resolvedStart = mode === "directions" ? startCoords

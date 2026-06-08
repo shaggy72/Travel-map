@@ -34,6 +34,8 @@ export interface Props {
   citySizeBig:    number;
   citySizeMedium: number;
   citySizeSmall:  number;
+  /** How much the flight arc bows (0 = flat, 100 = very curved). Only used in flight mode. */
+  flightCurve:    number;
   duration:       number;
   /** Output canvas format — controls width × height of the rendered video.
    *  portrait = 1080×1920 (9:16), landscape = 1920×1080 (16:9), square = 1080×1080 */
@@ -72,6 +74,7 @@ export const DEFAULT_PROPS: Props = {
   citySizeBig:    44,
   citySizeMedium: 31,
   citySizeSmall:  22,
+  flightCurve:    40,
   duration:       5,
   outputFormat:   'portrait',
 };

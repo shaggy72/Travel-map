@@ -714,6 +714,16 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 </div>
               </div>
             )}
+
+            {/* Arc curve slider — only visible in flight mode */}
+            {props.mode === 'directions' && props.travelMode === 'flight' && (
+              <RangeField
+                label="Arc curve"
+                value={props.flightCurve}
+                min={0} max={100} step={5}
+                onChange={v => upd('flightCurve', v)}
+              />
+            )}
           </div>
         </div>
       </div>
