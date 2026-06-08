@@ -220,7 +220,10 @@ npm run sync-gpx          # regenerates src/gpxFiles.ts
 → Run `npm run sync-gpx` after adding files to `/public`. The dropdown is driven by `src/gpxFiles.ts` which must be regenerated.
 
 **Render fails with "Geocoding failed for: …"**
-→ The Remotion renderer bundles via webpack and does not automatically inherit `process.env.*` variables the way Vite does. Make sure `envVariables` is passed to `bundle()` in `server/index.cjs` (already fixed in current code). If you see this after a manual code change, restart the server so the bundle is rebuilt with the token.
+→ The Remotion renderer bundles via webpack and does not automatically inherit `process.env.*` variables the way Vite does. The fix uses `webpackOverride` + `webpack.DefinePlugin` in `server/index.cjs` to bake the token into the bundle. Restart the server after any code change so a fresh bundle is built with the token.
+
+**"Restart now" button shows "Restarting…" but page never reloads**
+→ Sessions are stored in memory, so after PM2 restarts the server all sessions are gone and `/api/me` returns 401. The page now reloads on any HTTP response (including 401) — only a network error means the server is still starting.
 
 **Preview works but render produces a black video**
 → This usually means an async fetch didn't resolve before rendering. Check the terminal for `[Directions]` or `[Geocoding]` errors.

@@ -120,7 +120,7 @@ A circular badge (colour = `lineColor`) with a white vehicle icon follows the le
 - `updateState`: `'idle' | 'available' | 'updating' | 'restart-needed' | 'restarting'`
 - `checkForUpdate()` called after login and session restore
 - Update banner in `.sidebar-header`; Install disabled while rendering
-- After restart: polls `GET /api/me` every 2 s, then `window.location.reload()`
+- After restart: polls `GET /api/me` every 2 s; **any HTTP response** (200 or 401) triggers `window.location.reload()` — sessions are in-memory so the server returns 401 after restart, not 200
 
 ## Mobile-specific fixes
 - **Login screen**: `.login-card` uses `width: 100%; max-width: 360px`; on mobile `.login-field input` has `font-size: 16px` (prevents iOS Safari auto-zoom); `.login-page` uses `min-height: 100svh`
@@ -155,4 +155,5 @@ bash ~/Travel-map/deploy.sh
 - **Collapsible section border bleed**: CSS grid `0fr` trick causes 1px child border to bleed past the collapsed track in some browsers — use `max-height: 0; overflow: hidden` instead
 - **Preview autoplay on refresh**: `autoPlay` prop fires before Player is ready → use `useEffect` + `setTimeout(play, 100)` instead
 - **deploy.sh libasound2**: on repeated deploys `apt-cache` is stale (Node already installed, NodeSource skipped) → `apt-get update -qq` before `resolve_pkg` calls fixes it
-- **Render geocoding failure** ("Geocoding failed for: …"): Remotion bundles via webpack which does NOT substitute `process.env.*` automatically (unlike Vite). Fix: pass `envVariables: { MAPBOX_TOKEN, MAPBOX_STYLE }` to `bundle()` in `server/index.cjs`. The preview works because Vite injects the token at build time; the headless renderer needs it explicitly.
+- **Render geocoding failure** ("Geocoding failed for: …"): Remotion bundles via webpack which does NOT substitute `process.env.*` automatically (unlike Vite). Fix: use `webpackOverride` + `webpack.DefinePlugin` in `bundle()` in `server/index.cjs` to hard-bake `MAPBOX_TOKEN` and `MAPBOX_STYLE` into the bundle. `envVariables` option in `@remotion/bundler@4.0.469` does not work as expected.
+- **Restart button does nothing after update**: sessions stored in-memory (`Map`) are lost on `process.exit(0)`. After PM2 restarts the server, `/api/me` returns 401 (not 200). Old polling checked `r.ok` (200 only) → never reloaded. Fix: reload on any HTTP response; only network-level errors (ECONNREFUSED) mean the server is still starting.
