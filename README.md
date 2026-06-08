@@ -219,6 +219,9 @@ npm run sync-gpx          # regenerates src/gpxFiles.ts
 **GPX file doesn't appear in the dropdown**
 → Run `npm run sync-gpx` after adding files to `/public`. The dropdown is driven by `src/gpxFiles.ts` which must be regenerated.
 
+**Render fails with "Geocoding failed for: …"**
+→ The Remotion renderer bundles via webpack and does not automatically inherit `process.env.*` variables the way Vite does. Make sure `envVariables` is passed to `bundle()` in `server/index.cjs` (already fixed in current code). If you see this after a manual code change, restart the server so the bundle is rebuilt with the token.
+
 **Preview works but render produces a black video**
 → This usually means an async fetch didn't resolve before rendering. Check the terminal for `[Directions]` or `[Geocoding]` errors.
 

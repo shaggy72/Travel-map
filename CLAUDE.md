@@ -155,3 +155,4 @@ bash ~/Travel-map/deploy.sh
 - **Collapsible section border bleed**: CSS grid `0fr` trick causes 1px child border to bleed past the collapsed track in some browsers — use `max-height: 0; overflow: hidden` instead
 - **Preview autoplay on refresh**: `autoPlay` prop fires before Player is ready → use `useEffect` + `setTimeout(play, 100)` instead
 - **deploy.sh libasound2**: on repeated deploys `apt-cache` is stale (Node already installed, NodeSource skipped) → `apt-get update -qq` before `resolve_pkg` calls fixes it
+- **Render geocoding failure** ("Geocoding failed for: …"): Remotion bundles via webpack which does NOT substitute `process.env.*` automatically (unlike Vite). Fix: pass `envVariables: { MAPBOX_TOKEN, MAPBOX_STYLE }` to `bundle()` in `server/index.cjs`. The preview works because Vite injects the token at build time; the headless renderer needs it explicitly.
