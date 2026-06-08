@@ -124,6 +124,10 @@ export default function App() {
   /**
    * Tell the server to exit (PM2 restarts it), then poll /api/me every 2 s
    * until the server is back up, then reload the page.
+   *
+   * NOTE: sessions are stored in-memory, so after restart /api/me returns 401
+   * (session gone). Any HTTP response — even 401 — means the server is back up.
+   * Only a network-level error (ECONNREFUSED) means it is still starting.
    */
   async function handleRestart() {
     setUpdateState('restarting');
@@ -131,9 +135,11 @@ export default function App() {
     for (let i = 0; i < 30; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       try {
-        const r = await fetch('/api/me');
-        if (r.ok) { window.location.reload(); return; }
-      } catch { /* server still coming back up */ }
+        await fetch('/api/me');
+        // Any HTTP response (200 or 401) means the server is back — reload.
+        window.location.reload();
+        return;
+      } catch { /* network error = server still starting, keep polling */ }
     }
     // Fallback: reload after 60 s regardless
     window.location.reload();
