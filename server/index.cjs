@@ -94,17 +94,25 @@ let isRendering = false;
 
 async function getBundle() {
   if (!bundlePath) {
-    console.log('[bundle] Building Remotion bundle…');
+    const token = process.env.MAPBOX_TOKEN || '';
+    const style = process.env.MAPBOX_STYLE  || 'mapbox/light-v11';
+    console.log(`[bundle] Building Remotion bundle… (token: ${token ? token.slice(0, 10) + '…' : 'MISSING'})`);
     const { bundle } = await import('@remotion/bundler');
+    // Remotion bundles via webpack which does NOT substitute process.env.* automatically.
+    // Use webpackOverride + DefinePlugin to hard-bake the values into the bundle so that
+    // src/mapData.ts:  process.env.MAPBOX_TOKEN  resolves to the real token at render time.
     bundlePath = await bundle({
       entryPoint: ENTRY_POINT,
       publicDir:  PUBLIC_DIR,
-      // Remotion bundles via webpack, which does NOT automatically substitute
-      // process.env.* the way Vite does. Pass the required env vars explicitly
-      // so the geocoding / tile / routing fetches inside MapComposition work.
-      envVariables: {
-        MAPBOX_TOKEN: process.env.MAPBOX_TOKEN || '',
-        MAPBOX_STYLE: process.env.MAPBOX_STYLE || 'mapbox/light-v11',
+      webpackOverride: (config) => {
+        const webpack = require('webpack');
+        config.plugins = (config.plugins || []).concat(
+          new webpack.DefinePlugin({
+            'process.env.MAPBOX_TOKEN': JSON.stringify(token),
+            'process.env.MAPBOX_STYLE': JSON.stringify(style),
+          })
+        );
+        return config;
       },
     });
     console.log('[bundle] Ready:', bundlePath);
