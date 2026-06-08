@@ -141,8 +141,13 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve GPX files (needed by @remotion/player in browser)
+// Serve GPX files at both /public/file.gpx and /file.gpx.
+// - /public/  was the original path (kept for backward compat)
+// - /         matches what Remotion's staticFile() returns ("/filename.gpx")
+//   and what the Vite dev server serves from the public/ folder at root.
+//   Without this, GPX tracks load fine in dev but silently 404 in production.
 app.use('/public', express.static(PUBLIC_DIR));
+app.use('/',       express.static(PUBLIC_DIR));
 
 // ── Auth routes ───────────────────────────────────────────────────────────
 app.get('/api/me', requireAuth, (_req, res) => {
