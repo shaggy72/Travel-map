@@ -99,6 +99,13 @@ async function getBundle() {
     bundlePath = await bundle({
       entryPoint: ENTRY_POINT,
       publicDir:  PUBLIC_DIR,
+      // Remotion bundles via webpack, which does NOT automatically substitute
+      // process.env.* the way Vite does. Pass the required env vars explicitly
+      // so the geocoding / tile / routing fetches inside MapComposition work.
+      envVariables: {
+        MAPBOX_TOKEN: process.env.MAPBOX_TOKEN || '',
+        MAPBOX_STYLE: process.env.MAPBOX_STYLE || 'mapbox/light-v11',
+      },
     });
     console.log('[bundle] Ready:', bundlePath);
   }
