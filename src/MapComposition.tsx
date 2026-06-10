@@ -292,16 +292,6 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const markerR     = (routeMarkerSize ?? 60) / 2;
   const markerScale = markerR / 18;
 
-  // Fade the badge in at the start (so it doesn't overlap the start pin) and out
-  // at the end (so the end pin appears cleanly without the badge on top of it).
-  // routeT: 0→0.08 fade in,  0.88→1.0 fade out.
-  const markerOpacity = markerActive
-    ? Math.min(
-        easeOutCubic(Math.min(routeT / 0.08, 1)),   // fade in over first 8% of route
-        easeOutCubic(Math.min((1 - routeT) / 0.12, 1)) // fade out over last 12%
-      )
-    : 0;
-
   // ── Endpoint opacities ────────────────────────────────────────────────
   const startO = 1;
   const endO   = labelMode === 'on' ? 1
@@ -457,23 +447,6 @@ const MapCompositionInner: React.FC<MapSchema> = ({
           })()
         ))}
 
-        {/* ── Route tip marker badge ────────────────────────────────────── */}
-        {/* Rendered above the route line and below start/end pin markers.   */}
-        {/* Badge fades in at start and out at end so it never overlaps the pin dots */}
-        {markerActive && markerTip && markerOpacity > 0 && (
-          <g
-            transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}
-            opacity={markerOpacity}
-          >
-            {/* Badge circle — same colour as the route line */}
-            <circle r={markerR} fill={lineColor}/>
-            {/* Vehicle icon — white silhouette, scaled to fit inside the badge */}
-            <g transform={`scale(${markerScale.toFixed(4)})`}>
-              <RouteMarkerIcon type={routeMarker} color={lineColor}/>
-            </g>
-          </g>
-        )}
-
         {/* ── Start marker ──────────────────────────────────────────────── */}
         {labelMode !== 'off' && (
         <g opacity={startO}>
@@ -526,6 +499,17 @@ const MapCompositionInner: React.FC<MapSchema> = ({
           {/* Solid pin dot */}
           <circle cx={endPx[0]} cy={endPx[1]} r={pinSize} fill={lineColor} />
         </g>
+        )}
+
+        {/* ── Route tip marker badge ────────────────────────────────────── */}
+        {/* Rendered last so it always appears on top of the pin dots.       */}
+        {markerActive && markerTip && (
+          <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
+            <circle r={markerR} fill={lineColor}/>
+            <g transform={`scale(${markerScale.toFixed(4)})`}>
+              <RouteMarkerIcon type={routeMarker} color={lineColor}/>
+            </g>
+          </g>
         )}
 
       </svg>
