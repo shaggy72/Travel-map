@@ -1047,7 +1047,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               <RangeField
                 label="Zoom level"
                 value={props.zoom}
-                min={1} max={20} step={1}
+                min={1} max={20} step={0.1}
                 onChange={v => upd('zoom', v)}
               />
             )}
