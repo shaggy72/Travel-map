@@ -710,16 +710,17 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
 
             {/* Save current settings */}
             {showSaveBox ? (
-              <div className="field" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                <input
-                  type="text"
-                  placeholder="Preset name…"
-                  value={savingName}
-                  onChange={e => setSavingName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveBox(false); }}
-                  autoFocus
-                  style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13 }}
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="field">
+                  <input
+                    type="text"
+                    placeholder="Preset name…"
+                    value={savingName}
+                    onChange={e => setSavingName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveBox(false); }}
+                    autoFocus
+                  />
+                </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSavePreset}>Save</button>
                   <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowSaveBox(false); setSavingName(''); }}>Cancel</button>
