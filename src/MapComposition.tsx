@@ -448,6 +448,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         ))}
 
         {/* ── Start marker ──────────────────────────────────────────────── */}
+        {/* Pin dot always visible; label box only when labelMode !== 'off' */}
         {labelMode !== 'off' && (
         <g opacity={startO}>
           <g clipPath="url(#startClip)" opacity={startAnim.opacity}>
@@ -469,10 +470,9 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               </text>
             </g>
           </g>
-          {/* Solid pin dot — size and colour configurable via pinSize / lineColor */}
-          <circle cx={startPx[0]} cy={startPx[1]} r={pinSize} fill={lineColor} />
         </g>
         )}
+        <circle cx={startPx[0]} cy={startPx[1]} r={pinSize} fill={lineColor} />
 
         {/* ── End marker (fades in when line arrives) ───────────────────── */}
         {labelMode !== 'off' && (
@@ -496,10 +496,9 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               </text>
             </g>
           </g>
-          {/* Solid pin dot */}
-          <circle cx={endPx[0]} cy={endPx[1]} r={pinSize} fill={lineColor} />
         </g>
         )}
+        <circle cx={endPx[0]} cy={endPx[1]} r={pinSize} opacity={endO} fill={lineColor} />
 
         {/* ── Route tip marker badge ────────────────────────────────────── */}
         {/* Rendered last so it always appears on top of the pin dots.       */}
