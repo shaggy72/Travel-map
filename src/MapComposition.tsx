@@ -307,43 +307,67 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const DOT_R      = pinSize;
   const LABEL_GAP  = 8;
 
-  // Compute the "away" direction for each label — the direction to place the label
-  // so it points away from the route body:
-  //   start: route departs in startDir → label goes in -startDir (opposite)
-  //   end:   route arrives in endDir   → label goes in +endDir (same as arrival = away from route body)
+  // Pick the label placement (above / below / left / right of the pin) that
+  // minimises overlap with the route.  Strategy:
+  //   1. Initial score = dot product of candidate direction with the "away" vector
+  //      (direction that points away from the route body at the pin).
+  //   2. Collision penalty = number of route points that fall inside an expanded
+  //      label box (with 15 px padding), excluding points very close to the pin
+  //      itself (those are always near every candidate).  Each overlapping point
+  //      subtracts 0.3 from the score, so even a handful of overlapping points
+  //      will override the directional preference.
+  //   3. After scoring, only candidates that fit within the canvas are considered.
   const lookPct = Math.max(1, Math.floor((routePoints?.length ?? 0) * 0.06));
+
+  // "Away" direction for start = opposite of route departure direction.
   const startAway: [number, number] = (() => {
     if (!routePoints || routePoints.length < 2) return [-1, 0];
     const i = Math.min(lookPct, routePoints.length - 1);
-    const dx = routePoints[0][0] - routePoints[i][0]; // reversed: away from departure
+    const dx = routePoints[0][0] - routePoints[i][0];
     const dy = routePoints[0][1] - routePoints[i][1];
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     return [dx / len, dy / len];
   })();
+  // "Away" direction for end = arrival direction (route body is behind the pin).
   const endAway: [number, number] = (() => {
     if (!routePoints || routePoints.length < 2) return [1, 0];
     const n = routePoints.length;
     const i = Math.max(0, n - 1 - lookPct);
-    const dx = routePoints[n - 1][0] - routePoints[i][0]; // arrival direction = away from route body
+    const dx = routePoints[n - 1][0] - routePoints[i][0];
     const dy = routePoints[n - 1][1] - routePoints[i][1];
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     return [dx / len, dy / len];
   })();
 
-  // Score four placements by dot product with the preferred "away" direction.
-  // Filter to those that fit within the canvas before picking the winner.
   function bestLabelPos(
     px: number, py: number,
-    [ax, ay]: [number, number], // preferred away direction (normalised)
+    [ax, ay]: [number, number],
     boxW: number,
   ): { x: number; y: number } {
     const candidates = [
-      { x: px - boxW / 2,                  y: py - DOT_R - LABEL_GAP - BOX_H, score: -ay }, // above
-      { x: px - boxW / 2,                  y: py + DOT_R + LABEL_GAP,          score:  ay }, // below
-      { x: px - DOT_R - LABEL_GAP - boxW,  y: py - BOX_H / 2,                  score: -ax }, // left
-      { x: px + DOT_R + LABEL_GAP,         y: py - BOX_H / 2,                  score:  ax }, // right
+      { x: px - boxW / 2,                 y: py - DOT_R - LABEL_GAP - BOX_H, score: -ay }, // above
+      { x: px - boxW / 2,                 y: py + DOT_R + LABEL_GAP,          score:  ay }, // below
+      { x: px - DOT_R - LABEL_GAP - boxW, y: py - BOX_H / 2,                  score: -ax }, // left
+      { x: px + DOT_R + LABEL_GAP,        y: py - BOX_H / 2,                  score:  ax }, // right
     ];
-    // Prefer candidates that fit within the canvas; fall back to all if none fit
+
+    // Penalise candidates whose box overlaps route points.
+    // Ignore points within (DOT_R + LABEL_GAP + 5) px of the pin — those are
+    // unavoidable and would penalise every candidate equally.
+    if (routePoints) {
+      const PIN_IGNORE = DOT_R + LABEL_GAP + 5;
+      const PAD = 15;
+      for (const c of candidates) {
+        const hits = routePoints.filter(([rx, ry]) => {
+          const distPin = Math.sqrt((rx - px) ** 2 + (ry - py) ** 2);
+          return distPin > PIN_IGNORE &&
+            rx >= c.x - PAD && rx <= c.x + boxW + PAD &&
+            ry >= c.y - PAD && ry <= c.y + BOX_H + PAD;
+        }).length;
+        c.score -= hits * 0.3; // overwhelms the directional score of max ±1
+      }
+    }
+
     const fits = candidates.filter(c =>
       c.x >= LABEL_EDGE && c.x + boxW <= width  - LABEL_EDGE &&
       c.y >= LABEL_EDGE && c.y + BOX_H <= height - LABEL_EDGE
