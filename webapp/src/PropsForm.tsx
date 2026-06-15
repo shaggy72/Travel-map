@@ -160,6 +160,7 @@ function FlightIcon() {
 
 const MAP_STYLE_OPTIONS: { value: string; label: string }[] = [
   { value: 'shaggy72/cmpma5agg000101qr4tt68gad', label: 'Gray' },
+  { value: 'shaggy72/cmqf802oz000q01sc6lhh4438', label: 'Topographic' },
   { value: 'mapbox/streets-v12',                 label: 'Streets' },
   { value: 'mapbox/outdoors-v12',                label: 'Outdoors' },
   { value: 'mapbox/light-v11',                   label: 'Light' },
