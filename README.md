@@ -247,6 +247,22 @@ The webapp UI uses a hand-crafted CSS design system (no component library). See 
 
 ---
 
+## Known limitations & future improvements
+
+### City labels — hardcoded list
+City labels are rendered from a static list in `src/mapData.ts` (`MAJOR_CITIES`). This means:
+- Only cities explicitly added to the list appear, regardless of the population slider
+- Adding coverage for a new region requires manually extending the list
+
+**Better approach:** fetch cities dynamically from the [Overpass API](https://overpass-api.de/) (OpenStreetMap) or the [GeoNames API](https://www.geonames.org/) based on the visible map bounding box. This would give complete, always-up-to-date coverage without any manual maintenance. The bounding box is already available at render time from the projection and zoom level.
+
+### GPX files — shared across all users
+Uploaded `.gpx` files are stored in `/public` and are visible to all logged-in users via the dropdown. If multiple users share the same server, their tracks are mixed together.
+
+**Better approach:** store files per user in a dedicated folder (e.g. `public/uploads/<username>/`) and filter the dropdown by the session username. The server already knows the logged-in user via the session cookie, and the presets system already uses a per-user file pattern (`server/data/presets-<username>.json`) that could serve as a template.
+
+---
+
 ## Contributing
 
 - **Code style** — TypeScript strict mode, no `any` except where unavoidable (e.g. Node stream piping). Prettier is not configured; match the surrounding style.
