@@ -565,7 +565,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
             const dashProps: Record<string, string | undefined> = {
               solid:       undefined,
               dashed:      `${w * 4} ${w * 2}`,
-              dotted:      `0 ${w * 2.5}`,
+              dotted:      `0 ${w * 1.8}`,
               "long-dash": `${w * 8} ${w * 2.5}`,
               "dash-dot":  `${w * 4} ${w * 2} 0 ${w * 2}`,
             };
