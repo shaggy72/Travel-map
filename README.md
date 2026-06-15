@@ -256,6 +256,11 @@ City labels are rendered from a static list in `src/mapData.ts` (`MAJOR_CITIES`)
 
 **Better approach:** fetch cities dynamically from the [Overpass API](https://overpass-api.de/) (OpenStreetMap) or the [GeoNames API](https://www.geonames.org/) based on the visible map bounding box. This would give complete, always-up-to-date coverage without any manual maintenance. The bounding box is already available at render time from the projection and zoom level.
 
+### Presets — no update/overwrite
+Existing presets can only be deleted and re-added with the same name; there is no way to overwrite a preset in place with the current settings.
+
+**Better approach:** add an "Update" button next to each preset that overwrites its stored props with the current form state, keeping the same name and ID. On the server side this maps to a `PUT /api/presets/:id` endpoint.
+
 ### Mapbox style — hardcoded dropdown
 Custom map styles must be added manually to the `MAP_STYLE_OPTIONS` array in `webapp/src/PropsForm.tsx` and require a code change + redeploy. Currently there is no way for a user to enter or paste their own Mapbox style ID via the UI.
 
