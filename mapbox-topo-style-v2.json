@@ -72,6 +72,17 @@
       }
     },
     {
+      "id": "natural-rock",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "natural",
+      "filter": ["in", "class", "rock", "bare_rock", "scree"],
+      "paint": {
+        "fill-color": "#d0ccc4",
+        "fill-opacity": 0.6
+      }
+    },
+    {
       "id": "landuse-protected",
       "type": "fill",
       "source": "mapbox-streets",
