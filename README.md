@@ -256,6 +256,11 @@ City labels are rendered from a static list in `src/mapData.ts` (`MAJOR_CITIES`)
 
 **Better approach:** fetch cities dynamically from the [Overpass API](https://overpass-api.de/) (OpenStreetMap) or the [GeoNames API](https://www.geonames.org/) based on the visible map bounding box. This would give complete, always-up-to-date coverage without any manual maintenance. The bounding box is already available at render time from the projection and zoom level.
 
+### Mapbox style — hardcoded dropdown
+Custom map styles must be added manually to the `MAP_STYLE_OPTIONS` array in `webapp/src/PropsForm.tsx` and require a code change + redeploy. Currently there is no way for a user to enter or paste their own Mapbox style ID via the UI.
+
+**Better approach:** add a text input in the Map section that lets the user paste any Mapbox style URL or style ID (`username/styleId`). The value would be passed directly as the `mapStyle` prop, alongside the existing preset options in the dropdown — so users can use their own private Studio styles without touching the code.
+
 ### GPX files — shared across all users
 Uploaded `.gpx` files are stored in `/public` and are visible to all logged-in users via the dropdown. If multiple users share the same server, their tracks are mixed together.
 
