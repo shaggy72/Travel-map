@@ -23,6 +23,7 @@ export interface Props {
   routeMarkerSize: number;
   labelMode:      'animated' | 'on' | 'off';
   labelAnimation: string;
+  labelFont:      'Helvetica' | 'Inter' | 'Georgia' | 'Oswald' | 'Merriweather';
   labelBgColor:   string;
   labelTextColor: string;
   minPopulation:  number;
@@ -63,6 +64,7 @@ export const DEFAULT_PROPS: Props = {
   routeMarkerSize: 60,
   labelMode:      'animated',
   labelAnimation: 'left-to-right',
+  labelFont:      'Helvetica',
   labelBgColor:   '#555555',
   labelTextColor: '#ffffff',
   minPopulation:  100000,

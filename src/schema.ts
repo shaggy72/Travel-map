@@ -95,6 +95,9 @@ export const schema = z.object({
     "slide-up", "typewriter", "wipe-from-dot",
   ]).default("left-to-right"),
 
+  /** Font family used for the start/end label boxes. Same options as cityFont. */
+  labelFont: z.enum(["Helvetica", "Inter", "Georgia", "Oswald", "Merriweather"]).default("Helvetica"),
+
   /** Background fill color of the start/end label boxes. Supports alpha via 8-char hex. */
   labelBgColor: zColor().default("#555555"),
 

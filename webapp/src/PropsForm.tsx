@@ -970,6 +970,13 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             )}
 
             {props.labelMode !== 'off' && (<>
+              <div className="field">
+                <label>Font</label>
+                <FontPicker
+                  value={props.labelFont}
+                  onChange={v => upd('labelFont', v as Props['labelFont'])}
+                />
+              </div>
               <ColorField
                 label="Background"
                 value={props.labelBgColor}

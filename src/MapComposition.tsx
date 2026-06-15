@@ -33,11 +33,20 @@ const C = {
 // ── Timing proportions (relative to total duration) ──────────────────────
 // All timing is computed at runtime from durationInFrames in the component.
 const LABEL_FONT_SIZE = 40;
-const LABEL_CHAR_W    = 0.65 * LABEL_FONT_SIZE; // avg char width for bold Helvetica Neue
-const LABEL_PADDING   = 24;                       // 12px left + 12px right
+const LABEL_PADDING   = 24; // 12px left + 12px right
+// Approximate avg char width ratio per font family (bold, 40px).
+// Wider fonts get a larger multiplier so the box doesn't clip the text.
+const LABEL_CHAR_W_MAP: Record<string, number> = {
+  Helvetica:    0.65,
+  Inter:        0.64,
+  Georgia:      0.68,
+  Oswald:       0.52, // condensed
+  Merriweather: 0.70,
+};
 
-function labelBoxWidth(text: string): number {
-  return Math.ceil(text.length * LABEL_CHAR_W + LABEL_PADDING);
+function labelBoxWidth(text: string, font = 'Helvetica'): number {
+  const ratio = LABEL_CHAR_W_MAP[font] ?? 0.65;
+  return Math.ceil(text.length * ratio * LABEL_FONT_SIZE + LABEL_PADDING);
 }
 
 // ── Per-frame label animation state ──────────────────────────────────────
@@ -84,7 +93,7 @@ function getLabelAnim(
     case 'typewriter': {
       // step-reveal: one character at a time
       const n = Math.ceil(t * label.length);
-      const w = n === 0 ? 0 : Math.min(n * LABEL_CHAR_W + LABEL_PADDING / 2, fw);
+      const w = n === 0 ? 0 : Math.min(n * (LABEL_CHAR_W_MAP['Helvetica'] * LABEL_FONT_SIZE) + LABEL_PADDING / 2, fw);
       return { clipX: lx, clipY: ly, clipW: w, clipH: bh, opacity: 1, transform: '' };
     }
     case 'wipe-from-dot': {
@@ -137,7 +146,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   mode, travelMode, startAddress, endAddress, startLabel, endLabel,
   mapStyle, mapBgColor,
   zoomMode, zoom: manualZoom, gpxFile,
-  labelMode, labelAnimation,
+  labelMode, labelAnimation, labelFont,
   lineColor, lineWidth, pinSize, lineStyle, pencilStrength, labelBgColor, labelTextColor,
   routeMarker, routeMarkerSize,
   flightCurve,
@@ -298,8 +307,8 @@ const MapCompositionInner: React.FC<MapSchema> = ({
                : easeOutCubic(windowT(frame, endFadeIn, endFadeEnd));
 
   // ── Label box dimensions ─────────────────────────────────────────────
-  const startFullW = labelBoxWidth(startLabel);
-  const endFullW   = labelBoxWidth(endLabel);
+  const startFullW = labelBoxWidth(startLabel, labelFont);
+  const endFullW   = labelBoxWidth(endLabel,   labelFont);
 
   // ── Label box positioning ─────────────────────────────────────────────
   const LABEL_EDGE = 20;
@@ -339,6 +348,30 @@ const MapCompositionInner: React.FC<MapSchema> = ({
     return [dx / len, dy / len];
   })();
 
+  // True line-segment vs expanded-box intersection test.
+  // Returns true if the segment (x1,y1)→(x2,y2) crosses the AABB [bx,bx+bw]×[by,by+bh].
+  function segHitsBox(
+    x1: number, y1: number, x2: number, y2: number,
+    bx: number, by: number, bw: number, bh: number,
+  ): boolean {
+    if (Math.max(x1,x2) < bx || Math.min(x1,x2) > bx+bw) return false;
+    if (Math.max(y1,y2) < by || Math.min(y1,y2) > by+bh) return false;
+    if (x1>=bx&&x1<=bx+bw&&y1>=by&&y1<=by+bh) return true;
+    if (x2>=bx&&x2<=bx+bw&&y2>=by&&y2<=by+bh) return true;
+    const dx = x2-x1, dy = y2-y1;
+    const crossV = (xv: number) => {
+      if (Math.abs(dx)<1e-9) return false;
+      const t=(xv-x1)/dx; if(t<0||t>1) return false;
+      const yt=y1+t*dy; return yt>=by&&yt<=by+bh;
+    };
+    const crossH = (yh: number) => {
+      if (Math.abs(dy)<1e-9) return false;
+      const t=(yh-y1)/dy; if(t<0||t>1) return false;
+      const xt=x1+t*dx; return xt>=bx&&xt<=bx+bw;
+    };
+    return crossV(bx)||crossV(bx+bw)||crossH(by)||crossH(by+bh);
+  }
+
   function bestLabelPos(
     px: number, py: number,
     [ax, ay]: [number, number],
@@ -351,20 +384,23 @@ const MapCompositionInner: React.FC<MapSchema> = ({
       { x: px + DOT_R + LABEL_GAP,        y: py - BOX_H / 2,                  score:  ax }, // right
     ];
 
-    // Penalise candidates whose box overlaps route points.
-    // Ignore points within (DOT_R + LABEL_GAP + 5) px of the pin — those are
-    // unavoidable and would penalise every candidate equally.
-    if (routePoints) {
+    // Penalise any candidate whose expanded box is crossed by a route segment.
+    // Expand by half the line width so even the stroke edge is counted.
+    // Points very close to the pin are skipped to avoid penalising all candidates.
+    if (routePoints && routePoints.length >= 2) {
       const PIN_IGNORE = DOT_R + LABEL_GAP + 5;
-      const PAD = 15;
+      const EXP = lineWidth / 2 + 4; // expand box by stroke radius + small margin
       for (const c of candidates) {
-        const hits = routePoints.filter(([rx, ry]) => {
-          const distPin = Math.sqrt((rx - px) ** 2 + (ry - py) ** 2);
-          return distPin > PIN_IGNORE &&
-            rx >= c.x - PAD && rx <= c.x + boxW + PAD &&
-            ry >= c.y - PAD && ry <= c.y + BOX_H + PAD;
-        }).length;
-        c.score -= hits * 0.3; // overwhelms the directional score of max ±1
+        let hits = 0;
+        for (let j = 1; j < routePoints.length; j++) {
+          const [x1, y1] = routePoints[j - 1];
+          const [x2, y2] = routePoints[j];
+          // Skip segments whose midpoint is too close to the pin
+          const mx = (x1+x2)/2, my = (y1+y2)/2;
+          if (Math.sqrt((mx-px)**2+(my-py)**2) <= PIN_IGNORE) continue;
+          if (segHitsBox(x1,y1,x2,y2, c.x-EXP, c.y-EXP, boxW+2*EXP, BOX_H+2*EXP)) hits++;
+        }
+        c.score -= hits * 3; // one crossing segment is enough to strongly disfavour this slot
       }
     }
 
@@ -524,7 +560,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               <text
                 x={startLabelX + 12} y={startLabelY + 40}
                 fontSize={40}
-                fontFamily="'Helvetica Neue', Arial, sans-serif"
+                fontFamily={CITY_FONT_MAP[labelFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
                 fontWeight="700"
                 fill={labelTextColor}
                 letterSpacing={0.4}
@@ -550,7 +586,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
               <text
                 x={endLabelX + 12} y={endLabelY + 40}
                 fontSize={40}
-                fontFamily="'Helvetica Neue', Arial, sans-serif"
+                fontFamily={CITY_FONT_MAP[labelFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
                 fontWeight="700"
                 fill={labelTextColor}
                 letterSpacing={0.4}
