@@ -280,6 +280,28 @@ export const MAJOR_CITIES: City[] = [
   { name: "Málaga",    lnglat: [-4.4214,  36.7213], pop:   578_000 },
   { name: "Bilbao",    lnglat: [-2.9253,  43.2630], pop:   346_000 },
 
+  // ── Mallorca ─────────────────────────────────────────────────────────────
+  { name: "Palma",            lnglat: [ 2.6502,  39.5696], pop: 400_000 },
+  { name: "Calvià",           lnglat: [ 2.5150,  39.5628], pop:  52_000 },
+  { name: "Manacor",          lnglat: [ 3.2096,  39.5697], pop:  43_000 },
+  { name: "Llucmajor",        lnglat: [ 2.8897,  39.4820], pop:  37_000 },
+  { name: "Marratxí",         lnglat: [ 2.7417,  39.6467], pop:  35_000 },
+  { name: "Inca",             lnglat: [ 2.9115,  39.7196], pop:  31_000 },
+  { name: "Alcúdia",          lnglat: [ 3.1208,  39.8539], pop:  20_000 },
+  { name: "Felanitx",         lnglat: [ 3.1483,  39.4686], pop:  18_000 },
+  { name: "Pollença",         lnglat: [ 3.0152,  39.8773], pop:  17_000 },
+  { name: "Sóller",           lnglat: [ 2.7133,  39.7667], pop:  13_000 },
+  { name: "Sa Pobla",         lnglat: [ 2.9994,  39.7664], pop:  13_000 },
+  { name: "Santa Margalida",  lnglat: [ 3.0953,  39.7039], pop:  13_000 },
+  { name: "Andratx",          lnglat: [ 2.4250,  39.5739], pop:  12_000 },
+  { name: "Santanyí",         lnglat: [ 3.1275,  39.3550], pop:  12_000 },
+  { name: "Campos",           lnglat: [ 2.9994,  39.4264], pop:  10_000 },
+  { name: "Artà",             lnglat: [ 3.3489,  39.6975], pop:   8_000 },
+  { name: "Binissalem",       lnglat: [ 2.8456,  39.6894], pop:   8_000 },
+  { name: "Muro",             lnglat: [ 3.0469,  39.7358], pop:   7_000 },
+  { name: "Bunyola",          lnglat: [ 2.6906,  39.6942], pop:   6_000 },
+  { name: "Lloseta",          lnglat: [ 2.8750,  39.7175], pop:   6_000 },
+
   // ── Italy ────────────────────────────────────────────────────────────────
   { name: "Rome",     lnglat: [12.4964,  41.9028], pop: 2_873_000 },
   { name: "Milan",    lnglat: [ 9.1900,  45.4654], pop: 1_352_000 },
