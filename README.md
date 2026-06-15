@@ -104,8 +104,10 @@ User clicks "Render & Download"
 4. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, colors, font)
 5. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
 6. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
-6. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
-7. The live preview updates as you change settings and plays automatically in a loop
+7. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
+8. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
+9. Save frequently-used configurations as **Presets** (top of the sidebar) — stored on the server so they survive browser clears and are available on any device
+10. The live preview updates as you change settings and plays automatically in a loop
 
 ---
 
@@ -138,7 +140,7 @@ All async data (tile, geocoding, route) is fetched via `delayRender`/`continueRe
 Four custom hooks used by `MapComposition`:
 - `useMapboxImage(url)` — fetches a Mapbox static tile and returns a data URL; stale fetches are cancelled so old tiles never overwrite newer ones
 - `useGeocode(address)` — geocodes a place name to `[lng, lat]`
-- `useGpxTrack(filename)` — parses a GPX file from `/public`
+- `useGpxTrack(filename)` — parses a GPX file from `/public`; returns `GpxData { track: [lng,lat][], elevations: number[] }` — elevations are empty when the file has no `<ele>` tags
 - `useRoute(url)` — fetches a route polyline from Mapbox or OSRM; clears stale coords immediately when URL changes; releases its `delayRender` handle immediately when `url` is null (flight mode, GPX mode)
 
 ### `server/index.cjs`
@@ -147,10 +149,11 @@ Express server (port 3002) that:
 - Accepts GPX file uploads (`POST /api/upload-gpx`)
 - Triggers Remotion renders (`POST /api/render`) and streams the MP4 back
 - Serves the list of available GPX files (`GET /api/gpx-files`)
+- Manages per-user presets (`GET/POST /api/presets`, `DELETE /api/presets/:id`) stored in `server/data/presets-<username>.json`
 - In production, serves the built webapp from `webapp/dist`
 
 ### `webapp/src/PropsForm.tsx`
-The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; Mode, Route, and Track line are open by default.
+The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; Mode, Route, and Track line are open by default. The **Presets** section (top of form) saves/loads full configurations to/from the server.
 
 ### `src/routeIcons.tsx`
 Exports `RouteMarkerIcon({ type, color })`, a React component that renders white SVG icon shapes for each supported marker type (car, camper, plane, bike, walk). The `color` parameter is the badge background colour, reused for cutout details (windshields, wheel hubs) to create a transparent-hole effect in the white silhouette.

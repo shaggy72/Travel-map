@@ -76,16 +76,18 @@ All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
 Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 
 ## Form section order + structure (PropsForm.tsx)
-1. Mode (+ Travel sub-section in Directions mode)
-2. Route (Directions) — Start address → Start label → End address → End label
-3. GPX file (GPX mode) — Select track → Start label → End label → Upload
-4. Track line
-5. Map
-6. Route labels (Labels mode, animation, bg colour, text colour — no start/end label inputs here)
-7. Animation (format + duration)
-8. City labels
+1. Presets — save/load named configurations (server-side, `GET/POST/DELETE /api/presets`)
+2. Mode (+ Travel sub-section in Directions mode)
+3. Route (Directions) — Start address → Start label → End address → End label
+4. GPX file (GPX mode) — Select track → Start label → End label → Upload
+5. Track line
+6. Map
+7. Route labels (Labels mode, animation, bg colour, text colour, font)
+8. Elevation profile (GPX mode only) — show/hide, colours, position (left/top %) and size (width/height %)
+9. Animation (format + duration)
+10. City labels
 
-**All sections are collapsible.** Default open: Mode, Route/GPX, Track line. Default closed: Map, Route labels, Animation, City labels.
+**All sections are collapsible.** Default open: Mode, Route/GPX, Track line. Default closed: Presets, Map, Route labels, Elevation profile, Animation, City labels.
 - State: `const [closed, setClosed] = useState<Set<string>>(() => new Set([...]))` in `PropsForm`
 - Toggle button: `<button className="section-title">` with `<span className="section-chevron">` before the label text
 - Body: `.section-body` + `.section-body-inner`; collapse uses `max-height: 0` / `overflow: hidden` (NOT CSS grid 0fr — that causes 1px border bleed in some browsers)
@@ -94,6 +96,28 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 - `lineWidth`: default **10**, min 1, max **30** (in schema.ts, types.ts, PropsForm slider)
 - `routeMarker`: default **'none'** — set to 'car'|'camper'|'plane'|'bike'|'walk' to show animated badge
 - `routeMarkerSize`: default **60** (badge diameter in canvas pixels), min 20, max 120
+- `dotted` line style gap: `0 ${lineWidth * 1.8}` — dots are SVG round linecaps with strokeDasharray spacing
+
+## Elevation profile (showElevationProfile prop)
+- Only rendered when `mode === 'gpx'` and the GPX file contains `<ele>` tags on every trackpoint
+- `useGpxTrack` now returns `GpxData { track, elevations }` — elevations is empty if any `<ele>` is missing
+- Box position and size driven by `elevationLeft/Top/Width/Height` (all % of canvas dimensions) → adapts to all output formats
+- Chart fills left-to-right in sync with `visibleCount` — same animation progress as the route line
+- Y-axis scale fixed to full route min/max so the scale doesn't jump during animation
+- `elevationBgColor` defaults to `#ffffffcc` (semi-transparent white via 8-char hex)
+
+## Presets (server-side)
+- Stored in `server/data/presets-<USERNAME>.json` (gitignored directory, created automatically)
+- Three endpoints: `GET /api/presets`, `POST /api/presets`, `DELETE /api/presets/:id`
+- Client loads on mount via `useEffect`; save/delete are optimistic (updates local state immediately on 200)
+- Saves ALL props — including route addresses, GPX file, colours, fonts, elevation settings, etc.
+
+## Map styles (MAP_STYLE_OPTIONS in PropsForm.tsx)
+- `shaggy72/cmpma5agg000101qr4tt68gad` — Gray (custom)
+- `shaggy72/cmqf8b53y001g01sc9lsh67db` — Topographic (contours + water only, with hillshade)
+- `shaggy72/cmqf94fhu003q01qw4m5e4fpk` — Topo v2 (adds land-use colours: urban/grass/wood/rock/protected areas)
+- Source JSON files: `mapbox-topo-style.json`, `mapbox-topo-style-v2.json`
+- Standard Mapbox styles: streets-v12, outdoors-v12, light-v11, dark-v11, satellite-streets-v12, none
 
 ## Flight arc curve (flightCurve prop)
 - Only active when `travelMode === 'flight'`
@@ -157,6 +181,8 @@ bash ~/Travel-map/deploy.sh
 - App runs on port 3002; add nginx in front for HTTPS / multiple apps
 
 ## Key bug fixes (patterns to remember)
+- **Presets server not responding after code change**: new Express endpoints require a server restart — `npx kill-port 3002 && npm run dev` (the Vite HMR does NOT restart the Express process)
+- **GPX not showing in production**: Express must serve `PUBLIC_DIR` at both `/public/` AND `/` so `staticFile(filename)` resolves correctly in the Remotion renderer
 - **Stale map tile**: `useMapboxImage` uses a `cancelled` flag in effect cleanup — prevents slow fallback fetch from overwriting a newer correct tile after geocoding completes
 - **Route handle leak**: `useRoute` calls `continueRender(handle)` immediately when `url` is null (flight/GPX mode), so Remotion CLI renderer doesn't hang
 - **OSRM server**: always use `routing.openstreetmap.de`, NOT `router.project-osrm.org` (car profile only)
