@@ -23,3 +23,6 @@ npm-debug.log*
 # Environment variables (if you ever add a .env file)
 .env
 .env.local
+
+# Per-user server data (presets, etc.)
+server/data/

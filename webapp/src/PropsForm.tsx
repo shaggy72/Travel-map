@@ -598,24 +598,13 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-// ── Presets (localStorage) ─────────────────────────────────────────────────
-
-const PRESETS_KEY = 'travel-map-presets';
+// ── Presets (server-side, /api/presets) ────────────────────────────────────
 
 interface Preset {
   id:        string;
   name:      string;
   props:     Props;
   createdAt: string;
-}
-
-function loadPresets(): Preset[] {
-  try { return JSON.parse(localStorage.getItem(PRESETS_KEY) ?? '[]'); }
-  catch { return []; }
-}
-
-function savePresets(list: Preset[]) {
-  localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
@@ -625,27 +614,37 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
   const [uploadMsg,    setUploadMsg]    = useState('');
 
   // ── Presets state ────────────────────────────────────────────────────────
-  const [presets,      setPresets]      = useState<Preset[]>(loadPresets);
-  const [savingName,   setSavingName]   = useState('');
-  const [showSaveBox,  setShowSaveBox]  = useState(false);
+  const [presets,     setPresets]     = useState<Preset[]>([]);
+  const [savingName,  setSavingName]  = useState('');
+  const [showSaveBox, setShowSaveBox] = useState(false);
 
-  function handleSavePreset() {
+  // Load presets from server on mount
+  useEffect(() => {
+    fetch('/api/presets')
+      .then(r => r.ok ? r.json() : [])
+      .then(setPresets)
+      .catch(() => {});
+  }, []);
+
+  async function handleSavePreset() {
     const name = savingName.trim();
     if (!name) return;
-    const next: Preset[] = [
-      ...presets,
-      { id: Date.now().toString(), name, props, createdAt: new Date().toISOString() },
-    ];
-    savePresets(next);
-    setPresets(next);
-    setSavingName('');
-    setShowSaveBox(false);
+    const preset: Preset = { id: Date.now().toString(), name, props, createdAt: new Date().toISOString() };
+    const r = await fetch('/api/presets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(preset),
+    });
+    if (r.ok) {
+      setPresets(prev => [...prev, preset]);
+      setSavingName('');
+      setShowSaveBox(false);
+    }
   }
 
-  function handleDeletePreset(id: string) {
-    const next = presets.filter(p => p.id !== id);
-    savePresets(next);
-    setPresets(next);
+  async function handleDeletePreset(id: string) {
+    const r = await fetch(`/api/presets/${id}`, { method: 'DELETE' });
+    if (r.ok) setPresets(prev => prev.filter(p => p.id !== id));
   }
 
   // ── Collapsible sections ─────────────────────────────────────────────────

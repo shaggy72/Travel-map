@@ -172,6 +172,43 @@ app.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Presets ───────────────────────────────────────────────────────────────
+// Stored as a JSON file per username in server/data/presets-<username>.json.
+// The data directory is gitignored so presets are never committed.
+const DATA_DIR = path.join(ROOT_DIR, 'server', 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+function presetsFile() {
+  // Single-user app — username is fixed by the APP_USERNAME env var
+  return path.join(DATA_DIR, `presets-${USERNAME}.json`);
+}
+
+function readPresets() {
+  try { return JSON.parse(fs.readFileSync(presetsFile(), 'utf8')); }
+  catch { return []; }
+}
+
+app.get('/api/presets', requireAuth, (req, res) => {
+  res.json(readPresets());
+});
+
+app.post('/api/presets', requireAuth, (req, res) => {
+  const preset = req.body;
+  if (!preset?.id || !preset?.name || !preset?.props) {
+    return res.status(400).json({ error: 'Invalid preset' });
+  }
+  const list = readPresets();
+  list.push(preset);
+  fs.writeFileSync(presetsFile(), JSON.stringify(list, null, 2));
+  res.json({ ok: true });
+});
+
+app.delete('/api/presets/:id', requireAuth, (req, res) => {
+  const list = readPresets().filter(p => p.id !== req.params.id);
+  fs.writeFileSync(presetsFile(), JSON.stringify(list, null, 2));
+  res.json({ ok: true });
+});
+
 // ── GPX management ────────────────────────────────────────────────────────
 app.get('/api/gpx-files', requireAuth, (_req, res) => {
   try {
