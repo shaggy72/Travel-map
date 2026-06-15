@@ -261,6 +261,11 @@ Custom map styles must be added manually to the `MAP_STYLE_OPTIONS` array in `we
 
 **Better approach:** add a text input in the Map section that lets the user paste any Mapbox style URL or style ID (`username/styleId`). The value would be passed directly as the `mapStyle` prop, alongside the existing preset options in the dropdown — so users can use their own private Studio styles without touching the code.
 
+### GPX upload — one file at a time
+The "Upload GPX" button only accepts a single file per upload. Uploading multiple tracks requires repeating the action for each file.
+
+**Better approach:** allow multi-file selection in the file input (`<input type="file" multiple>`) and loop the upload on the server side, saving each file and regenerating the dropdown list once after all uploads complete.
+
 ### GPX files — shared across all users
 Uploaded `.gpx` files are stored in `/public` and are visible to all logged-in users via the dropdown. If multiple users share the same server, their tracks are mixed together.
 
