@@ -598,17 +598,61 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
+// ── Presets (localStorage) ─────────────────────────────────────────────────
+
+const PRESETS_KEY = 'travel-map-presets';
+
+interface Preset {
+  id:        string;
+  name:      string;
+  props:     Props;
+  createdAt: string;
+}
+
+function loadPresets(): Preset[] {
+  try { return JSON.parse(localStorage.getItem(PRESETS_KEY) ?? '[]'); }
+  catch { return []; }
+}
+
+function savePresets(list: Preset[]) {
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 
 export default function PropsForm({ props, onChange, gpxFiles, onUpload }: PropsFormProps) {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'ok' | 'error'>('idle');
   const [uploadMsg,    setUploadMsg]    = useState('');
 
+  // ── Presets state ────────────────────────────────────────────────────────
+  const [presets,      setPresets]      = useState<Preset[]>(loadPresets);
+  const [savingName,   setSavingName]   = useState('');
+  const [showSaveBox,  setShowSaveBox]  = useState(false);
+
+  function handleSavePreset() {
+    const name = savingName.trim();
+    if (!name) return;
+    const next: Preset[] = [
+      ...presets,
+      { id: Date.now().toString(), name, props, createdAt: new Date().toISOString() },
+    ];
+    savePresets(next);
+    setPresets(next);
+    setSavingName('');
+    setShowSaveBox(false);
+  }
+
+  function handleDeletePreset(id: string) {
+    const next = presets.filter(p => p.id !== id);
+    savePresets(next);
+    setPresets(next);
+  }
+
   // ── Collapsible sections ─────────────────────────────────────────────────
   // Sections NOT in this set are open. Mode / Route / Track line start open.
   // Map, Route labels, Animation, City labels start collapsed.
   const [closed, setClosed] = useState<Set<string>>(
-    () => new Set(['map', 'routeLabels', 'elevation', 'animation', 'cityLabels'])
+    () => new Set(['presets', 'map', 'routeLabels', 'elevation', 'animation', 'cityLabels'])
   );
   /** Toggle a section open/closed by its ID. */
   const toggle = (id: string) =>
@@ -655,6 +699,72 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
 
   return (
     <div>
+
+      {/* ── Presets ──────────────────────────────────────────────── */}
+      <div className="form-section">
+        <button className="section-title" onClick={() => toggle('presets')} aria-expanded={isOpen('presets')}>
+          <span className={`section-chevron${isOpen('presets') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Presets
+        </button>
+        <div className={`section-body${isOpen('presets') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+
+            {/* Save current settings */}
+            {showSaveBox ? (
+              <div className="field" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="Preset name…"
+                  value={savingName}
+                  onChange={e => setSavingName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveBox(false); }}
+                  autoFocus
+                  style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13 }}
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSavePreset}>Save</button>
+                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowSaveBox(false); setSavingName(''); }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => setShowSaveBox(true)}>
+                Save current settings…
+              </button>
+            )}
+
+            {/* Saved presets list */}
+            {presets.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                {presets.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      title={`Apply "${p.name}"`}
+                      onClick={() => onChange(p.props)}
+                    >
+                      {p.name}
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '4px 8px', color: 'var(--muted)', flexShrink: 0 }}
+                      title="Delete preset"
+                      onClick={() => handleDeletePreset(p.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {presets.length === 0 && !showSaveBox && (
+              <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>No presets saved yet.</p>
+            )}
+
+          </div>
+        </div>
+      </div>
 
       {/* ── Mode ─────────────────────────────────────────────────── */}
       <div className="form-section">
