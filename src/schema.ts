@@ -155,6 +155,18 @@ export const schema = z.object({
 
   /** Background fill of the elevation profile box. Supports alpha via 8-char hex. */
   elevationBgColor: zColor().default('#ffffffcc'),
+
+  /** Left edge of the elevation box as % of canvas width (0 = far left). */
+  elevationLeft:   z.number().min(0).max(90).default(4),
+
+  /** Top edge of the elevation box as % of canvas height (0 = top, 85 ≈ bottom). */
+  elevationTop:    z.number().min(0).max(95).default(85),
+
+  /** Width of the elevation box as % of canvas width. */
+  elevationWidth:  z.number().min(10).max(100).default(92),
+
+  /** Height of the elevation box as % of canvas height. */
+  elevationHeight: z.number().min(3).max(50).default(11),
 });
 
 export type MapSchema = z.infer<typeof schema>;

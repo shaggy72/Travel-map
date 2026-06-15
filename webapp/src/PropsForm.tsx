@@ -1023,6 +1023,18 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               <ColorField label="Background"
                 value={props.elevationBgColor}
                 onChange={v => upd('elevationBgColor', v)} />
+              <RangeField label={`Left — ${props.elevationLeft}%`}
+                value={props.elevationLeft} min={0} max={90}
+                onChange={v => upd('elevationLeft', v)} />
+              <RangeField label={`Top — ${props.elevationTop}%`}
+                value={props.elevationTop} min={0} max={95}
+                onChange={v => upd('elevationTop', v)} />
+              <RangeField label={`Width — ${props.elevationWidth}%`}
+                value={props.elevationWidth} min={10} max={100}
+                onChange={v => upd('elevationWidth', v)} />
+              <RangeField label={`Height — ${props.elevationHeight}%`}
+                value={props.elevationHeight} min={3} max={50}
+                onChange={v => upd('elevationHeight', v)} />
             </>)}
           </div>
         </div>

@@ -47,6 +47,14 @@ export interface Props {
   elevationColor:  string;
   /** Background colour of the elevation box. Supports 8-char hex for alpha. */
   elevationBgColor: string;
+  /** Left edge of the box as % of canvas width. */
+  elevationLeft:    number;
+  /** Top edge of the box as % of canvas height. */
+  elevationTop:     number;
+  /** Width of the box as % of canvas width. */
+  elevationWidth:   number;
+  /** Height of the box as % of canvas height. */
+  elevationHeight:  number;
 }
 
 export const DEFAULT_PROPS: Props = {
@@ -88,4 +96,8 @@ export const DEFAULT_PROPS: Props = {
   showElevationProfile: false,
   elevationColor:       '#333333',
   elevationBgColor:     '#ffffffcc',
+  elevationLeft:        4,
+  elevationTop:         85,
+  elevationWidth:       92,
+  elevationHeight:      11,
 };
