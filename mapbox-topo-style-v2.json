@@ -1,0 +1,148 @@
+{
+  "version": 8,
+  "name": "Topographic v2",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}",
+  "sources": {
+    "mapbox-streets": {
+      "type": "vector",
+      "url": "mapbox://mapbox.mapbox-streets-v8"
+    },
+    "mapbox-terrain": {
+      "type": "vector",
+      "url": "mapbox://mapbox.mapbox-terrain-v2"
+    },
+    "mapbox-dem": {
+      "type": "raster-dem",
+      "url": "mapbox://mapbox.mapbox-terrain-dem-v1",
+      "tileSize": 512,
+      "maxzoom": 14
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f5f5f0"
+      }
+    },
+    {
+      "id": "hillshade",
+      "type": "hillshade",
+      "source": "mapbox-dem",
+      "paint": {
+        "hillshade-illumination-direction": 335,
+        "hillshade-exaggeration": 0.5,
+        "hillshade-shadow-color": "#473B24",
+        "hillshade-highlight-color": "#ffffff",
+        "hillshade-accent-color": "#d4c9a8"
+      }
+    },
+    {
+      "id": "landuse-urban",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "landuse",
+      "filter": ["in", "class", "residential", "commercial", "industrial"],
+      "paint": {
+        "fill-color": "#e8e0d4",
+        "fill-opacity": 0.6
+      }
+    },
+    {
+      "id": "landuse-grass",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "landuse",
+      "filter": ["in", "class", "grass", "meadow", "agriculture", "park"],
+      "paint": {
+        "fill-color": "#d8e8c0",
+        "fill-opacity": 0.5
+      }
+    },
+    {
+      "id": "landuse-wood",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "landuse",
+      "filter": ["in", "class", "wood", "scrub"],
+      "paint": {
+        "fill-color": "#b8d4a0",
+        "fill-opacity": 0.55
+      }
+    },
+    {
+      "id": "landuse-protected",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "landuse_overlay",
+      "filter": ["in", "class", "national_park", "nature_reserve"],
+      "paint": {
+        "fill-color": "#a8c890",
+        "fill-opacity": 0.3
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#c8d8e8"
+      }
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "mapbox-streets",
+      "source-layer": "waterway",
+      "filter": ["in", "class", "river", "canal", "stream"],
+      "paint": {
+        "line-color": "#c8d8e8",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.5, 10, 2, 14, 3]
+      }
+    },
+    {
+      "id": "contour-minor",
+      "type": "line",
+      "source": "mapbox-terrain",
+      "source-layer": "contour",
+      "filter": ["!=", ["get", "index"], 5],
+      "paint": {
+        "line-color": "#c0bdb5",
+        "line-width": 0.5,
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "contour-major",
+      "type": "line",
+      "source": "mapbox-terrain",
+      "source-layer": "contour",
+      "filter": ["==", ["get", "index"], 5],
+      "paint": {
+        "line-color": "#9e9b93",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "contour-label",
+      "type": "symbol",
+      "source": "mapbox-terrain",
+      "source-layer": "contour",
+      "filter": ["==", ["get", "index"], 5],
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": ["to-string", ["get", "ele"]],
+        "text-font": ["DIN Offc Pro Regular", "Arial Unicode MS Regular"],
+        "text-size": 10,
+        "text-max-angle": 30
+      },
+      "paint": {
+        "text-color": "#888880",
+        "text-halo-color": "#f5f5f0",
+        "text-halo-width": 1.5
+      }
+    }
+  ]
+}
