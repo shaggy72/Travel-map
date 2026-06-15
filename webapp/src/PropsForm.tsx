@@ -1181,6 +1181,12 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                   onChange={() => upd('outputFormat', 'square')}
                 />
                 <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
+                <input
+                  type="radio" id="fmt-ig" name="outputFormat"
+                  checked={props.outputFormat === 'instagram-post'}
+                  onChange={() => upd('outputFormat', 'instagram-post')}
+                />
+                <label htmlFor="fmt-ig" title="Instagram post (1080×1350)">4:5</label>
               </div>
             </div>
 

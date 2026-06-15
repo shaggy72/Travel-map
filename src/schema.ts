@@ -144,7 +144,7 @@ export const schema = z.object({
    *  portrait  = 1080 × 1920 (9:16 — vertical, default — short-form social video)
    *  landscape = 1920 × 1080 (16:9 — YouTube / widescreen)
    *  square    = 1080 × 1080 (1:1 — Instagram feed) */
-  outputFormat: z.enum(['portrait', 'landscape', 'square']).default('portrait'),
+  outputFormat: z.enum(['portrait', 'landscape', 'square', 'instagram-post']).default('portrait'),
 
   /** Show an elevation profile chart at the bottom of the canvas.
    *  Only rendered in GPX mode when the file contains <ele> data. */

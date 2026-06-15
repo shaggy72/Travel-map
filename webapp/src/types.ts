@@ -40,7 +40,7 @@ export interface Props {
   duration:       number;
   /** Output canvas format — controls width × height of the rendered video.
    *  portrait = 1080×1920 (9:16), landscape = 1920×1080 (16:9), square = 1080×1080 */
-  outputFormat:   'portrait' | 'landscape' | 'square';
+  outputFormat:   'portrait' | 'landscape' | 'square' | 'instagram-post';
   /** Show elevation profile chart at bottom of canvas. GPX + <ele> data required. */
   showElevationProfile: boolean;
   /** Stroke/fill colour for the elevation chart line and area. */

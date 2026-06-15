@@ -263,8 +263,9 @@ export default function App() {
         <div className="preview-label">Live Preview</div>
         {/* aspect-ratio is set inline so switching format updates the wrapper immediately */}
         <div className="preview-player-wrapper" style={{
-          aspectRatio: props.outputFormat === 'landscape' ? '16/9'
-                     : props.outputFormat === 'square'    ? '1/1'
+          aspectRatio: props.outputFormat === 'landscape'     ? '16/9'
+                     : props.outputFormat === 'square'         ? '1/1'
+                     : props.outputFormat === 'instagram-post' ? '4/5'
                      : '9/16',
         }}>
           <PlayerErrorBoundary>

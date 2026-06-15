@@ -21,12 +21,14 @@ export const MAPBOX_STYLE: string = process.env.MAPBOX_STYLE || 'mapbox/light-v1
 
 // ── Output format → canvas dimensions ─────────────────────────────────────
 /** Return pixel dimensions for a given output format.
- *  portrait  (default) = 1080 × 1920 — 9:16 vertical social video
- *  landscape           = 1920 × 1080 — 16:9 YouTube / widescreen
- *  square              = 1080 × 1080 — 1:1 Instagram feed */
-export function getDimensions(format: 'portrait' | 'landscape' | 'square'): { w: number; h: number } {
-  if (format === 'landscape') return { w: 1920, h: 1080 };
-  if (format === 'square')    return { w: 1080, h: 1080 };
+ *  portrait       (default) = 1080 × 1920 — 9:16 vertical social video
+ *  landscape                = 1920 × 1080 — 16:9 YouTube / widescreen
+ *  square                   = 1080 × 1080 — 1:1 Instagram square post
+ *  instagram-post           = 1080 × 1350 — 4:5 Instagram portrait post */
+export function getDimensions(format: 'portrait' | 'landscape' | 'square' | 'instagram-post'): { w: number; h: number } {
+  if (format === 'landscape')      return { w: 1920, h: 1080 };
+  if (format === 'square')         return { w: 1080, h: 1080 };
+  if (format === 'instagram-post') return { w: 1080, h: 1350 };
   return { w: 1080, h: 1920 }; // portrait (default)
 }
 
