@@ -759,7 +759,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             )}
 
             {presets.length === 0 && !showSaveBox && (
-              <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>No presets saved yet.</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>No presets saved yet.</p>
             )}
 
           </div>
