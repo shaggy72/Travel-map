@@ -608,7 +608,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
   // Sections NOT in this set are open. Mode / Route / Track line start open.
   // Map, Route labels, Animation, City labels start collapsed.
   const [closed, setClosed] = useState<Set<string>>(
-    () => new Set(['map', 'routeLabels', 'animation', 'cityLabels'])
+    () => new Set(['map', 'routeLabels', 'elevation', 'animation', 'cityLabels'])
   );
   /** Toggle a section open/closed by its ID. */
   const toggle = (id: string) =>
@@ -993,6 +993,41 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
           </div>
         </div>
       </div>
+
+      {/* ── Elevation profile (GPX mode only) ───────────────────── */}
+      {props.mode === 'gpx' && (
+      <div className="form-section">
+        <button className="section-title" onClick={() => toggle('elevation')} aria-expanded={isOpen('elevation')}>
+          <span className={`section-chevron${isOpen('elevation') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Elevation profile
+        </button>
+        <div className={`section-body${isOpen('elevation') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <label>Show profile</label>
+              <div className="radio-group">
+                <input type="radio" id="elev-on" name="showElevationProfile"
+                  checked={props.showElevationProfile}
+                  onChange={() => upd('showElevationProfile', true)} />
+                <label htmlFor="elev-on">On</label>
+                <input type="radio" id="elev-off" name="showElevationProfile"
+                  checked={!props.showElevationProfile}
+                  onChange={() => upd('showElevationProfile', false)} />
+                <label htmlFor="elev-off">Off</label>
+              </div>
+            </div>
+            {props.showElevationProfile && (<>
+              <ColorField label="Line colour"
+                value={props.elevationColor}
+                onChange={v => upd('elevationColor', v)} />
+              <ColorField label="Background"
+                value={props.elevationBgColor}
+                onChange={v => upd('elevationBgColor', v)} />
+            </>)}
+          </div>
+        </div>
+      </div>
+      )}
 
       {/* ── Animation ────────────────────────────────────────────── */}
       <div className="form-section">

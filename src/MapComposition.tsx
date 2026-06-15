@@ -155,6 +155,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   cityUppercase,
   cityColorBig, cityColorMedium, cityColorSmall,
   citySizeBig, citySizeMedium, citySizeSmall,
+  showElevationProfile, elevationColor, elevationBgColor,
 }) => {
   const frame = useCurrentFrame();
 
@@ -185,7 +186,9 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const endCoords   = useGeocode(mode === "directions" ? endAddress   : null);
 
   // ── Mode: GPX — parse track file ──────────────────────────────────────
-  const gpxCoords = useGpxTrack(mode === "gpx" ? gpxFile : null);
+  const gpxData       = useGpxTrack(mode === "gpx" ? gpxFile : null);
+  const gpxCoords     = gpxData?.track      ?? null;
+  const gpxElevations = gpxData?.elevations ?? [];
 
   // ── Compute center + zoom ─────────────────────────────────────────────
   const directionsReady = mode === "directions" && startCoords !== null && endCoords !== null;
@@ -287,6 +290,36 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const routeD = visiblePts.length > 1
     ? "M " + visiblePts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")
     : "";
+
+  // ── Elevation profile ─────────────────────────────────────────────────
+  // Box sits at the bottom of the canvas; fills left-to-right in sync with
+  // visibleCount so the chart grows at the same pace as the route line.
+  const ELEV_MARGIN = Math.round(width * 0.037);
+  const ELEV_H      = Math.round(height * 0.11);
+  const ELEV_W      = width - 2 * ELEV_MARGIN;
+  const ELEV_TOP    = height - ELEV_MARGIN - ELEV_H;
+  const ELEV_PAD    = Math.round(ELEV_H * 0.12);
+
+  const elevProfile = (() => {
+    if (!showElevationProfile || mode !== 'gpx' || gpxElevations.length < 2) return null;
+    const total   = gpxElevations.length;
+    const visible = Math.max(2, Math.round((visibleCount / (routePoints?.length ?? total)) * total));
+    const slice   = gpxElevations.slice(0, visible);
+    const minE    = Math.min(...slice);
+    const maxE    = Math.max(...gpxElevations); // full range stays stable throughout animation
+    const range   = Math.max(maxE - minE, 1);
+
+    const pts = slice.map((e, i) => [
+      ELEV_MARGIN + (i / (total - 1)) * ELEV_W,
+      ELEV_TOP + ELEV_PAD + (1 - (e - minE) / range) * (ELEV_H - 2 * ELEV_PAD),
+    ] as [number, number]);
+
+    const lineD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const last  = pts[pts.length - 1];
+    const areaD = `${lineD} L${last[0].toFixed(1)},${ELEV_TOP + ELEV_H} L${ELEV_MARGIN},${ELEV_TOP + ELEV_H} Z`;
+
+    return { lineD, areaD, minE, maxE };
+  })();
 
   // ── Route tip marker ──────────────────────────────────────────────────────
   // The marker badge follows the leading point of the drawn line.
@@ -545,6 +578,29 @@ const MapCompositionInner: React.FC<MapSchema> = ({
             );
           })()
         ))}
+
+        {/* ── Elevation profile ─────────────────────────────────────────── */}
+        {elevProfile && (
+          <g>
+            <rect x={ELEV_MARGIN} y={ELEV_TOP} width={ELEV_W} height={ELEV_H}
+              rx={8} fill={elevationBgColor} />
+            <path d={elevProfile.areaD}
+              fill={elevationColor} fillOpacity={0.15} stroke="none" />
+            <path d={elevProfile.lineD}
+              fill="none" stroke={elevationColor} strokeWidth={2}
+              strokeLinejoin="round" strokeLinecap="round" />
+            <text x={ELEV_MARGIN + 10} y={ELEV_TOP + ELEV_PAD + 16}
+              fontSize={22} fill={elevationColor} fillOpacity={0.65}
+              fontFamily="'Helvetica Neue', Arial, sans-serif">
+              {Math.round(elevProfile.maxE)}m
+            </text>
+            <text x={ELEV_MARGIN + 10} y={ELEV_TOP + ELEV_H - 10}
+              fontSize={22} fill={elevationColor} fillOpacity={0.65}
+              fontFamily="'Helvetica Neue', Arial, sans-serif">
+              {Math.round(elevProfile.minE)}m
+            </text>
+          </g>
+        )}
 
         {/* ── Start marker ──────────────────────────────────────────────── */}
         {/* Pin dot always visible; label box only when labelMode !== 'off' */}

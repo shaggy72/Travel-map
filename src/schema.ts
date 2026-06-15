@@ -145,6 +145,16 @@ export const schema = z.object({
    *  landscape = 1920 × 1080 (16:9 — YouTube / widescreen)
    *  square    = 1080 × 1080 (1:1 — Instagram feed) */
   outputFormat: z.enum(['portrait', 'landscape', 'square']).default('portrait'),
+
+  /** Show an elevation profile chart at the bottom of the canvas.
+   *  Only rendered in GPX mode when the file contains <ele> data. */
+  showElevationProfile: z.boolean().default(false),
+
+  /** Stroke and fill colour for the elevation profile line and area. */
+  elevationColor: zColor().default('#333333'),
+
+  /** Background fill of the elevation profile box. Supports alpha via 8-char hex. */
+  elevationBgColor: zColor().default('#ffffffcc'),
 });
 
 export type MapSchema = z.infer<typeof schema>;

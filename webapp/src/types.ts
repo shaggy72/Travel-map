@@ -41,6 +41,12 @@ export interface Props {
   /** Output canvas format — controls width × height of the rendered video.
    *  portrait = 1080×1920 (9:16), landscape = 1920×1080 (16:9), square = 1080×1080 */
   outputFormat:   'portrait' | 'landscape' | 'square';
+  /** Show elevation profile chart at bottom of canvas. GPX + <ele> data required. */
+  showElevationProfile: boolean;
+  /** Stroke/fill colour for the elevation chart line and area. */
+  elevationColor:  string;
+  /** Background colour of the elevation box. Supports 8-char hex for alpha. */
+  elevationBgColor: string;
 }
 
 export const DEFAULT_PROPS: Props = {
@@ -79,4 +85,7 @@ export const DEFAULT_PROPS: Props = {
   flightCurve:    40,
   duration:       5,
   outputFormat:   'portrait',
+  showElevationProfile: false,
+  elevationColor:       '#333333',
+  elevationBgColor:     '#ffffffcc',
 };

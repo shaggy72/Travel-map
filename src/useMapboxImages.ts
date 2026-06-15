@@ -112,7 +112,18 @@ export function useGeocode(address: string | null): [number, number] | null {
 }
 
 /**
- * Parses a GPX track file from the /public folder and returns raw [lng, lat] coordinates.
+/** Parsed GPX data returned by useGpxTrack. */
+export interface GpxData {
+  /** [longitude, latitude] pairs for every <trkpt> in the file. */
+  track:      [number, number][];
+  /** Elevation in metres for each trackpoint, parallel to `track`.
+   *  Empty array when the file contains no <ele> tags. */
+  elevations: number[];
+}
+
+/**
+ * Parses a GPX track file from the /public folder and returns track coordinates
+ * plus per-point elevations (when the file contains <ele> tags).
  *
  * `staticFile(filename)` resolves to `/filename` which is served from /public in both
  * the Vite dev server (via the custom `serve-gpx` middleware) and the Remotion renderer
@@ -123,13 +134,13 @@ export function useGeocode(address: string | null): [number, number] | null {
  * GPX uses `lon` for the longitude attribute, not `lng`.
  *
  * @param filename - GPX filename (e.g. "my-track.gpx") or null to skip
- * @returns        Array of [longitude, latitude] points, or null while loading
+ * @returns        GpxData with track coords and elevations, or null while loading
  */
-export function useGpxTrack(filename: string | null): [number, number][] | null {
+export function useGpxTrack(filename: string | null): GpxData | null {
   const [handle] = useState(() =>
     filename ? delayRender(`Parsing GPX: ${filename}`) : null
   );
-  const [coords, setCoords] = useState<[number, number][] | null>(null);
+  const [data, setData] = useState<GpxData | null>(null);
 
   useEffect(() => {
     if (!filename || handle === null) return;
@@ -145,17 +156,22 @@ export function useGpxTrack(filename: string | null): [number, number][] | null 
           cancelRender(new Error(`No trackpoints found in ${filename}`));
           return;
         }
-        const points: [number, number][] = trkpts.map((pt) => [
+        const track: [number, number][] = trkpts.map((pt) => [
           parseFloat(pt.getAttribute("lon") ?? "0"),
           parseFloat(pt.getAttribute("lat") ?? "0"),
         ]);
-        setCoords(points);
+        // Parse <ele> only when every trackpoint carries one; otherwise return empty.
+        const rawEle = trkpts.map(pt =>
+          parseFloat(pt.querySelector("ele")?.textContent ?? "")
+        );
+        const elevations = rawEle.every(v => isFinite(v)) ? rawEle : [];
+        setData({ track, elevations });
         continueRender(handle);
       })
       .catch((err) => cancelRender(err));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return coords;
+  return data;
 }
 
 /**
