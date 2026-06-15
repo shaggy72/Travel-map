@@ -301,25 +301,57 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const startFullW = labelBoxWidth(startLabel);
   const endFullW   = labelBoxWidth(endLabel);
 
-  // ── Label box positioning — clamped so labels never go off-screen ─────
-  const LABEL_EDGE = 20; // min px from canvas edge
+  // ── Label box positioning ─────────────────────────────────────────────
+  const LABEL_EDGE = 20;
   const BOX_H      = 52;
-  const DOT_R      = pinSize;  // label positioning adapts to the configured pin size
-  const LABEL_GAP  = 8;  // clear gap between dot edge and label box
+  const DOT_R      = pinSize;
+  const LABEL_GAP  = 8;
 
-  // Horizontal: clamp so right edge stays within canvas (use dynamic width for all formats)
-  const startLabelX = Math.max(LABEL_EDGE,
-    Math.min(startPx[0] - 2, width - LABEL_EDGE - startFullW));
-  const endLabelX   = Math.max(LABEL_EDGE,
-    Math.min(endPx[0] - 2,   width - LABEL_EDGE - endFullW));
+  // Compute the normalised route direction leaving the start pin and arriving
+  // at the end pin. Used to place each label on the opposite side of the route
+  // so it doesn't overlap the drawn line.
+  const lookPct = Math.max(1, Math.floor((routePoints?.length ?? 0) * 0.06));
+  const startDir: [number, number] = (() => {
+    if (!routePoints || routePoints.length < 2) return [1, 0];
+    const i = Math.min(lookPct, routePoints.length - 1);
+    const dx = routePoints[i][0] - routePoints[0][0];
+    const dy = routePoints[i][1] - routePoints[0][1];
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return [dx / len, dy / len];
+  })();
+  const endDir: [number, number] = (() => {
+    if (!routePoints || routePoints.length < 2) return [-1, 0];
+    const n = routePoints.length;
+    const i = Math.max(0, n - 1 - lookPct);
+    const dx = routePoints[n - 1][0] - routePoints[i][0];
+    const dy = routePoints[n - 1][1] - routePoints[i][1];
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return [dx / len, dy / len];
+  })();
 
-  // Vertical: label sits above the dot with a gap; flips below if too close to top
-  const startLabelY = startPx[1] - DOT_R - LABEL_GAP - BOX_H >= LABEL_EDGE
-    ? startPx[1] - DOT_R - LABEL_GAP - BOX_H
-    : startPx[1] + DOT_R + LABEL_GAP;
-  const endLabelY   = endPx[1] - DOT_R - LABEL_GAP - BOX_H >= LABEL_EDGE
-    ? endPx[1] - DOT_R - LABEL_GAP - BOX_H
-    : endPx[1] + DOT_R + LABEL_GAP;
+  // Try four placements (above / below / left / right) and pick the one that
+  // faces most directly away from the route direction, then clamp to canvas.
+  function bestLabelPos(
+    px: number, py: number,
+    [rdx, rdy]: [number, number],
+    boxW: number,
+  ): { x: number; y: number } {
+    const candidates = [
+      { x: px - boxW / 2,           y: py - DOT_R - LABEL_GAP - BOX_H, score: -rdy }, // above
+      { x: px - boxW / 2,           y: py + DOT_R + LABEL_GAP,          score:  rdy }, // below
+      { x: px - DOT_R - LABEL_GAP - boxW, y: py - BOX_H / 2,            score: -rdx }, // left
+      { x: px + DOT_R + LABEL_GAP,  y: py - BOX_H / 2,                  score:  rdx }, // right
+    ];
+    candidates.sort((a, b) => b.score - a.score);
+    const best = candidates[0];
+    return {
+      x: Math.max(LABEL_EDGE, Math.min(best.x, width  - LABEL_EDGE - boxW)),
+      y: Math.max(LABEL_EDGE, Math.min(best.y, height - LABEL_EDGE - BOX_H)),
+    };
+  }
+
+  const { x: startLabelX, y: startLabelY } = bestLabelPos(startPx[0], startPx[1], startDir, startFullW);
+  const { x: endLabelX,   y: endLabelY   } = bestLabelPos(endPx[0],   endPx[1],   endDir,   endFullW);
 
   // ── Label animation state ─────────────────────────────────────────────
   // 'on'  → t=1 (fully revealed immediately, no animation)
