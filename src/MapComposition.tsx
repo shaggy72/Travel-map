@@ -307,51 +307,58 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const DOT_R      = pinSize;
   const LABEL_GAP  = 8;
 
-  // Compute the normalised route direction leaving the start pin and arriving
-  // at the end pin. Used to place each label on the opposite side of the route
-  // so it doesn't overlap the drawn line.
+  // Compute the "away" direction for each label — the direction to place the label
+  // so it points away from the route body:
+  //   start: route departs in startDir → label goes in -startDir (opposite)
+  //   end:   route arrives in endDir   → label goes in +endDir (same as arrival = away from route body)
   const lookPct = Math.max(1, Math.floor((routePoints?.length ?? 0) * 0.06));
-  const startDir: [number, number] = (() => {
-    if (!routePoints || routePoints.length < 2) return [1, 0];
+  const startAway: [number, number] = (() => {
+    if (!routePoints || routePoints.length < 2) return [-1, 0];
     const i = Math.min(lookPct, routePoints.length - 1);
-    const dx = routePoints[i][0] - routePoints[0][0];
-    const dy = routePoints[i][1] - routePoints[0][1];
+    const dx = routePoints[0][0] - routePoints[i][0]; // reversed: away from departure
+    const dy = routePoints[0][1] - routePoints[i][1];
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     return [dx / len, dy / len];
   })();
-  const endDir: [number, number] = (() => {
-    if (!routePoints || routePoints.length < 2) return [-1, 0];
+  const endAway: [number, number] = (() => {
+    if (!routePoints || routePoints.length < 2) return [1, 0];
     const n = routePoints.length;
     const i = Math.max(0, n - 1 - lookPct);
-    const dx = routePoints[n - 1][0] - routePoints[i][0];
+    const dx = routePoints[n - 1][0] - routePoints[i][0]; // arrival direction = away from route body
     const dy = routePoints[n - 1][1] - routePoints[i][1];
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     return [dx / len, dy / len];
   })();
 
-  // Try four placements (above / below / left / right) and pick the one that
-  // faces most directly away from the route direction, then clamp to canvas.
+  // Score four placements by dot product with the preferred "away" direction.
+  // Filter to those that fit within the canvas before picking the winner.
   function bestLabelPos(
     px: number, py: number,
-    [rdx, rdy]: [number, number],
+    [ax, ay]: [number, number], // preferred away direction (normalised)
     boxW: number,
   ): { x: number; y: number } {
     const candidates = [
-      { x: px - boxW / 2,           y: py - DOT_R - LABEL_GAP - BOX_H, score: -rdy }, // above
-      { x: px - boxW / 2,           y: py + DOT_R + LABEL_GAP,          score:  rdy }, // below
-      { x: px - DOT_R - LABEL_GAP - boxW, y: py - BOX_H / 2,            score: -rdx }, // left
-      { x: px + DOT_R + LABEL_GAP,  y: py - BOX_H / 2,                  score:  rdx }, // right
+      { x: px - boxW / 2,                  y: py - DOT_R - LABEL_GAP - BOX_H, score: -ay }, // above
+      { x: px - boxW / 2,                  y: py + DOT_R + LABEL_GAP,          score:  ay }, // below
+      { x: px - DOT_R - LABEL_GAP - boxW,  y: py - BOX_H / 2,                  score: -ax }, // left
+      { x: px + DOT_R + LABEL_GAP,         y: py - BOX_H / 2,                  score:  ax }, // right
     ];
-    candidates.sort((a, b) => b.score - a.score);
-    const best = candidates[0];
+    // Prefer candidates that fit within the canvas; fall back to all if none fit
+    const fits = candidates.filter(c =>
+      c.x >= LABEL_EDGE && c.x + boxW <= width  - LABEL_EDGE &&
+      c.y >= LABEL_EDGE && c.y + BOX_H <= height - LABEL_EDGE
+    );
+    const pool = fits.length > 0 ? fits : candidates;
+    pool.sort((a, b) => b.score - a.score);
+    const best = pool[0];
     return {
       x: Math.max(LABEL_EDGE, Math.min(best.x, width  - LABEL_EDGE - boxW)),
       y: Math.max(LABEL_EDGE, Math.min(best.y, height - LABEL_EDGE - BOX_H)),
     };
   }
 
-  const { x: startLabelX, y: startLabelY } = bestLabelPos(startPx[0], startPx[1], startDir, startFullW);
-  const { x: endLabelX,   y: endLabelY   } = bestLabelPos(endPx[0],   endPx[1],   endDir,   endFullW);
+  const { x: startLabelX, y: startLabelY } = bestLabelPos(startPx[0], startPx[1], startAway, startFullW);
+  const { x: endLabelX,   y: endLabelY   } = bestLabelPos(endPx[0],   endPx[1],   endAway,   endFullW);
 
   // ── Label animation state ─────────────────────────────────────────────
   // 'on'  → t=1 (fully revealed immediately, no animation)
