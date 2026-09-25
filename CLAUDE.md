@@ -197,6 +197,28 @@ A circular badge with a white vehicle icon follows the leading point of the rout
 - **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render
 - Badge is rendered above the route path but below start/end pin markers
 
+## Label placement vs. the route line and marker badge (src/MapComposition.tsx, bestLabelPos)
+Labels were overlapping both the route line and the route marker badge (user report,
+2026-09-25, right after the label-timing fixes above). Two separate gaps, both in
+`bestLabelPos`'s collision logic:
+- **Clearance from the pin**: the 4 candidate positions (above/below/left/right) were offset
+  from the pin by `DOT_R = pinSize` — a few px. The marker badge (`routeMarkerSize/2`, default
+  30) is far bigger and sits *exactly on top of the pin* at the moments a label is actually
+  visible: briefly at the start pin as the line begins drawing, and at the end pin for the
+  entire reveal+hold window (the marker's tip = the destination once the route has fully
+  drawn — see "Label/marker timing" above). Fix: `DOT_R` is now
+  `routeMarker !== 'none' ? Math.max(pinSize, markerR) : pinSize` — this constant is *only*
+  used for label-clearance math (candidate offsets + `PIN_IGNORE`), never for drawing the
+  actual pin dot (that still uses `pinSize` directly at the `<circle>` call sites), so
+  redefining it here doesn't change the pin's own visual size.
+- **Clearance from the line/badge corridor while travelling**: `segHitsBox`'s collision check
+  only expanded by `lineWidth/2 + 4` (the line's own stroke), not the marker badge's radius —
+  so a label placed just clear of the *thin line* could still get clipped later when the much
+  wider badge travels past that same spot. Fix: `EXP = Math.max(lineWidth/2+4, routeMarker !==
+  'none' ? markerR+4 : 0)`.
+- Both fixes are no-ops when `routeMarker === 'none'` (falls back to the original `pinSize`-only
+  behaviour) — this is purely about the marker badge, unrelated to the label-timing fixes above.
+
 ## Label/marker timing (src/MapComposition.tsx)
 Two rounds of feedback on 2026-09-25 reshaped how the destination label's timing works —
 **`routeEnd` is no longer a fixed fraction of `dur`** (was `0.867*dur`), it's now derived by

@@ -387,7 +387,14 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   // ── Label box positioning ─────────────────────────────────────────────
   const LABEL_EDGE = 20;
   const BOX_H      = LABEL_BOX_H;
-  const DOT_R      = pinSize;
+  // Clearance radius used to keep labels off the pin — bumped to the (much
+  // bigger) marker badge radius when a route marker is shown, since the
+  // badge sits right on top of a pin at points in the animation: briefly at
+  // the start pin as the line begins drawing, and at the end pin for the
+  // whole reveal+hold window once the line has fully arrived. Using the
+  // small `pinSize` alone (as before) let the label sit close enough to
+  // overlap the badge. Fixed 2026-09-25 per user request.
+  const DOT_R      = routeMarker !== 'none' ? Math.max(pinSize, markerR) : pinSize;
   const LABEL_GAP  = 8;
 
   // Pick the label placement (above / below / left / right of the pin) that
@@ -463,7 +470,12 @@ const MapCompositionInner: React.FC<MapSchema> = ({
     // Points very close to the pin are skipped to avoid penalising all candidates.
     if (routePoints && routePoints.length >= 2) {
       const PIN_IGNORE = DOT_R + LABEL_GAP + 5;
-      const EXP = lineWidth / 2 + 4; // expand box by stroke radius + small margin
+      // Expand the collision corridor by the marker badge's radius (not just
+      // the line's stroke width) when a marker is shown — the badge travels
+      // along the route and is far wider than the line itself, so a label
+      // placed just clear of the thin line could still get clipped by the
+      // badge passing through later in the animation.
+      const EXP = Math.max(lineWidth / 2 + 4, routeMarker !== 'none' ? markerR + 4 : 0);
       for (const c of candidates) {
         let hits = 0;
         for (let j = 1; j < routePoints.length; j++) {
