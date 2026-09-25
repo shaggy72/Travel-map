@@ -767,6 +767,33 @@ select {
   color: var(--accent);
 }
 
+/* ── Country Picker (searchable, longer list than other ls-pickers) ─────── */
+.ls-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font);
+  font-size: 10px;
+  color: var(--text);
+  background: var(--field-bg);
+  outline: none;
+}
+
+.ls-options-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.ls-flag {
+  width: 20px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 /* ── File Upload ──────────────────────────────────────────────────────── */
 .upload-area {
   border: 1.5px dashed var(--border);

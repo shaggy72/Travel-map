@@ -29,11 +29,26 @@ export const schema = z.object({
   /** End location as a free-text address. Geocoded via Mapbox Geocoding API. */
   endAddress: z.string().default("Lauris, France"),
 
-  /** Label shown at the start pin. Defaults to the city name but can be anything. */
+  /** City name shown in the second row of the start label. Defaults to the city name
+   *  but can be anything. */
   startLabel: z.string().default("Ghent"),
 
-  /** Label shown at the end pin. Defaults to the city name but can be anything. */
+  /** City name shown in the second row of the end label. Defaults to the city name
+   *  but can be anything. */
   endLabel: z.string().default("Lauris"),
+
+  /** Country name shown in the first row of the start label, next to the flag. */
+  startCountry: z.string().default("Belgium"),
+
+  /** ISO 3166-1 alpha-2 country code for the start label's flag (e.g. "be", "fr").
+   *  Fetched from flagcdn.com — lowercase, no validation beyond being non-empty. */
+  startCountryCode: z.string().default("be"),
+
+  /** Country name shown in the first row of the end label, next to the flag. */
+  endCountry: z.string().default("France"),
+
+  /** ISO 3166-1 alpha-2 country code for the end label's flag. */
+  endCountryCode: z.string().default("fr"),
 
   /** Mapbox style slug (e.g. "mapbox/streets-v12") or "none" for a plain background.
    *  When "none", the map tile is not rendered and mapBgColor is used instead.
@@ -98,10 +113,12 @@ export const schema = z.object({
   /** Font family used for the start/end label boxes. Same options as cityFont. */
   labelFont: z.enum(["Helvetica", "Inter", "Georgia", "Oswald", "Merriweather"]).default("Helvetica"),
 
-  /** Background fill color of the start/end label boxes. Supports alpha via 8-char hex. */
+  /** Background fill color of the start/end label boxes (both rows). Supports alpha via 8-char hex. */
   labelBgColor: zColor().default("#555555"),
 
-  /** Text color inside the start/end label boxes. */
+  /** Text color used for both label rows. The country row (top) is rendered at full
+   *  opacity and bold; the city row (bottom) reuses this color at reduced opacity for
+   *  visual hierarchy — no separate "sub text color" prop is exposed. */
   labelTextColor: zColor().default("#ffffff"),
 
   /** Minimum city population to show as a dot + label overlay on the map.

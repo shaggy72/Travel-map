@@ -10,6 +10,7 @@
  *   useGeocode      — geocodes a place name to [lng, lat] via Mapbox Geocoding API
  *   useGpxTrack     — parses a .gpx file from /public into [lng, lat] coordinates
  *   useRoute        — fetches a driving/cycling/walking route and returns coordinates
+ *   useFlagImage    — fetches a country flag PNG from flagcdn.com and returns a data URL
  */
 import { delayRender, continueRender, cancelRender, staticFile } from "remotion";
 import { useEffect, useState } from "react";
@@ -257,4 +258,52 @@ export function useRoute(url: string | null): [number, number][] | null {
 
   // Only return coords that belong to the current URL — never serve stale data
   return entry.url === url ? entry.coords : null;
+}
+
+/**
+ * Fetches a country flag PNG from flagcdn.com (no API key needed) and returns a
+ * `data:` URL, same rationale as `useMapboxImage` — Remotion's headless renderer
+ * needs the image bytes embedded in the DOM, not a bare external `src`.
+ *
+ * Unlike the map tile, a missing/invalid flag is non-fatal: the render continues
+ * without an image (the label falls back to just the country text) rather than
+ * aborting via `cancelRender`, since a typo'd country code shouldn't break the video.
+ *
+ * @param countryCode - ISO 3166-1 alpha-2 code (any case), or null to skip
+ * @returns           Data URL for the flag image, or null while loading / on error
+ */
+export function useFlagImage(countryCode: string | null): string | null {
+  const code = countryCode ? countryCode.trim().toLowerCase() : null;
+  const [handle] = useState(() => code ? delayRender(`Fetching flag: ${code}`) : null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!code || handle === null) return;
+    let cancelled = false;
+
+    fetch(`https://flagcdn.com/w80/${code}.png`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Flag fetch error ${r.status} for "${code}"`);
+        return r.blob();
+      })
+      .then((b) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (cancelled) return;
+          setImageUrl(reader.result as string);
+          continueRender(handle);
+        };
+        reader.readAsDataURL(b as Blob);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn('[useFlagImage]', err);
+        setImageUrl(null);
+        continueRender(handle);
+      });
+
+    return () => { cancelled = true; };
+  }, [code]);
+
+  return imageUrl;
 }

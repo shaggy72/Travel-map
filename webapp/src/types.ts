@@ -5,8 +5,18 @@ export interface Props {
   gpxFile:        string;
   startAddress:   string;
   endAddress:     string;
+  /** City name shown in the second row of the start label. */
   startLabel:     string;
+  /** City name shown in the second row of the end label. */
   endLabel:       string;
+  /** Country name shown in the first row of the start label, next to the flag. */
+  startCountry:     string;
+  /** ISO 3166-1 alpha-2 code for the start label's flag (e.g. "be"). */
+  startCountryCode: string;
+  /** Country name shown in the first row of the end label, next to the flag. */
+  endCountry:       string;
+  /** ISO 3166-1 alpha-2 code for the end label's flag. */
+  endCountryCode:   string;
   mapStyle:       string;
   mapBgColor:     string;
   zoomMode:       'auto' | 'manual';
@@ -65,6 +75,10 @@ export const DEFAULT_PROPS: Props = {
   endAddress:     'Lauris, France',
   startLabel:     'Ghent',
   endLabel:       'Lauris',
+  startCountry:     'Belgium',
+  startCountryCode: 'be',
+  endCountry:       'France',
+  endCountryCode:   'fr',
   mapStyle:       process.env.MAPBOX_STYLE || 'mapbox/light-v11',
   mapBgColor:     '#ffffff',
   zoomMode:       'auto',

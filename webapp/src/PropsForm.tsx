@@ -26,8 +26,9 @@
  *    Default closed: Map, Route labels, Animation, City labels.
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Props } from './types';
+import { Props, DEFAULT_PROPS } from './types';
 import { ColorPicker } from './ColorPicker';
+import { COUNTRIES, Country } from '../../src/countryData';
 
 interface PropsFormProps {
   props:      Props;
@@ -223,6 +224,85 @@ function MapStylePicker({ value, onChange }: { value: string; onChange: (v: stri
               <span>{opt.label}</span>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Country Picker (searchable — powers the "Air France" style label flags) ──
+
+function CountryPicker({ value, onChange }: { value: string; onChange: (c: Country) => void }) {
+  const [open,     setOpen]     = useState(false);
+  const [query,    setQuery]    = useState('');
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+  const searchRef  = useRef<HTMLInputElement>(null);
+
+  function openPanel() {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 220 });
+    }
+    setQuery('');
+    setOpen(true);
+    setTimeout(() => searchRef.current?.focus(), 0);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  const current = COUNTRIES.find(c => c.code === value) ?? COUNTRIES.find(c => c.code === 'be')!;
+  const filtered = query
+    ? COUNTRIES.filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
+    : COUNTRIES;
+
+  return (
+    <div className="ls-picker">
+      <button ref={triggerRef} className="ls-trigger" onClick={() => open ? setOpen(false) : openPanel()}>
+        <img className="ls-flag" src={`https://flagcdn.com/24x18/${current.code}.png`} alt="" />
+        <span className="ls-label">{current.name}</span>
+        <span className="ls-arrow">▾</span>
+      </button>
+      {open && (
+        <div
+          ref={panelRef}
+          className="ls-panel"
+          style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
+        >
+          <input
+            ref={searchRef}
+            className="ls-search"
+            type="text"
+            placeholder="Search country…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          <div className="ls-options-scroll">
+            {filtered.map(c => (
+              <button
+                key={c.code}
+                className={`ls-option${c.code === value ? ' selected' : ''}`}
+                onClick={() => { onChange(c); setOpen(false); }}
+              >
+                <img className="ls-flag" src={`https://flagcdn.com/24x18/${c.code}.png`} alt="" />
+                <span>{c.name}</span>
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div className="ls-option" style={{ cursor: 'default' }}>No matches</div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -742,7 +822,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                       className="btn btn-ghost"
                       style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                       title={`Apply "${p.name}"`}
-                      onClick={() => onChange(p.props)}
+                      onClick={() => onChange({ ...DEFAULT_PROPS, ...p.props })}
                     >
                       {p.name}
                     </button>
@@ -860,7 +940,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 />
               </div>
               <div className="field">
-                <label>Start label</label>
+                <label>Start country</label>
+                <CountryPicker
+                  value={props.startCountryCode}
+                  onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))}
+                />
+              </div>
+              <div className="field">
+                <label>Start city</label>
                 <input
                   type="text"
                   value={props.startLabel}
@@ -877,7 +964,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 />
               </div>
               <div className="field">
-                <label>End label</label>
+                <label>End country</label>
+                <CountryPicker
+                  value={props.endCountryCode}
+                  onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))}
+                />
+              </div>
+              <div className="field">
+                <label>End city</label>
                 <input
                   type="text"
                   value={props.endLabel}
@@ -911,7 +1005,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 </select>
               </div>
               <div className="field">
-                <label>Start label</label>
+                <label>Start country</label>
+                <CountryPicker
+                  value={props.startCountryCode}
+                  onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))}
+                />
+              </div>
+              <div className="field">
+                <label>Start city</label>
                 <input
                   type="text"
                   value={props.startLabel}
@@ -919,7 +1020,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 />
               </div>
               <div className="field">
-                <label>End label</label>
+                <label>End country</label>
+                <CountryPicker
+                  value={props.endCountryCode}
+                  onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))}
+                />
+              </div>
+              <div className="field">
+                <label>End city</label>
                 <input
                   type="text"
                   value={props.endLabel}

@@ -6,7 +6,7 @@ import {
   buildProjection, buildMapUrl, buildDirectionsUrl, buildOsrmUrl, buildFlightArc,
 } from "./mapData";
 import { easeInOutCubic, easeOutCubic, windowT } from "./easing";
-import { useMapboxImage, useGeocode, useGpxTrack, useRoute } from "./useMapboxImages";
+import { useMapboxImage, useGeocode, useGpxTrack, useRoute, useFlagImage } from "./useMapboxImages";
 import { RouteMarkerIcon } from "./routeIcons";
 import { MapSchema } from "./schema";
 
@@ -32,7 +32,7 @@ const C = {
 
 // ── Timing proportions (relative to total duration) ──────────────────────
 // All timing is computed at runtime from durationInFrames in the component.
-const LABEL_FONT_SIZE = 40;
+const LABEL_FONT_SIZE = 40; // kept for the 'typewriter' reveal-width approximation
 const LABEL_PADDING   = 24; // 12px left + 12px right
 // Approximate avg char width ratio per font family (bold, 40px).
 // Wider fonts get a larger multiplier so the box doesn't clip the text.
@@ -44,9 +44,26 @@ const LABEL_CHAR_W_MAP: Record<string, number> = {
   Merriweather: 0.70,
 };
 
-function labelBoxWidth(text: string, font = 'Helvetica'): number {
+// ── "Air France" two-row label box ─────────────────────────────────────
+// Row 1: flag + country name (bold, full labelTextColor)
+// Row 2: city name (lighter weight, labelTextColor at reduced opacity)
+const LABEL_PAD_X     = 14;
+const LABEL_FLAG_W    = 34;
+const LABEL_FLAG_H    = 24;
+const LABEL_FLAG_GAP  = 10;
+const LABEL_ROW1_FONT = 34;
+const LABEL_ROW2_FONT = 26;
+const LABEL_BOX_H     = 92;
+// y-offsets (baselines / flag top) relative to the box's top edge
+const LABEL_FLAG_Y    = 17;
+const LABEL_ROW1_BASE = 40;
+const LABEL_ROW2_BASE = 74;
+
+function labelBoxWidth(country: string, city: string, font = 'Helvetica'): number {
   const ratio = LABEL_CHAR_W_MAP[font] ?? 0.65;
-  return Math.ceil(text.length * ratio * LABEL_FONT_SIZE + LABEL_PADDING);
+  const row1W = LABEL_FLAG_W + LABEL_FLAG_GAP + country.length * ratio * LABEL_ROW1_FONT;
+  const row2W = city.length * ratio * LABEL_ROW2_FONT;
+  return Math.ceil(Math.max(row1W, row2W) + 2 * LABEL_PAD_X);
 }
 
 // ── Per-frame label animation state ──────────────────────────────────────
@@ -144,6 +161,7 @@ export const MapComposition: React.FC<MapSchema> = (props) => {
 
 const MapCompositionInner: React.FC<MapSchema> = ({
   mode, travelMode, startAddress, endAddress, startLabel, endLabel,
+  startCountry, startCountryCode, endCountry, endCountryCode,
   mapStyle, mapBgColor,
   zoomMode, zoom: manualZoom, gpxFile,
   labelMode, labelAnimation, labelFont,
@@ -190,6 +208,10 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const gpxData       = useGpxTrack(mode === "gpx" ? gpxFile : null);
   const gpxCoords     = gpxData?.track      ?? null;
   const gpxElevations = gpxData?.elevations ?? [];
+
+  // ── Label flags — independent of mode, always fetched from the two country codes ──
+  const startFlag = useFlagImage(startCountryCode);
+  const endFlag   = useFlagImage(endCountryCode);
 
   // ── Compute center + zoom ─────────────────────────────────────────────
   const directionsReady = mode === "directions" && startCoords !== null && endCoords !== null;
@@ -341,12 +363,12 @@ const MapCompositionInner: React.FC<MapSchema> = ({
                : easeOutCubic(windowT(frame, endFadeIn, endFadeEnd));
 
   // ── Label box dimensions ─────────────────────────────────────────────
-  const startFullW = labelBoxWidth(startLabel, labelFont);
-  const endFullW   = labelBoxWidth(endLabel,   labelFont);
+  const startFullW = labelBoxWidth(startCountry, startLabel, labelFont);
+  const endFullW   = labelBoxWidth(endCountry,   endLabel,   labelFont);
 
   // ── Label box positioning ─────────────────────────────────────────────
   const LABEL_EDGE = 20;
-  const BOX_H      = 52;
+  const BOX_H      = LABEL_BOX_H;
   const DOT_R      = pinSize;
   const LABEL_GAP  = 8;
 
@@ -460,8 +482,8 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   // 'off' → labels not rendered; t=0 as safe fallback
   const startT = labelMode === 'on' ? 1 : windowT(frame, 0, startBoxEnd);
   const endT   = labelMode === 'on' ? 1 : windowT(frame, endFadeIn, endBoxEnd);
-  const startAnim = getLabelAnim(labelAnimation, startT, startLabelX, startLabelY, startFullW, BOX_H, startPx[0], startLabel);
-  const endAnim   = getLabelAnim(labelAnimation, endT,   endLabelX,   endLabelY,   endFullW,   BOX_H, endPx[0],   endLabel);
+  const startAnim = getLabelAnim(labelAnimation, startT, startLabelX, startLabelY, startFullW, BOX_H, startPx[0], `${startCountry} ${startLabel}`);
+  const endAnim   = getLabelAnim(labelAnimation, endT,   endLabelX,   endLabelY,   endFullW,   BOX_H, endPx[0],   `${endCountry} ${endLabel}`);
 
   return (
     <AbsoluteFill style={{ background: mapStyle === 'none' ? mapBgColor : C.bg }}>
@@ -477,6 +499,15 @@ const MapCompositionInner: React.FC<MapSchema> = ({
           </clipPath>
           <clipPath id="endClip">
             <rect x={endAnim.clipX} y={endAnim.clipY} width={endAnim.clipW} height={endAnim.clipH} />
+          </clipPath>
+          {/* Rounded corners for the flag thumbnails in the label boxes */}
+          <clipPath id="startFlagClip">
+            <rect x={startLabelX + LABEL_PAD_X} y={startLabelY + LABEL_FLAG_Y}
+                  width={LABEL_FLAG_W} height={LABEL_FLAG_H} rx={3} />
+          </clipPath>
+          <clipPath id="endFlagClip">
+            <rect x={endLabelX + LABEL_PAD_X} y={endLabelY + LABEL_FLAG_Y}
+                  width={LABEL_FLAG_W} height={LABEL_FLAG_H} rx={3} />
           </clipPath>
 
           {/* ── Pencil filters (only mounted when needed) ─────────────── */}
@@ -614,13 +645,35 @@ const MapCompositionInner: React.FC<MapSchema> = ({
                 width={startFullW} height={BOX_H} rx={6}
                 fill={labelBgColor}
               />
+              {startFlag && (
+                <image
+                  href={startFlag}
+                  x={startLabelX + LABEL_PAD_X} y={startLabelY + LABEL_FLAG_Y}
+                  width={LABEL_FLAG_W} height={LABEL_FLAG_H}
+                  preserveAspectRatio="xMidYMid slice"
+                  clipPath="url(#startFlagClip)"
+                />
+              )}
               <text
-                x={startLabelX + 12} y={startLabelY + 40}
-                fontSize={40}
+                x={startLabelX + LABEL_PAD_X + LABEL_FLAG_W + LABEL_FLAG_GAP}
+                y={startLabelY + LABEL_ROW1_BASE}
+                fontSize={LABEL_ROW1_FONT}
                 fontFamily={CITY_FONT_MAP[labelFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
                 fontWeight="700"
                 fill={labelTextColor}
-                letterSpacing={0.4}
+                letterSpacing={0.3}
+              >
+                {startCountry}
+              </text>
+              <text
+                x={startLabelX + LABEL_PAD_X}
+                y={startLabelY + LABEL_ROW2_BASE}
+                fontSize={LABEL_ROW2_FONT}
+                fontFamily={CITY_FONT_MAP[labelFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
+                fontWeight="400"
+                fill={labelTextColor}
+                fillOpacity={0.7}
+                letterSpacing={0.2}
               >
                 {startLabel}
               </text>
@@ -640,13 +693,35 @@ const MapCompositionInner: React.FC<MapSchema> = ({
                 width={endFullW} height={BOX_H} rx={6}
                 fill={labelBgColor}
               />
+              {endFlag && (
+                <image
+                  href={endFlag}
+                  x={endLabelX + LABEL_PAD_X} y={endLabelY + LABEL_FLAG_Y}
+                  width={LABEL_FLAG_W} height={LABEL_FLAG_H}
+                  preserveAspectRatio="xMidYMid slice"
+                  clipPath="url(#endFlagClip)"
+                />
+              )}
               <text
-                x={endLabelX + 12} y={endLabelY + 40}
-                fontSize={40}
+                x={endLabelX + LABEL_PAD_X + LABEL_FLAG_W + LABEL_FLAG_GAP}
+                y={endLabelY + LABEL_ROW1_BASE}
+                fontSize={LABEL_ROW1_FONT}
                 fontFamily={CITY_FONT_MAP[labelFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
                 fontWeight="700"
                 fill={labelTextColor}
-                letterSpacing={0.4}
+                letterSpacing={0.3}
+              >
+                {endCountry}
+              </text>
+              <text
+                x={endLabelX + LABEL_PAD_X}
+                y={endLabelY + LABEL_ROW2_BASE}
+                fontSize={LABEL_ROW2_FONT}
+                fontFamily={CITY_FONT_MAP[labelFont]?.family ?? "'Helvetica Neue', Arial, sans-serif"}
+                fontWeight="400"
+                fill={labelTextColor}
+                fillOpacity={0.7}
+                letterSpacing={0.2}
               >
                 {endLabel}
               </text>

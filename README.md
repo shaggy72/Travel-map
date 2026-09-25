@@ -101,13 +101,14 @@ User clicks "Render & Download"
    - ✈️ **Flight** — great-circle arc computed locally via d3-geo (no API call, always instant)
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
-4. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, colors, font)
-5. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
-6. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
-7. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
-8. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
-9. Save frequently-used configurations as **Presets** (top of the sidebar) — stored on the server so they survive browser clears and are available on any device
-10. The live preview updates as you change settings and plays automatically in a loop
+4. Pick **Start/End country** (searchable dropdown, shows a flag) and **Start/End city** for each endpoint — these feed the two-row "Air France" style label box (flag + country on top, city below)
+6. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Route labels** (animation, font, background/text color — applied to both label rows)
+7. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
+8. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
+9. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
+10. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
+11. Save frequently-used configurations as **Presets** (top of the sidebar) — stored on the server so they survive browser clears and are available on any device
+12. The live preview updates as you change settings and plays automatically in a loop
 
 ---
 
@@ -132,16 +133,20 @@ The animation component. Canvas dimensions are dynamic — 1080×1920 (portrait)
 1. Draws the Mapbox tile as a background `<image>`
 2. Draws the route as an animated SVG `<path>` (draw-on effect) — or a great-circle arc for flight mode
 3. Draws city dots + labels (filtered by population)
-4. Draws start/end pin markers with animated label boxes
+4. Draws start/end pin markers with animated two-row label boxes ("Air France" style — flag + country on top, city below)
 
 All async data (tile, geocoding, route) is fetched via `delayRender`/`continueRender` hooks so Remotion waits for them before rendering each frame.
 
 ### `src/useMapboxImages.ts`
-Four custom hooks used by `MapComposition`:
+Five custom hooks used by `MapComposition`:
 - `useMapboxImage(url)` — fetches a Mapbox static tile and returns a data URL; stale fetches are cancelled so old tiles never overwrite newer ones
 - `useGeocode(address)` — geocodes a place name to `[lng, lat]`
 - `useGpxTrack(filename)` — parses a GPX file from `/public`; returns `GpxData { track: [lng,lat][], elevations: number[] }` — elevations are empty when the file has no `<ele>` tags
 - `useRoute(url)` — fetches a route polyline from Mapbox or OSRM; clears stale coords immediately when URL changes; releases its `delayRender` handle immediately when `url` is null (flight mode, GPX mode)
+- `useFlagImage(countryCode)` — fetches a country flag PNG from flagcdn.com and returns a data URL for the label boxes; unlike the other hooks, a fetch failure is non-fatal (render continues without the flag image)
+
+### `src/countryData.ts`
+Static `COUNTRIES` array (~195 entries, `{ code, name }` with lowercase ISO 3166-1 alpha-2 codes) powering the searchable country picker in `PropsForm.tsx` and the flag lookups in `useFlagImage`.
 
 ### `server/index.cjs`
 Express server (port 3002) that:

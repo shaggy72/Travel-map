@@ -19,7 +19,8 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `src/schema.ts` | Zod schema — single source of truth for all animation props |
 | `src/MapComposition.tsx` | Remotion animation; uses `useVideoConfig()` for dynamic canvas size |
 | `src/mapData.ts` | Projection utils, URL builders, `getDimensions()`, `buildFlightArc()` |
-| `src/useMapboxImages.ts` | Hooks: `useMapboxImage`, `useGeocode`, `useGpxTrack`, `useRoute` |
+| `src/useMapboxImages.ts` | Hooks: `useMapboxImage`, `useGeocode`, `useGpxTrack`, `useRoute`, `useFlagImage` |
+| `src/countryData.ts` | Static `COUNTRIES` list (ISO 3166-1 alpha-2 code + name) powering the country picker |
 | `src/easing.ts` | Timing/easing utilities (`easeInOutCubic`, `windowT`, `interpolateEased`, …) |
 | `src/Root.tsx` | Remotion composition root; `calculateMetadata` sets dynamic width/height |
 | `server/index.cjs` | Express: auth, GPX upload, Remotion render, auto-update endpoints, serves `webapp/dist` in prod |
@@ -139,6 +140,52 @@ A circular badge (colour = `lineColor`) with a white vehicle icon follows the le
 - Badge is rendered above the route path but below start/end pin markers
 - `RouteMarkerIcon` uses the badge colour (`lineColor`) for cutout details (windshields, wheel hubs) to simulate transparency in the white silhouette
 
+## Start/end labels — "Air France" two-row style (src/MapComposition.tsx)
+Replaced the old single-line label box entirely (2026-09-25), inspired by the Air France
+in-flight wifi map (flag + country on top, city below). No toggle between old/new style —
+the two-row layout is the only one.
+
+- **Row 1**: flag image (fetched from flagcdn.com via `useFlagImage`, see below) + country
+  name, bold, full `labelTextColor`
+- **Row 2**: city name (`startLabel`/`endLabel` — same fields as before, meaning unchanged),
+  lighter weight, `labelTextColor` at `fillOpacity={0.7}` for visual hierarchy — **no
+  separate sub-text-color prop**; font/background/text-color customisation (`labelFont`,
+  `labelBgColor`, `labelTextColor` in PropsForm's "Route labels" section) already applied to
+  both rows before this change, so no new controls were needed there
+- New schema fields: `startCountry`/`endCountry` (display name) + `startCountryCode`/
+  `endCountryCode` (lowercase ISO 3166-1 alpha-2, e.g. `"be"`) — independent of `mode`, so
+  available in both Directions and GPX mode
+- `labelBoxWidth(country, city, font)` now takes both row texts and returns the max of the
+  two row widths (row 1 includes flag width + gap) — replaces the old single-string version
+- `LABEL_BOX_H = 92` (was `52`) — flows through positioning/collision-avoidance/clip-path
+  logic unchanged since those are content-agnostic (just work with a box rect)
+- Flag rendered via `<image>` clipped to a small rounded rect (`startFlagClip`/`endFlagClip`
+  in `<defs>`) with `preserveAspectRatio="xMidYMid slice"` — flag source images have varying
+  aspect ratios (e.g. Nepal), slice-cropping into a fixed 34×24 box avoids distortion
+- **Why fetch flag PNGs instead of Unicode flag emoji**: the project already avoids emoji
+  glyphs in the actual rendered video — `routeIcons.tsx`'s vehicle badges are hand-drawn SVG
+  specifically because headless Chromium on the render server may lack a colour-emoji font,
+  so flag emoji would risk rendering as blank/tofu. Flag images follow the same
+  fetch-as-data-URL pattern as `useMapboxImage` instead.
+
+## useFlagImage hook (src/useMapboxImages.ts)
+Fetches `https://flagcdn.com/w80/<code>.png` (no API key) and returns a data URL, same
+`delayRender`/`continueRender` + `cancelled`-flag pattern as `useMapboxImage`. Unlike the map
+tile, a fetch failure is **non-fatal** — `continueRender` still fires and the label just
+renders without a flag image (no `cancelRender`), since a mistyped/missing country code
+shouldn't abort the whole render.
+
+## Country picker (webapp/src/PropsForm.tsx — CountryPicker component)
+Searchable `ls-picker` variant (~195 countries from `src/countryData.ts`, imported cross-
+project the same way `PreviewPlayer.tsx` imports `MapComposition`/`mapData`). Adds a text
+filter input + scrollable option list (`.ls-search` / `.ls-options-scroll` in styles.css —
+the other `ls-panel`s don't scroll, this one needs to for ~195 options) and a small flag
+thumbnail (`https://flagcdn.com/24x18/<code>.png`) per row and on the trigger button.
+Selecting an option updates both `startCountryCode`/`startCountry` (or the `end` pair) in one
+`onChange` call via `set(set(props, ...), ...)` — `upd()` only sets one key at a time.
+Appears in both the Route (Directions mode) and GPX file sections, alongside the renamed
+"Start city"/"End city" fields (previously "Start label"/"End label").
+
 ## Preview player (PreviewPlayer.tsx)
 - Auto-play via `useEffect` + `setTimeout(() => playerRef.current?.play(), 100)` — NOT the `autoPlay` prop
 - The `autoPlay` prop caused "shows Pause but frames don't advance" on page refresh (fires before Player is ready)
@@ -193,3 +240,4 @@ bash ~/Travel-map/deploy.sh
 - **deploy.sh libasound2**: on repeated deploys `apt-cache` is stale (Node already installed, NodeSource skipped) → `apt-get update -qq` before `resolve_pkg` calls fixes it
 - **Render geocoding failure** ("Geocoding failed for: …"): Remotion bundles via webpack which does NOT substitute `process.env.*` automatically (unlike Vite). Fix: use `webpackOverride` + `webpack.DefinePlugin` in `bundle()` in `server/index.cjs` to hard-bake `MAPBOX_TOKEN` and `MAPBOX_STYLE` into the bundle. `envVariables` option in `@remotion/bundler@4.0.469` does not work as expected.
 - **Restart button does nothing after update**: sessions stored in-memory (`Map`) are lost on `process.exit(0)`. After PM2 restarts the server, `/api/me` returns 401 (not 200). Old polling checked `r.ok` (200 only) → never reloaded. Fix: reload on any HTTP response; only network-level errors (ECONNREFUSED) mean the server is still starting.
+- **Applying an old preset after adding a schema field crashes the preview**: preset "Apply" replaced `props` wholesale with the raw stored JSON (`onChange(p.props)`), so a preset saved before a new required-looking field existed (e.g. `startCountry`/`startCountryCode`) left it `undefined` at runtime — `labelBoxWidth()` then called `.length` on `undefined` and threw. Fix: `onChange({ ...DEFAULT_PROPS, ...p.props })` so missing fields fall back to defaults. Apply this pattern any time a new prop is added — old stored presets never gain it automatically.
