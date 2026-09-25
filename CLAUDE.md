@@ -197,6 +197,20 @@ A circular badge with a white vehicle icon follows the leading point of the rout
 - **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render
 - Badge is rendered above the route path but below start/end pin markers
 
+## Label/marker timing (src/MapComposition.tsx)
+`endFadeIn = routeEnd` (2026-09-25 fix, user request: *"ik wil dat het destination label pas
+verschijnt als de lijn toekomt"*) — the destination pin + label group's opacity fade and the
+label's own reveal animation both start only once the route line has actually finished
+drawing (`routeEnd`, ~86.7% of `dur`), not before. Previously `endFadeIn` was a fixed
+`0.800*dur`, independent of `routeEnd` (~86.7%*dur) — the label began appearing ~0.07*dur
+*before* the line arrived, which looked wrong. `endBoxEnd` (end of the label's reveal
+animation) was changed from a fixed `0.967*dur` to `dur` itself, since there's now very
+little time left after `routeEnd` for the reveal to play (~13% of `dur`) — using all of it
+avoids the reveal window being cut short. `endFadeEnd` (end of the group's opacity fade-in)
+is a quick `routeEnd + ~0.02*dur`. The start label is unaffected — it still begins its own
+reveal at frame 0 (`startBoxEnd` unchanged), since there's no equivalent "hasn't arrived yet"
+concern for the start of the route.
+
 ## Start/end labels — "Air France" two-row style (src/MapComposition.tsx)
 Replaced the old single-line label box entirely (2026-09-25), inspired by the Air France
 in-flight wifi map (flag + country on top, city below). No toggle between old/new style —

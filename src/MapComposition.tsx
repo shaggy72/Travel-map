@@ -303,11 +303,15 @@ const MapCompositionInner: React.FC<MapSchema> = ({
 
   // ── Scaled timing (proportional to total duration) ───────────────────
   const routeStart   = 0;
-  const routeEnd     = Math.round(dur * 0.867);  //  ~4.33s of 5s
-  const endFadeIn    = Math.round(dur * 0.800);  //  ~4.00s of 5s
-  const endFadeEnd   = Math.round(dur * 0.947);  //  ~4.73s of 5s
+  const routeEnd     = Math.round(dur * 0.867);  //  ~4.33s of 5s — route line finishes drawing
+  // Destination pin + label only start appearing once the line has actually
+  // arrived (endFadeIn === routeEnd) — previously endFadeIn was 0.800*dur,
+  // i.e. the label began fading in ~0.07*dur *before* the line finished
+  // drawing. Fixed per user request 2026-09-25.
+  const endFadeIn    = routeEnd;
+  const endFadeEnd   = Math.round(dur * 0.887);  //  quick opacity fade for the pin/label group, ~2% of duration after arrival
   const startBoxEnd  = Math.round(dur * 0.267);  //  ~1.33s of 5s
-  const endBoxEnd    = Math.round(dur * 0.967);  //  ~4.83s of 5s
+  const endBoxEnd    = dur;                       // label reveal animation gets the remaining time to finish
 
   // ── No fade-in — map is fully visible from frame 0 ───────────────────
   const mapOpacity = 1;
