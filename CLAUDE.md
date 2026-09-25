@@ -122,6 +122,17 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
   DELETE). Only one backup generation is kept (overwritten on each write) — good enough to
   undo the *last* accidental delete, not a full history. To restore: `cp
   server/data/presets-<USERNAME>.json.bak server/data/presets-<USERNAME>.json` then restart.
+- **Silent-failure bug found the same day**: right after the incident above, the user clicked
+  "Save" to recreate the preset and nothing happened — no error, no saved preset. Root cause:
+  `handleSavePreset`/`handleDeletePreset` only checked `r.ok` and did nothing on failure (no
+  error UI, no `try/catch` around `fetch`). We had restarted the `travel-map` pm2 process 4×
+  in the preceding ~15 min for unrelated deploys; sessions are in-memory (see "Restart button"
+  entry in Key bug fixes below), so the user's session had silently expired and every request
+  was returning 401. Fixed by adding a `presetError` state shown in the Presets section, with
+  a specific "session expired, refresh and log in again" message for 401 and a generic one for
+  other failures/network errors. **General lesson**: any `fetch()` call gated by `requireAuth`
+  needs visible error handling, not just a `r.ok` happy-path check — a stale session after a
+  deploy is a realistic, recurring failure mode in this app, not an edge case.
 
 ## Map styles (MAP_STYLE_OPTIONS in PropsForm.tsx)
 - `shaggy72/cmpma5agg000101qr4tt68gad` — Gray (custom)

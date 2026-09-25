@@ -698,6 +698,10 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
   const [presets,     setPresets]     = useState<Preset[]>([]);
   const [savingName,  setSavingName]  = useState('');
   const [showSaveBox, setShowSaveBox] = useState(false);
+  // Surfaces failures that would otherwise fail silently (e.g. a stale session
+  // after the server restarted — sessions are in-memory, see CLAUDE.md) —
+  // previously a 401 here just did nothing with no feedback to the user.
+  const [presetError, setPresetError] = useState('');
 
   // Load presets from server on mount
   useEffect(() => {
@@ -707,25 +711,43 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       .catch(() => {});
   }, []);
 
+  function presetErrorMessage(status: number): string {
+    if (status === 401) return 'Your session expired (the server restarted). Refresh the page and log in again, then try saving.';
+    return `Save failed (server responded ${status}). Try again in a moment.`;
+  }
+
   async function handleSavePreset() {
     const name = savingName.trim();
     if (!name) return;
+    setPresetError('');
     const preset: Preset = { id: Date.now().toString(), name, props, createdAt: new Date().toISOString() };
-    const r = await fetch('/api/presets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(preset),
-    });
-    if (r.ok) {
-      setPresets(prev => [...prev, preset]);
-      setSavingName('');
-      setShowSaveBox(false);
+    try {
+      const r = await fetch('/api/presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preset),
+      });
+      if (r.ok) {
+        setPresets(prev => [...prev, preset]);
+        setSavingName('');
+        setShowSaveBox(false);
+      } else {
+        setPresetError(presetErrorMessage(r.status));
+      }
+    } catch {
+      setPresetError('Could not reach the server. Check your connection and try again.');
     }
   }
 
   async function handleDeletePreset(id: string) {
-    const r = await fetch(`/api/presets/${id}`, { method: 'DELETE' });
-    if (r.ok) setPresets(prev => prev.filter(p => p.id !== id));
+    setPresetError('');
+    try {
+      const r = await fetch(`/api/presets/${id}`, { method: 'DELETE' });
+      if (r.ok) setPresets(prev => prev.filter(p => p.id !== id));
+      else setPresetError(presetErrorMessage(r.status));
+    } catch {
+      setPresetError('Could not reach the server. Check your connection and try again.');
+    }
   }
 
   // ── Collapsible sections ─────────────────────────────────────────────────
@@ -788,6 +810,10 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         </button>
         <div className={`section-body${isOpen('presets') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
+
+            {presetError && (
+              <p style={{ fontSize: 11, color: 'var(--danger, #c0392b)', margin: '0 0 8px' }}>{presetError}</p>
+            )}
 
             {/* Save current settings */}
             {showSaveBox ? (
