@@ -1,0 +1,41 @@
+{
+  "version": 8,
+  "name": "Navy",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}",
+  "sources": {
+    "mapbox-streets": {
+      "type": "vector",
+      "url": "mapbox://mapbox.mapbox-streets-v8"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#313645"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "mapbox-streets",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#181B26"
+      }
+    },
+    {
+      "id": "admin-boundaries",
+      "type": "line",
+      "source": "mapbox-streets",
+      "source-layer": "admin",
+      "filter": ["==", ["get", "admin_level"], 0],
+      "paint": {
+        "line-color": "#41454F",
+        "line-width": 0.75,
+        "line-opacity": 0.6
+      }
+    }
+  ]
+}
