@@ -380,12 +380,24 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   // whole video instead of jittering frame-to-frame as the line locally
   // turns. Added 2026-09-25 per user request — "roughly right" direction,
   // explicitly not a continuously-updating heading.
+  //
+  // Only 'plane' uses this angle for a full rotation — it's a top-down icon
+  // with no inherent "up", so pointing it at any bearing (including south,
+  // or "upside down" relative to the screen) reads correctly, exactly like
+  // a real flight-tracker app. The other icons (car/camper/bike/walk) are
+  // side/front views with a real up = sky, down = ground — rotating one of
+  // those ~180° for a right-to-left route flips it upside down (reported by
+  // the user: "als de track van rechts naar links loopt staat de auto op
+  // z'n kop"). Those are mirrored horizontally instead (`facingLeft`, see
+  // the marker render below) — upright either way, just facing the other
+  // direction.
   const markerAngle = (() => {
     if (!routePoints || routePoints.length < 2) return 0;
     const [x0, y0] = routePoints[0];
     const [x1, y1] = routePoints[routePoints.length - 1];
     return Math.atan2(y1 - y0, x1 - x0) * (180 / Math.PI);
   })();
+  const markerFacingLeft = Math.abs(markerAngle) > 90;
 
   // Scale factor: design space is ±10 units; badge radius = routeMarkerSize / 2.
   // Divide by 18 so the icon fills ~55 % of the badge diameter, leaving clear
@@ -795,7 +807,11 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {markerActive && markerTip && (
           <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
             <circle r={markerR} fill={MARKER_BADGE_COLOR} fillOpacity={MARKER_BADGE_OPACITY}/>
-            <g transform={`rotate(${markerAngle.toFixed(2)}) scale(${markerScale.toFixed(4)})`}>
+            <g transform={
+              routeMarker === 'plane'
+                ? `rotate(${markerAngle.toFixed(2)}) scale(${markerScale.toFixed(4)})`
+                : `scale(${(markerFacingLeft ? -markerScale : markerScale).toFixed(4)},${markerScale.toFixed(4)})`
+            }>
               <RouteMarkerIcon type={routeMarker}/>
             </g>
           </g>

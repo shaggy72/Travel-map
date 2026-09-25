@@ -161,9 +161,19 @@ A circular badge with a white vehicle icon follows the leading point of the rout
   subset) — computed once, identical every frame, so the icon has a fixed heading for the
   whole video instead of jittering as the line locally turns. Explicitly *not* a
   continuously-updating per-segment heading — the user asked for "roughly right", not
-  frame-accurate. Applied as `rotate(${markerAngle}) scale(${markerScale})` on the icon's own
-  `<g>` only, not the badge `<circle>` (rotating a circle is a no-op, and keeping it separate
-  means the circle's positioning math elsewhere is untouched).
+  frame-accurate.
+- **Rotate vs. mirror, per icon type** (same day, follow-up bug report: *"als de track van
+  rechts naar links loopt staat de auto op z'n kop"*): only `'plane'` gets the full
+  `rotate(${markerAngle})` — it's a top-down icon with no inherent "up", so any bearing
+  (including pointing south / "upside down" relative to the screen) reads correctly, same as a
+  real flight-tracker app. The other types (`car`/`camper`/`bike`/`walk`) are side/front views
+  with a real up = sky, down = ground — rotating one ~180° for a right-to-left route flipped it
+  upside down. Those are mirrored horizontally instead: `markerFacingLeft = Math.abs(markerAngle)
+  > 90`, applied as `scale(markerFacingLeft ? -markerScale : markerScale, markerScale)` — stays
+  upright either way, just faces the other direction. Verified both cases (mirror + a couple of
+  plane rotation angles) by rendering in a browser before shipping.
+  Applied on the icon's own `<g>` only, not the badge `<circle>` (rotating/mirroring a circle is
+  a no-op, and keeping it separate means the circle's positioning math elsewhere is untouched).
 
 - **Badge colour**: fixed `MARKER_BADGE_COLOR = "#313645"` (dark navy, "Air France" palette) —
   changed 2026-09-25 from `lineColor` to a fixed colour, since the reference badge (plane icon
