@@ -159,6 +159,16 @@ A circular badge with a white vehicle icon follows the leading point of the rout
   on the in-flight wifi map) is dark navy regardless of the route line's own colour (white
   dotted line there). Applies to **all** vehicle types, not just the plane icon — this was a
   full replacement of the old lineColor-tied style, not a new toggle/option.
+- **Badge opacity**: `MARKER_BADGE_OPACITY = 0.78` (added same day, same feedback round) — the
+  reference badge is a soft translucent circle, not solid; applied via `fillOpacity` on the
+  badge `<circle>` only (icon silhouette itself stays fully opaque white).
+- **Plane icon redesign** (2026-09-25): the original single-path plane (one zigzag `<path>`)
+  read as a fish/arrow at small badge sizes, not a recognisable aeroplane — user feedback:
+  *"nu lijkt een vliegtuig meer op een vis"*. Rebuilt from 5 separate shapes — tapered fuselage
+  + swept main wings (mid-body) + smaller swept tail wings (near the rear) — same top-down,
+  nose-at-right convention as before. Verified by rendering the exact SVG paths in a browser
+  (scratch HTML file, not committed) before shipping — worth doing again for any future icon
+  tweak, since these are easy to get subtly wrong by eyeballing coordinates alone.
 - **Tip position**: `visiblePts[visiblePts.length - 1]` (already projected [x,y])
 - **Scale**: `markerR / 12` where `markerR = routeMarkerSize / 2` — design space ±10 units
 - **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render

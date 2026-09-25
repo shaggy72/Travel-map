@@ -35,6 +35,8 @@ const C = {
 // map's plane badge is a dark navy circle regardless of the (white) route
 // line colour, not a badge that matches the line.
 const MARKER_BADGE_COLOR = "#313645";
+// Reference badge is a soft translucent circle, not a solid one.
+const MARKER_BADGE_OPACITY = 0.78;
 
 // ── Timing proportions (relative to total duration) ──────────────────────
 // All timing is computed at runtime from durationInFrames in the component.
@@ -741,7 +743,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {/* Rendered last so it always appears on top of the pin dots.       */}
         {markerActive && markerTip && (
           <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
-            <circle r={markerR} fill={MARKER_BADGE_COLOR}/>
+            <circle r={markerR} fill={MARKER_BADGE_COLOR} fillOpacity={MARKER_BADGE_OPACITY}/>
             <g transform={`scale(${markerScale.toFixed(4)})`}>
               <RouteMarkerIcon type={routeMarker} color={MARKER_BADGE_COLOR}/>
             </g>

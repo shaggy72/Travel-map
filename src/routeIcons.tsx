@@ -59,12 +59,21 @@ export function RouteMarkerIcon({ type, color }: { type: string; color: string }
       );
 
     // ── Aeroplane (top-down view, nose at right) ─────────────────────────────
+    // Built from four separate shapes (fuselage, main wings, tail wings) rather
+    // than one zigzag path — the previous single-path version read as a
+    // fish/arrow shape at small badge sizes, not a recognisable plane.
     case 'plane':
       return (
-        <path
-          d="M10,0 L2,-5 L-2,-4 L-5,-2 L-10,-5 L-10,-2.5 L-3.5,0 L-10,2.5 L-10,5 L-5,2 L-2,4 L2,5 Z"
-          fill="white"
-        />
+        <>
+          {/* Fuselage — tapers to a point at the nose, blunt rounded tail */}
+          <path d="M10,0 L5,-1.1 L-8,-1.1 L-9,0 L-8,1.1 L5,1.1 Z" fill="white"/>
+          {/* Main wings — swept back from mid-fuselage, widest part of the silhouette */}
+          <path d="M3,-1 L9,-7.5 L6.3,-7.5 L0.4,-1.3 Z" fill="white"/>
+          <path d="M3,1 L9,7.5 L6.3,7.5 L0.4,1.3 Z" fill="white"/>
+          {/* Tail wings — smaller, near the rear */}
+          <path d="M-5,-1 L-9,-3.6 L-7.8,-3.6 L-3.9,-1.2 Z" fill="white"/>
+          <path d="M-5,1 L-9,3.6 L-7.8,3.6 L-3.9,1.2 Z" fill="white"/>
+        </>
       );
 
     // ── Bicycle (side view, front wheel at right) ────────────────────────────
