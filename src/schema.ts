@@ -104,9 +104,11 @@ export const schema = z.object({
   labelMode: z.enum(["animated", "on", "off"]).default("animated"),
 
   /** Animation style for label reveal. Only used when labelMode === "animated".
-   *  Options: left-to-right, right-to-left, fade, scale, slide-up, typewriter, wipe-from-dot */
+   *  Options: appear (pops in instantly, no transition — still waits for its normal
+   *  timing window, unlike labelMode "on"), left-to-right, right-to-left, fade, scale,
+   *  slide-up, typewriter, wipe-from-dot */
   labelAnimation: z.enum([
-    "left-to-right", "right-to-left", "fade", "scale",
+    "appear", "left-to-right", "right-to-left", "fade", "scale",
     "slide-up", "typewriter", "wipe-from-dot",
   ]).default("left-to-right"),
 

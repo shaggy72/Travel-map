@@ -549,6 +549,7 @@ function LabelModePicker({ value, onChange }: { value: Props['labelMode']; onCha
 // ── Label Animation Picker ────────────────────────────────────────────────
 
 const LABEL_ANIM_OPTIONS: { value: string; label: string }[] = [
+  { value: 'appear',        label: 'Appear (no animation)' },
   { value: 'left-to-right', label: 'Left → right' },
   { value: 'right-to-left', label: 'Right → left' },
   { value: 'fade',          label: 'Fade in' },

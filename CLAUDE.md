@@ -197,6 +197,15 @@ A circular badge with a white vehicle icon follows the leading point of the rout
 - **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render
 - Badge is rendered above the route path but below start/end pin markers
 
+## Label reveal animations (labelAnimation prop)
+`appear` (added 2026-09-25, user request: *"hier wil ik de optie ook nog 'verschijnen' (zonder
+animatie)"*) — pops the label fully in the instant its timing window opens, no clip-wipe/fade/
+scale transition. Different from `labelMode: 'on'`: `'on'` skips the timing entirely (visible
+from frame 0, e.g. for thumbnails); `appear` still waits for the normal per-label window
+(`startBoxEnd` / `endFadeIn`→`endBoxEnd`, see "Label/marker timing" below) — it just doesn't
+animate *how* it shows up once that window starts. Implemented in `getLabelAnim()` in
+`MapComposition.tsx` as `opacity: t > 0 ? 1 : 0` (hard on/off, no easing).
+
 ## Label placement vs. the route line and marker badge (src/MapComposition.tsx, bestLabelPos)
 Labels were overlapping both the route line and the route marker badge (user report,
 2026-09-25, right after the label-timing fixes above). Two separate gaps, both in

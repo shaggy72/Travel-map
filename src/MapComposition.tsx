@@ -98,6 +98,13 @@ function getLabelAnim(
   const eo = easeOutCubic(t);
 
   switch (animation) {
+    case 'appear':
+      // Pops fully in as soon as its timing window opens — no gradual
+      // transition, unlike every other option here. Still respects the
+      // normal reveal timing (unlike labelMode "on", which skips it
+      // entirely) — it just doesn't animate the appearance itself.
+      return { clipX: lx, clipY: ly, clipW: fw, clipH: bh, opacity: t > 0 ? 1 : 0, transform: '' };
+
     case 'right-to-left': {
       const w = e * fw;
       return { clipX: lx + fw - w, clipY: ly, clipW: w, clipH: bh, opacity: 1, transform: '' };
