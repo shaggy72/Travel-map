@@ -227,6 +227,16 @@ Labels were overlapping both the route line and the route marker badge (user rep
   'none' ? markerR+4 : 0)`.
 - Both fixes are no-ops when `routeMarker === 'none'` (falls back to the original `pinSize`-only
   behaviour) — this is purely about the marker badge, unrelated to the label-timing fixes above.
+- **Follow-up bug from the fix above** (same day, user screenshot showed the incoming line
+  cutting through the destination label's corner): `PIN_IGNORE` (the radius within which route
+  segments are skipped during collision scoring, so the line's unavoidable final approach to
+  the pin doesn't penalise every candidate) was `DOT_R + LABEL_GAP + 5` — 5px *past* the box's
+  own near edge (`DOT_R + LABEL_GAP`). That overshoot existed even before this session's
+  changes (with the original `DOT_R = pinSize`, a few px), just too small to notice; once
+  `DOT_R` grew to match the marker badge (up to 30), the same overshoot became a visible
+  blind spot right at the box's corner — exactly where the screenshot showed the line cutting
+  through. Fixed by dropping the extra margin: `PIN_IGNORE = DOT_R`, strictly less than the
+  box's near edge, so collision-testing now covers the box's edge fully with no gap.
 
 ## Label/marker timing (src/MapComposition.tsx)
 Two rounds of feedback on 2026-09-25 reshaped how the destination label's timing works —

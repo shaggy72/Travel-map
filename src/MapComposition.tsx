@@ -476,7 +476,18 @@ const MapCompositionInner: React.FC<MapSchema> = ({
     // Expand by half the line width so even the stroke edge is counted.
     // Points very close to the pin are skipped to avoid penalising all candidates.
     if (routePoints && routePoints.length >= 2) {
-      const PIN_IGNORE = DOT_R + LABEL_GAP + 5;
+      // Ignore only segments within the pin/badge's own footprint (DOT_R) —
+      // those are unavoidably close no matter which candidate is picked, so
+      // counting them would penalise every candidate equally and defeat the
+      // point of scoring. Must stay strictly less than the box's own near
+      // edge (DOT_R + LABEL_GAP): the previous `DOT_R + LABEL_GAP + 5` ignore
+      // radius reached *past* that edge, creating a blind spot the incoming
+      // line could cut through right at the box's corner without ever being
+      // tested — invisible when DOT_R was just `pinSize` (a few px), but
+      // obvious once DOT_R grew to match the much bigger marker badge. Fixed
+      // 2026-09-25 per user report (screenshot showed the line clipping the
+      // destination label's corner).
+      const PIN_IGNORE = DOT_R;
       // Expand the collision corridor by the marker badge's radius (not just
       // the line's stroke width) when a marker is shown — the badge travels
       // along the route and is far wider than the line itself, so a label
