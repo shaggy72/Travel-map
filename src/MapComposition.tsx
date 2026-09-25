@@ -374,7 +374,18 @@ const MapCompositionInner: React.FC<MapSchema> = ({
   const markerActive = routeMarker !== 'none' && visiblePts.length >= 2;
   const markerTip = markerActive ? visiblePts[visiblePts.length - 1] : null;
 
-  // Icon is always upright — no rotation applied.
+  // Icon orientation: a single angle for the *overall* route direction
+  // (first → last point of the full, already-curved `routePoints` array —
+  // not the animating `visiblePts` subset), so it stays constant for the
+  // whole video instead of jittering frame-to-frame as the line locally
+  // turns. Added 2026-09-25 per user request — "roughly right" direction,
+  // explicitly not a continuously-updating heading.
+  const markerAngle = (() => {
+    if (!routePoints || routePoints.length < 2) return 0;
+    const [x0, y0] = routePoints[0];
+    const [x1, y1] = routePoints[routePoints.length - 1];
+    return Math.atan2(y1 - y0, x1 - x0) * (180 / Math.PI);
+  })();
 
   // Scale factor: design space is ±10 units; badge radius = routeMarkerSize / 2.
   // Divide by 18 so the icon fills ~55 % of the badge diameter, leaving clear
@@ -784,7 +795,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {markerActive && markerTip && (
           <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
             <circle r={markerR} fill={MARKER_BADGE_COLOR} fillOpacity={MARKER_BADGE_OPACITY}/>
-            <g transform={`scale(${markerScale.toFixed(4)})`}>
+            <g transform={`rotate(${markerAngle.toFixed(2)}) scale(${markerScale.toFixed(4)})`}>
               <RouteMarkerIcon type={routeMarker}/>
             </g>
           </g>

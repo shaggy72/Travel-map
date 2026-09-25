@@ -152,7 +152,18 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 - Slider (0–100, step 5) shown in PropsForm only when `travelMode === 'flight'`
 
 ## Route tip marker / "End marker" (src/routeIcons.tsx + MapComposition.tsx)
-A circular badge with a white vehicle icon follows the leading point of the route line as it draws. The icon stays upright — no rotation is applied (despite the badge's design-space math being able to support it; there's just no angle computed or transform applied).
+A circular badge with a white vehicle icon follows the leading point of the route line as it draws.
+
+- **Icon rotation** (added 2026-09-25, user request: *"kun je de orientatie van de end marker
+  aanpassen aan de richting van de lijn? Dit moet niet constant veranderen... in grove lijn"*):
+  `markerAngle = atan2(y1-y0, x1-x0)` in degrees, from the **first and last** points of the
+  full `routePoints` array (the final curved/projected path, not the animating `visiblePts`
+  subset) — computed once, identical every frame, so the icon has a fixed heading for the
+  whole video instead of jittering as the line locally turns. Explicitly *not* a
+  continuously-updating per-segment heading — the user asked for "roughly right", not
+  frame-accurate. Applied as `rotate(${markerAngle}) scale(${markerScale})` on the icon's own
+  `<g>` only, not the badge `<circle>` (rotating a circle is a no-op, and keeping it separate
+  means the circle's positioning math elsewhere is untouched).
 
 - **Badge colour**: fixed `MARKER_BADGE_COLOR = "#313645"` (dark navy, "Air France" palette) —
   changed 2026-09-25 from `lineColor` to a fixed colour, since the reference badge (plane icon
