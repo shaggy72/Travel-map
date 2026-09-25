@@ -830,7 +830,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                       className="btn btn-ghost"
                       style={{ padding: '4px 8px', color: 'var(--muted)', flexShrink: 0 }}
                       title="Delete preset"
-                      onClick={() => handleDeletePreset(p.id)}
+                      onClick={() => { if (window.confirm(`Delete preset "${p.name}"? This cannot be undone.`)) handleDeletePreset(p.id); }}
                     >
                       ×
                     </button>

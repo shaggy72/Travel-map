@@ -112,6 +112,16 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 - Three endpoints: `GET /api/presets`, `POST /api/presets`, `DELETE /api/presets/:id`
 - Client loads on mount via `useEffect`; save/delete are optimistic (updates local state immediately on 200)
 - Saves ALL props — including route addresses, GPX file, colours, fonts, elevation settings, etc.
+- **Delete confirmation** (added 2026-09-25, after a data-loss incident: a user's "Air France"
+  preset was silently wiped, presumably an accidental click — the `×` delete button sat right
+  next to the "Apply" button with no confirmation): the delete button now calls
+  `window.confirm(...)` before hitting `DELETE /api/presets/:id`.
+- **Rolling backup** (added same day, same incident — there was no way to recover the lost
+  preset, not even a stale copy anywhere on the VPS): `writePresets()` in `server/index.cjs`
+  copies the current file to `presets-<USERNAME>.json.bak` before every write (POST or
+  DELETE). Only one backup generation is kept (overwritten on each write) — good enough to
+  undo the *last* accidental delete, not a full history. To restore: `cp
+  server/data/presets-<USERNAME>.json.bak server/data/presets-<USERNAME>.json` then restart.
 
 ## Map styles (MAP_STYLE_OPTIONS in PropsForm.tsx)
 - `shaggy72/cmpma5agg000101qr4tt68gad` — Gray (custom)

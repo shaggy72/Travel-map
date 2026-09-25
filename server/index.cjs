@@ -188,6 +188,17 @@ function readPresets() {
   catch { return []; }
 }
 
+// Keeps a single rolling backup (presets-<user>.json.bak) of the file's content
+// *before* every write, so an accidental delete can be recovered by copying the
+// .bak file back — there is no other history/versioning of preset data.
+function writePresets(list) {
+  const file = presetsFile();
+  if (fs.existsSync(file)) {
+    try { fs.copyFileSync(file, file + '.bak'); } catch { /* best-effort */ }
+  }
+  fs.writeFileSync(file, JSON.stringify(list, null, 2));
+}
+
 app.get('/api/presets', requireAuth, (req, res) => {
   res.json(readPresets());
 });
@@ -199,13 +210,13 @@ app.post('/api/presets', requireAuth, (req, res) => {
   }
   const list = readPresets();
   list.push(preset);
-  fs.writeFileSync(presetsFile(), JSON.stringify(list, null, 2));
+  writePresets(list);
   res.json({ ok: true });
 });
 
 app.delete('/api/presets/:id', requireAuth, (req, res) => {
   const list = readPresets().filter(p => p.id !== req.params.id);
-  fs.writeFileSync(presetsFile(), JSON.stringify(list, null, 2));
+  writePresets(list);
   res.json({ ok: true });
 });
 
