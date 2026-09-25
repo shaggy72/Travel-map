@@ -161,7 +161,7 @@ Express server (port 3002) that:
 The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; Mode, Route, and Track line are open by default. The **Presets** section (top of form) saves/loads full configurations to/from the server.
 
 ### `src/routeIcons.tsx`
-Exports `RouteMarkerIcon({ type, color })`, a React component that renders white SVG icon shapes for each supported marker type (car, camper, plane, bike, walk). The `color` parameter is the badge background colour, reused for cutout details (windshields, wheel hubs) to create a transparent-hole effect in the white silhouette.
+Exports `RouteMarkerIcon({ type })`, a React component that renders the official Google Material Symbols glyph for each supported marker type (car, camper, plane, bike, walk) as a flat white silhouette, scaled into this project's ±10-unit icon design space. Replaced the original hand-drawn icons 2026-09-25 after user feedback that the plane icon "looked more like a fish."
 
 ---
 

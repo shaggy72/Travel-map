@@ -745,7 +745,7 @@ const MapCompositionInner: React.FC<MapSchema> = ({
           <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
             <circle r={markerR} fill={MARKER_BADGE_COLOR} fillOpacity={MARKER_BADGE_OPACITY}/>
             <g transform={`scale(${markerScale.toFixed(4)})`}>
-              <RouteMarkerIcon type={routeMarker} color={MARKER_BADGE_COLOR}/>
+              <RouteMarkerIcon type={routeMarker}/>
             </g>
           </g>
         )}

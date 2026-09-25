@@ -28,7 +28,7 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `webapp/src/PropsForm.tsx` | Full sidebar form — all sections collapsible via `closed` Set state |
 | `webapp/src/types.ts` | TypeScript mirror of schema + `DEFAULT_PROPS` |
 | `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper; dynamic `compositionWidth/Height`; plays via `useEffect` |
-| `src/routeIcons.tsx` | `RouteMarkerIcon({ type, color })` — white SVG silhouettes for the route tip badge |
+| `src/routeIcons.tsx` | `RouteMarkerIcon({ type })` — official Material Symbols glyphs (car/camper/plane/bike/walk) as white SVG silhouettes for the route tip badge |
 | `webapp/src/styles.css` | All CSS — design tokens (OKLCH) + mobile rules + update banner |
 | `webapp/src/ColorPicker.tsx` | Custom HSV color picker |
 | `deploy.sh` | One-command deploy to Debian/Ubuntu/Mint server |
@@ -162,18 +162,40 @@ A circular badge with a white vehicle icon follows the leading point of the rout
 - **Badge opacity**: `MARKER_BADGE_OPACITY = 0.78` (added same day, same feedback round) — the
   reference badge is a soft translucent circle, not solid; applied via `fillOpacity` on the
   badge `<circle>` only (icon silhouette itself stays fully opaque white).
-- **Plane icon redesign** (2026-09-25): the original single-path plane (one zigzag `<path>`)
-  read as a fish/arrow at small badge sizes, not a recognisable aeroplane — user feedback:
-  *"nu lijkt een vliegtuig meer op een vis"*. Rebuilt from 5 separate shapes — tapered fuselage
-  + swept main wings (mid-body) + smaller swept tail wings (near the rear) — same top-down,
-  nose-at-right convention as before. Verified by rendering the exact SVG paths in a browser
-  (scratch HTML file, not committed) before shipping — worth doing again for any future icon
-  tweak, since these are easy to get subtly wrong by eyeballing coordinates alone.
+- **All 5 icons replaced with official Material Symbols glyphs** (2026-09-25, two-step
+  feedback round): first the plane alone was rebuilt by hand (5 shapes: fuselage + main wings
+  + tail wings) after *"nu lijkt een vliegtuig meer op een vis"* — an improvement, but still
+  hand-drawn. User then asked directly: *"gebruik je nu voor alle mogelijkheden de officiële
+  google material symbolen? Zo niet, pas dat aan"* — so **all** hand-drawn icons (car, camper,
+  bike, walk; plane was redone again too) were replaced with the real Google Material Symbols
+  paths (Apache-2.0), fetched from `github.com/google/material-design-icons`
+  (`symbols/web/<name>/materialsymbolsoutlined/<name>_24px.svg`):
+  - `car` → `directions_car`, `camper` → `airport_shuttle` (no dedicated "camper van" glyph
+    exists in Material Symbols — this is the closest official van/shuttle icon),
+    `bike` → `pedal_bike` (not `directions_bike`, which includes a rider silhouette),
+    `walk` → `directions_walk`, `plane` → `flight` (unchanged from the earlier redo)
+  - Each source glyph's viewBox is `0 -960 960 960`; every icon except `flight` is embedded
+    **unmodified** inside `<g transform="scale(0.025) translate(-480,480)">` — this recentres
+    the 960×960 grid on the origin and scales it into the ±10 design space in one consistent
+    step, so relative icon sizes match Google's own design grid. No rotation needed:
+    car/shuttle/bike/walk are already right-facing or symmetric in their source orientation.
+  - `flight` alone keeps the hand-transformed point list from the earlier redo (not the `<g>`
+    recipe above) because its nose-up→nose-right 90° reorientation was done by directly
+    recomputing coordinates, at the same time as simplifying its small rounded nose bezier to
+    a sharp point.
+  - **`color` prop removed from `RouteMarkerIcon`** — the old hand-drawn icons used it for
+    "cutout" details (windshields, wheel hubs) that read as transparent holes against the
+    badge; none of the Material glyphs have that kind of internal cutout, they're single flat
+    silhouettes, so the prop had nothing left to do. Update the call site in
+    `MapComposition.tsx` if this ever needs reintroducing for a future custom icon.
+  - Verified all 5 by rendering the exact transform + paths in a browser (scratch HTML file,
+    not committed) before shipping, both raw (to check natural orientation) and at realistic
+    badge scale on the translucent navy circle — worth doing again for any future icon change,
+    since orientation/centering is easy to get subtly wrong by eyeballing path data alone.
 - **Tip position**: `visiblePts[visiblePts.length - 1]` (already projected [x,y])
 - **Scale**: `markerR / 12` where `markerR = routeMarkerSize / 2` — design space ±10 units
 - **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render
 - Badge is rendered above the route path but below start/end pin markers
-- `RouteMarkerIcon` uses `MARKER_BADGE_COLOR` (not `lineColor` anymore) for cutout details (windshields, wheel hubs) to simulate transparency in the white silhouette
 
 ## Start/end labels — "Air France" two-row style (src/MapComposition.tsx)
 Replaced the old single-line label box entirely (2026-09-25), inspired by the Air France
