@@ -104,7 +104,7 @@ User clicks "Render & Download"
 4. Pick **Start/End country** (searchable dropdown, shows a flag) and **Start/End city** for each endpoint — these feed the two-row "Air France" style label box (flag + country on top, city below)
 6. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Route labels** (animation, font, background/text color — applied to both label rows)
 7. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
-8. Optionally add an **End marker** in the Track line section: a circular badge (same colour as the route line) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line and rotates to face the direction of travel
+8. Optionally add an **End marker** in the Track line section: a dark navy circular badge ("Air France" style, independent of the route line's own colour) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line as it draws — the icon stays upright, it does not rotate to face the direction of travel
 9. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
 10. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
 11. Save frequently-used configurations as **Presets** (top of the sidebar) — stored on the server so they survive browser clears and are available on any device

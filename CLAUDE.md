@@ -130,15 +130,19 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 - Perpendicular direction: CW rotation of chord `(dy/len, -dx/len)` = upward on screen for east-west routes (conventional flight-path look)
 - Slider (0–100, step 5) shown in PropsForm only when `travelMode === 'flight'`
 
-## Route tip marker (src/routeIcons.tsx + MapComposition.tsx)
-A circular badge (colour = `lineColor`) with a white vehicle icon follows the leading point of the route line as it draws. The badge rotates to face the direction of travel.
+## Route tip marker / "End marker" (src/routeIcons.tsx + MapComposition.tsx)
+A circular badge with a white vehicle icon follows the leading point of the route line as it draws. The icon stays upright — no rotation is applied (despite the badge's design-space math being able to support it; there's just no angle computed or transform applied).
 
+- **Badge colour**: fixed `MARKER_BADGE_COLOR = "#313645"` (dark navy, "Air France" palette) —
+  changed 2026-09-25 from `lineColor` to a fixed colour, since the reference badge (plane icon
+  on the in-flight wifi map) is dark navy regardless of the route line's own colour (white
+  dotted line there). Applies to **all** vehicle types, not just the plane icon — this was a
+  full replacement of the old lineColor-tied style, not a new toggle/option.
 - **Tip position**: `visiblePts[visiblePts.length - 1]` (already projected [x,y])
-- **Angle**: `Math.atan2(dy, dx) * (180/Math.PI)` from last two visible points
 - **Scale**: `markerR / 12` where `markerR = routeMarkerSize / 2` — design space ±10 units
 - **No DOM APIs** — pure math from the existing `visiblePts` array, works in both browser and headless render
 - Badge is rendered above the route path but below start/end pin markers
-- `RouteMarkerIcon` uses the badge colour (`lineColor`) for cutout details (windshields, wheel hubs) to simulate transparency in the white silhouette
+- `RouteMarkerIcon` uses `MARKER_BADGE_COLOR` (not `lineColor` anymore) for cutout details (windshields, wheel hubs) to simulate transparency in the white silhouette
 
 ## Start/end labels — "Air France" two-row style (src/MapComposition.tsx)
 Replaced the old single-line label box entirely (2026-09-25), inspired by the Air France

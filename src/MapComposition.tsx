@@ -30,6 +30,12 @@ const C = {
   cityLabel: "#555555",
 };
 
+// End marker badge — fixed dark navy (same palette as the "Air France" map
+// style), independent of lineColor. Matches the reference: the in-flight wifi
+// map's plane badge is a dark navy circle regardless of the (white) route
+// line colour, not a badge that matches the line.
+const MARKER_BADGE_COLOR = "#313645";
+
 // ── Timing proportions (relative to total duration) ──────────────────────
 // All timing is computed at runtime from durationInFrames in the component.
 const LABEL_FONT_SIZE = 40; // kept for the 'typewriter' reveal-width approximation
@@ -735,9 +741,9 @@ const MapCompositionInner: React.FC<MapSchema> = ({
         {/* Rendered last so it always appears on top of the pin dots.       */}
         {markerActive && markerTip && (
           <g transform={`translate(${markerTip[0].toFixed(1)},${markerTip[1].toFixed(1)})`}>
-            <circle r={markerR} fill={lineColor}/>
+            <circle r={markerR} fill={MARKER_BADGE_COLOR}/>
             <g transform={`scale(${markerScale.toFixed(4)})`}>
-              <RouteMarkerIcon type={routeMarker} color={lineColor}/>
+              <RouteMarkerIcon type={routeMarker} color={MARKER_BADGE_COLOR}/>
             </g>
           </g>
         )}
