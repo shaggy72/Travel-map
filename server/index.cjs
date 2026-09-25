@@ -10,7 +10,7 @@ const { promisify }      = require('util');
 const execAsync          = promisify(exec); // async version used for update/build steps
 const express  = require('express');
 const multer   = require('multer');
-require('dotenv').config();
+require('dotenv').config({ quiet: true }); // suppress dotenv's "injected env" + rotating ad-tip log lines
 
 // ── Config ────────────────────────────────────────────────────────────────
 const PORT     = parseInt(process.env.PORT || '3002', 10);
