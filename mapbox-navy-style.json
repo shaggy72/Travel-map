@@ -1,6 +1,6 @@
 {
   "version": 8,
-  "name": "Navy",
+  "name": "Air France",
   "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}",
   "sources": {
     "mapbox-streets": {

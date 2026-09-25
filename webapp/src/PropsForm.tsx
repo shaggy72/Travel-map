@@ -162,7 +162,7 @@ const MAP_STYLE_OPTIONS: { value: string; label: string }[] = [
   { value: 'shaggy72/cmpma5agg000101qr4tt68gad', label: 'Gray' },
   { value: 'shaggy72/cmqf8b53y001g01sc9lsh67db', label: 'Topographic' },
   { value: 'shaggy72/cmqf94fhu003q01qw4m5e4fpk', label: 'Topo v2' },
-  { value: 'shaggy72/cmugrbhnu000801s01q212pyn', label: 'Navy' },
+  { value: 'shaggy72/cmugrbhnu000801s01q212pyn', label: 'Air France' },
   { value: 'mapbox/streets-v12',                 label: 'Streets' },
   { value: 'mapbox/outdoors-v12',                label: 'Outdoors' },
   { value: 'mapbox/light-v11',                   label: 'Light' },
