@@ -198,18 +198,41 @@ A circular badge with a white vehicle icon follows the leading point of the rout
 - Badge is rendered above the route path but below start/end pin markers
 
 ## Label/marker timing (src/MapComposition.tsx)
-`endFadeIn = routeEnd` (2026-09-25 fix, user request: *"ik wil dat het destination label pas
-verschijnt als de lijn toekomt"*) — the destination pin + label group's opacity fade and the
-label's own reveal animation both start only once the route line has actually finished
-drawing (`routeEnd`, ~86.7% of `dur`), not before. Previously `endFadeIn` was a fixed
-`0.800*dur`, independent of `routeEnd` (~86.7%*dur) — the label began appearing ~0.07*dur
-*before* the line arrived, which looked wrong. `endBoxEnd` (end of the label's reveal
-animation) was changed from a fixed `0.967*dur` to `dur` itself, since there's now very
-little time left after `routeEnd` for the reveal to play (~13% of `dur`) — using all of it
-avoids the reveal window being cut short. `endFadeEnd` (end of the group's opacity fade-in)
-is a quick `routeEnd + ~0.02*dur`. The start label is unaffected — it still begins its own
-reveal at frame 0 (`startBoxEnd` unchanged), since there's no equivalent "hasn't arrived yet"
-concern for the start of the route.
+Two rounds of feedback on 2026-09-25 reshaped how the destination label's timing works —
+**`routeEnd` is no longer a fixed fraction of `dur`** (was `0.867*dur`), it's now derived by
+working backwards from the end of the video:
+```
+endRevealFrames = min(0.6*FPS, 0.15*dur)   // time for the label's reveal animation to play
+endHoldFrames   = min(1.3*FPS, 0.30*dur)   // time the fully-revealed label stays on screen, unread otherwise
+routeEnd        = max(1, dur - endRevealFrames - endHoldFrames)
+endFadeIn       = routeEnd                 // pin/label only start appearing once the line arrives
+endFadeEnd      = min(dur, routeEnd + 0.1*FPS)   // quick opacity fade
+endBoxEnd       = min(dur, routeEnd + endRevealFrames)   // reveal completes here — then HOLDS until dur automatically, since windowT() clamps t at 1 past its end argument, no separate "hold" branch needed
+```
+- **Round 1** (*"ik wil dat het destination label pas verschijnt als de lijn toekomt"*): made
+  `endFadeIn = routeEnd` so the label can't start appearing before the line arrives. At that
+  point `routeEnd` was still the old fixed `0.867*dur` and `endBoxEnd` was pushed to `dur` —
+  which fixed the "appears too early" bug but left almost no time after the reveal finished.
+- **Round 2** (*"het eind label komt er nu pas de laatste seconde op... het zou er toch 1 a 2
+  sec moeten blijven op staan"*): the real fix — `routeEnd` itself now moves *earlier* so there
+  is guaranteed reveal + hold time left over at the tail, instead of squeezing both into
+  whatever scraps were left after a fixed-fraction `routeEnd`. `FPS` (imported from
+  `mapData.ts`, always 30) is used directly for the reveal/hold durations because "1.3
+  seconds to read a label" should mean the same thing regardless of the video's total
+  `duration` — a pure `*dur` fraction would make the hold time balloon on long videos and
+  vanish on short ones. Both are still capped as a fraction of `dur` (`0.15`/`0.30`) so very
+  short clips degrade gracefully (less route-drawing time) rather than a negative/zero
+  `routeEnd`.
+- **Net effect at the 5 s default**: route line now finishes at ~3.1 s (was ~4.33 s), reveals
+  over ~0.6 s, then holds fully visible for exactly 1.3 s until the video ends at 5 s.
+- The start label is unaffected — it still begins its own reveal at frame 0 (`startBoxEnd`
+  unchanged, still a fixed `0.267*dur`), since there's no "hasn't arrived yet" concern for the
+  start of the route, and no equivalent complaint was raised about it.
+- **Debugging note for next time**: when a user reports "the label shows too early/fully
+  visible from frame 0" and the timing math looks right on paper, check `labelMode` first —
+  `'on'` forces `endT`/`endO` to `1` unconditionally (by design, "always fully visible, good
+  for thumbnails"), bypassing all of the above entirely. That was the actual cause the first
+  time this was reported, not a logic bug in the timing constants.
 
 ## Start/end labels — "Air France" two-row style (src/MapComposition.tsx)
 Replaced the old single-line label box entirely (2026-09-25), inspired by the Air France

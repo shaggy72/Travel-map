@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, delayRender, continueRender } from "remotion";
 import {
-  MAJOR_CITIES,
+  MAJOR_CITIES, FPS,
   calcZoomAndCenter, calcZoomAndCenterFromPoints,
   buildProjection, buildMapUrl, buildDirectionsUrl, buildOsrmUrl, buildFlightArc,
 } from "./mapData";
@@ -303,15 +303,21 @@ const MapCompositionInner: React.FC<MapSchema> = ({
 
   // ── Scaled timing (proportional to total duration) ───────────────────
   const routeStart   = 0;
-  const routeEnd     = Math.round(dur * 0.867);  //  ~4.33s of 5s — route line finishes drawing
-  // Destination pin + label only start appearing once the line has actually
-  // arrived (endFadeIn === routeEnd) — previously endFadeIn was 0.800*dur,
-  // i.e. the label began fading in ~0.07*dur *before* the line finished
-  // drawing. Fixed per user request 2026-09-25.
-  const endFadeIn    = routeEnd;
-  const endFadeEnd   = Math.round(dur * 0.887);  //  quick opacity fade for the pin/label group, ~2% of duration after arrival
+  // The destination label must (a) only appear once the line has arrived,
+  // and (b) stay fully visible long enough to actually read — reserve a
+  // fixed reveal window + hold window at the tail of the video, and let the
+  // route line take up whatever time is left before that. Both are capped
+  // as a fraction of `dur` too, so short videos degrade gracefully instead
+  // of losing the route-drawing animation entirely. Fixed 2026-09-25 after
+  // two rounds of feedback: label appeared before the line arrived, then
+  // (after that fix) appeared but with no time left to read it.
+  const endRevealFrames = Math.min(Math.round(0.6 * FPS), Math.round(dur * 0.15)); // time for the label's reveal animation to play
+  const endHoldFrames   = Math.min(Math.round(1.3 * FPS), Math.round(dur * 0.30)); // time the fully-revealed label stays on screen
+  const routeEnd     = Math.max(1, dur - endRevealFrames - endHoldFrames); // route line finishes drawing here
+  const endFadeIn    = routeEnd;                                          // pin/label only start appearing once the line arrives
+  const endFadeEnd   = Math.min(dur, routeEnd + Math.round(0.1 * FPS));   // quick opacity fade for the pin/label group
   const startBoxEnd  = Math.round(dur * 0.267);  //  ~1.33s of 5s
-  const endBoxEnd    = dur;                       // label reveal animation gets the remaining time to finish
+  const endBoxEnd    = Math.min(dur, routeEnd + endRevealFrames);         // reveal completes here, then holds (via windowT clamping) until dur
 
   // ── No fade-in — map is fully visible from frame 0 ───────────────────
   const mapOpacity = 1;
