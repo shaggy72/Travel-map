@@ -62,6 +62,10 @@ All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
 - `--radius`: `0.5rem` (~8 px)
 - Source: https://tweakcn.com/r/themes/claude.json
 - Never hardcode colours — always use CSS variables
+- `--font`: **Poppins** (was Inter until 2026-09-26 — user asked to switch site-wide, to look
+  more like the rounded/friendly reference design behind the card redesign). Loaded in
+  `webapp/index.html`'s Google Fonts link, weights 400–800. Only the webapp UI chrome — the
+  rendered video's `labelFont`/`cityFont` props are a separate, unrelated font choice.
 
 ## Travel modes (travelMode prop)
 | Value | Route source |

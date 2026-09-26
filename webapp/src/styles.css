@@ -2,7 +2,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --font:        'Inter', system-ui, -apple-system, sans-serif;
+  /* Poppins (was Inter until 2026-09-26) — rounder/friendlier, closer to the
+     reference design the user showed for the sidebar/login redesign. Site-wide:
+     the whole webapp UI chrome, NOT the rendered video's own label fonts
+     (labelFont/cityFont props — Helvetica/Inter/Georgia/Oswald/Merriweather,
+     a separate per-render user choice, untouched by this). */
+  --font:        'Poppins', system-ui, -apple-system, sans-serif;
 
   /* ── tweakcn "Claude" theme tokens ───────────────────────────────────── */
   /* Source: https://tweakcn.com/r/themes/claude.json                       */
@@ -1057,7 +1062,24 @@ select {
 }
 
 .login-field input {
-  border: none;
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+/* Chrome fills an autofilled field with its own yellow/orange tint via this
+   pseudo-class, overriding our white background — without this override it
+   shows through as a muddy brownish box on the orange card. The absurdly
+   long transition-delay is the standard trick to stop Chrome re-asserting
+   its own background after the override "wins" once. */
+.login-field input:-webkit-autofill,
+.login-field input:-webkit-autofill:hover,
+.login-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #231F18;
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 /* Inverted from the app-wide .btn-primary (solid accent) — an orange button

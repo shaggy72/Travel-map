@@ -127,11 +127,28 @@ colour-tinted background isn't guaranteed legible the way white-on-solid always 
 now has three states (`mode`: `'login' | 'register' | 'registered'`), toggled by `.login-switch`
 links, plus a one-time `?verify=` banner read from the confirmation-link redirect.
 
+**Field styling fix (same day, follow-up)**: the initial white `.field`-style inputs had no
+visible border and were the same generic small size as every other input in the app — on the
+solid orange card, a real browser screenshot showed Chrome's autofill background (its own
+yellow/orange tint) fighting with the card colour, rendering as a muddy brownish box instead of
+white. Fixed with the standard `:-webkit-autofill` override (`-webkit-box-shadow: 0 0 0 1000px
+#fff inset` + a very long `transition-delay` to stop Chrome re-asserting its own background) and
+gave `.login-field input` its own explicit styling instead of inheriting the app-wide compact
+input rule: `border: 2px solid #000` (a real visible black border, as asked — this card's
+inputs are the only ones in the app with a border at all, everywhere else relies on the white
+pill's own contrast against a neutral background) plus larger `padding`/`font-size` (12px 14px /
+15px vs. the app-wide 5px 8px / 10px).
+
 ---
 
 ## Typography
 
-- **Font**: Inter (Google Fonts), fallback to system-ui
+- **Font**: Poppins (Google Fonts, weights 400/500/600/700/800), fallback to system-ui —
+  switched from Inter 2026-09-26 alongside the login/sidebar card redesign: rounder and
+  friendlier, closer to the reference design the user asked to match. Site-wide, i.e. the
+  webapp UI chrome only — the rendered video's own label fonts (`labelFont`/`cityFont` props:
+  Helvetica/Inter/Georgia/Oswald/Merriweather) are a separate per-render user choice and
+  untouched by this.
 - **Base size**: 11px on `html/body` — everything else is relative to this
 - **Scale in use**: 8px (tiny labels) / 9px (section titles, picker internals) / 10px (field labels and values) / 11px (font preview) / 12px (sidebar heading) / 13px (login form)
 - **Section titles**: 9px, 600 weight, uppercase, `letter-spacing: 0.09em`, `--text-muted` colour
