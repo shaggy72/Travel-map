@@ -8,6 +8,7 @@ A web app that lets you configure a travel-route animation and export it as an M
 
 - **Node.js ≥ 18**
 - A **Mapbox account** (free tier is enough) — needed for map tiles, geocoding, and driving directions. Get a token at [account.mapbox.com](https://account.mapbox.com/access-tokens/).
+- A **Resend account** (free tier is enough) — needed to send account-confirmation emails. Get an API key at [resend.com/api-keys](https://resend.com/api-keys). The "from" address in `server/auth.cjs` (`travelmap@luyens.be`) must be on a domain verified in your Resend account.
 
 ---
 
@@ -23,13 +24,13 @@ cp .env.example .env   # then edit .env with your values
 ```
 # Required
 MAPBOX_TOKEN=pk.your_mapbox_token_here   # Mapbox API token
+RESEND_API_KEY=re_your_resend_api_key    # Sends account-confirmation emails
+APP_URL=https://travelmap.luyens.be      # Used to build confirmation-email links — wrong default (localhost) if omitted in production
 
 # Optional — custom map style (defaults to public mapbox/light-v11)
 MAPBOX_STYLE=username/styleId            # Your personal Mapbox style slug
 
-# Optional — server auth (defaults shown)
-APP_USERNAME=admin        # Login username for the webapp
-APP_PASSWORD=changeme     # Login password — change this!
+# Optional
 PORT=3002                 # Upload/render server port
 ```
 
@@ -150,12 +151,18 @@ Static `COUNTRIES` array (~195 entries, `{ code, name }` with lowercase ISO 3166
 
 ### `server/index.cjs`
 Express server (port 3002) that:
-- Authenticates the webapp via a session cookie
+- Wires in auth via `server/auth.cjs` (see below) — session cookie set on login
 - Accepts GPX file uploads (`POST /api/upload-gpx`)
 - Triggers Remotion renders (`POST /api/render`) and streams the MP4 back
 - Serves the list of available GPX files (`GET /api/gpx-files`)
-- Manages per-user presets (`GET/POST /api/presets`, `DELETE /api/presets/:id`) stored in `server/data/presets-<username>.json`
+- Manages per-user presets (`GET/POST /api/presets`, `DELETE /api/presets/:id`) stored in `server/data/presets-<sanitized-email>.json` — one file per registered account
 - In production, serves the built webapp from `webapp/dist`
+
+### `server/auth.cjs`
+Email + password authentication: `initAuth(dataDir)` returns `{ requireAuth, registerAuthRoutes, loadUsers, saveUsers }`. Users live in `server/data/users.json` (bcrypt-hashed passwords). Registers `POST /api/login`, `POST /api/register`, `GET /api/verify-email`, `POST /api/change-password`, `POST /api/logout`, `GET /api/me`. Sessions are the same lightweight in-memory `Map` the old single-account version used (token → `{email, createdAt}`), just now looked up per-account instead of being one shared token. Rate-limited (`express-rate-limit`) on login and registration. Confirmation emails sent via [Resend](https://resend.com). See "Authentication" above for the user-facing flow.
+
+### `webapp/src/LoginPage.tsx` / `webapp/src/ChangePasswordPanel.tsx`
+`LoginPage` handles both sign-in and registration (toggled via `mode` state), plus the post-registration "check your email" screen and the `?verify=ok/invalid/expired/missing` banner left by `GET /api/verify-email`'s redirect. `ChangePasswordPanel` is a small form toggled open from the sidebar header, calling `POST /api/change-password`.
 
 ### `webapp/src/PropsForm.tsx`
 The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; **Travel route** and **Track line** are open by default. Reorganized 2026-09-26 into 6 sections (Presets, Travel route, Labels, Track line, Map style, Export) — see CLAUDE.md's "Form section order + structure" for the full breakdown, including which fields moved where. The **Presets** section (top of form) saves/loads full configurations to/from the server.
@@ -237,8 +244,23 @@ npm run sync-gpx          # regenerates src/gpxFiles.ts
 **Preview works but render produces a black video**
 → This usually means an async fetch didn't resolve before rendering. Check the terminal for `[Directions]` or `[Geocoding]` errors.
 
-**Login fails with default credentials**
-→ The default username is `admin` and password is `changeme`. Set `APP_USERNAME` and `APP_PASSWORD` in `.env`.
+**Registered but never got a confirmation email**
+→ Check `RESEND_API_KEY` is set in `.env` and the "from" address's domain (`travelmap@luyens.be`) is verified in your Resend account. Server logs `[auth] Verification email failed: ...` with the underlying Resend error when this happens. The account is still created — once the key/domain issue is fixed, there's currently no built-in resend button, so either fix the key and register again with a different email, or (for your own account) manually flip `verified: true` for that user in `server/data/users.json`.
+
+**Confirmation link says "invalid or already used" / "expired"**
+→ Links are single-use and expire after 48h (`VERIFICATION_TOKEN_TTL_MS` in `server/auth.cjs`). Register again with the same email to get a fresh one — registration overwrites the pending (unverified) record rather than blocking on the duplicate email, since the previous attempt never activated.
+
+---
+
+## Authentication
+
+Email + password, self-registration, anyone can sign up — replaced the old single shared `APP_USERNAME`/`APP_PASSWORD` account (2026-09-26). Accounts live in `server/data/users.json` (gitignored, bcrypt-hashed passwords, never committed). See `server/auth.cjs` for the full implementation.
+
+- **Register** → account is created immediately but `verified: false` until the confirmation email's link is clicked (sent via [Resend](https://resend.com), 48h expiry)
+- **Log in** → email + password; blocked until the account is verified
+- **Change password** → while logged in, via the "Change password" link next to "Sign out" in the sidebar header (requires the current password)
+- **Presets are per-account** — `server/data/presets-<sanitized-email>.json`, one file per registered user (was a single shared file tied to `APP_USERNAME` before)
+- No roles/admin distinction — every account can do everything. No "forgot password" flow yet (deliberately out of scope so far — if you lock yourself out, reset the hash directly in `users.json`, or add a `forgot-password` endpoint following the same pattern `costa-rica-trip`'s `server/auth.js` uses)
 
 ---
 

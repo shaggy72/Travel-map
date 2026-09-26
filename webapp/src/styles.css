@@ -1008,36 +1008,39 @@ select {
   margin-top: 5px;
 }
 
-/* ── Login Page ───────────────────────────────────────────────────────── */
+/* ── Login Page ───────────────────────────────────────────────────────────
+   Restyled 2026-09-26 to match the sidebar's colourful-card redesign: the
+   card itself is now the "Travel route" burnt-orange (the app's primary
+   flow), with white text/fields on it — same light-on-colour pattern as
+   the section cards, just applied to a single big card instead of six. ── */
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sidebar-bg);
+  background: #F6F0E4; /* warm cream, matches the sidebar-body backdrop behind the cards */
 }
 
 .login-card {
-  background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: #DD6B3B;
+  border-radius: 26px;
   padding: 36px 32px;
   /* fluid on mobile: fills viewport with a max cap on desktop */
   width: 100%;
   max-width: 360px;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 14px 32px -12px rgba(140,60,20,0.4);
 }
 
 .login-card h1 {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
   margin-bottom: 4px;
 }
 
 .login-card .subtitle {
   font-size: 13px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.8);
   margin-bottom: 28px;
 }
 
@@ -1047,21 +1050,56 @@ select {
 
 .login-field label {
   display: block;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   margin-bottom: 5px;
-  color: var(--text);
+  color: rgba(255,255,255,0.85);
 }
 
-.login-error {
-  font-size: 13px;
-  color: var(--danger);
-  background: oklch(0.6368 0.2078 25.3313 / 0.08);
-  border: 1px solid oklch(0.6368 0.2078 25.3313 / 0.25);
-  border-radius: var(--radius);
+.login-field input {
+  border: none;
+}
+
+/* Inverted from the app-wide .btn-primary (solid accent) — an orange button
+   on an already-orange card would have no contrast, so this one flips to a
+   white pill with orange text instead, same idea as a card's white .field
+   pills standing out against the card colour. */
+.login-card .btn-primary {
+  background: #fff;
+  color: #DD6B3B;
+}
+.login-card .btn-primary:hover { background: rgba(255,255,255,0.9); }
+
+.login-switch {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: var(--font);
+}
+.login-switch:hover { color: #fff; }
+
+/* Solid white pills with semantically-coloured text (not a colour-tinted
+   background) so error/success always read clearly against the orange card,
+   same reasoning as the .upload-status / presetError pills elsewhere. */
+.login-error,
+.login-banner {
+  font-size: 12px;
+  border-radius: 10px;
   padding: 8px 12px;
   margin-bottom: 14px;
+  background: #fff;
 }
+.login-error           { color: #c0392b; }
+.login-banner--error   { color: #c0392b; }
+.login-banner--ok      { color: #2f6b34; }
 
 /* ── Misc ─────────────────────────────────────────────────────────────── */
 .logout-btn {
@@ -1081,6 +1119,17 @@ select {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+}
+
+/* ── Change password panel ────────────────────────────────────────────────
+   Toggled open from the "Change password" link in .sidebar-header — sits on
+   the neutral sidebar background (not a colourful card), so its .field pills
+   use the standard white-on-cream + border look, same as every field did
+   before the 2026-09-26 card redesign. */
+.change-password-panel {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 /* ── Update banner ────────────────────────────────────────────────────────── */

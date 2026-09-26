@@ -4,7 +4,6 @@ const http     = require('http');
 const path     = require('path');
 const fs       = require('fs');
 const os       = require('os');
-const crypto   = require('crypto');
 const { execSync, exec } = require('child_process');
 const { promisify }      = require('util');
 const execAsync          = promisify(exec); // async version used for update/build steps
@@ -13,69 +12,18 @@ const multer   = require('multer');
 require('dotenv').config({ quiet: true }); // suppress dotenv's "injected env" + rotating ad-tip log lines
 
 // ── Config ────────────────────────────────────────────────────────────────
-const PORT     = parseInt(process.env.PORT || '3002', 10);
-const USERNAME = process.env.APP_USERNAME   || 'admin';
-const PASSWORD = process.env.APP_PASSWORD   || 'changeme';
+const PORT = parseInt(process.env.PORT || '3002', 10);
 
 const ROOT_DIR    = process.cwd();
 const PUBLIC_DIR  = path.join(ROOT_DIR, 'public');
 const WEBAPP_DIR  = path.join(ROOT_DIR, 'webapp', 'dist');
 const ENTRY_POINT = path.join(ROOT_DIR, 'src', 'index.ts');
+const DATA_DIR    = path.join(ROOT_DIR, 'server', 'data'); // moved up from the old "Presets" section — auth.cjs needs it too
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// ── Simple session store (no express-session dependency) ──────────────────
-// Maps token → createdAt timestamp. Tokens survive server restarts only via
-// the in-process Map (users re-login after restart, which is fine).
-const SESSION_COOKIE  = 'travel_map_sid';
-const SESSION_MAX_MS  = 7 * 24 * 60 * 60 * 1000; // 7 days
-const activeSessions  = new Map();
-
-function createSession() {
-  const token = crypto.randomBytes(32).toString('hex');
-  activeSessions.set(token, Date.now());
-  return token;
-}
-
-function destroySession(token) {
-  activeSessions.delete(token);
-}
-
-function isValidSession(token) {
-  if (!token || !activeSessions.has(token)) return false;
-  const age = Date.now() - activeSessions.get(token);
-  if (age > SESSION_MAX_MS) { activeSessions.delete(token); return false; }
-  return true;
-}
-
-/** Parse the session cookie from request headers (no cookie-parser needed). */
-function getSessionToken(req) {
-  const raw = req.headers.cookie || '';
-  for (const part of raw.split(';')) {
-    const [k, v] = part.trim().split('=');
-    if (k.trim() === SESSION_COOKIE) return decodeURIComponent((v || '').trim());
-  }
-  return null;
-}
-
-/** Set the session cookie on the response. */
-function setSessionCookie(res, token) {
-  const maxAge = Math.round(SESSION_MAX_MS / 1000);
-  res.setHeader('Set-Cookie',
-    `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Path=/`
-  );
-}
-
-/** Clear the session cookie. */
-function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie',
-    `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Max-Age=0; Path=/`
-  );
-}
-
-// ── Auth middleware ───────────────────────────────────────────────────────
-function requireAuth(req, res, next) {
-  if (isValidSession(getSessionToken(req))) return next();
-  res.status(401).json({ error: 'Unauthorized' });
-}
+// ── Auth (email + password, self-registration, see server/auth.cjs) ───────
+// Replaced 2026-09-26's old single shared APP_USERNAME/APP_PASSWORD account.
+const { requireAuth, registerAuthRoutes } = require('./auth.cjs').initAuth(DATA_DIR);
 
 // ── Auto-update ───────────────────────────────────────────────────────────
 // Read the current git commit hash once on startup. The hash stays fixed until
@@ -149,50 +97,32 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/public', express.static(PUBLIC_DIR));
 app.use('/',       express.static(PUBLIC_DIR));
 
-// ── Auth routes ───────────────────────────────────────────────────────────
-app.get('/api/me', requireAuth, (_req, res) => {
-  res.json({ ok: true });
-});
-
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === USERNAME && password === PASSWORD) {
-    const token = createSession();
-    setSessionCookie(res, token);
-    res.json({ ok: true });
-  } else {
-    res.status(401).json({ error: 'Invalid credentials' });
-  }
-});
-
-app.post('/api/logout', (req, res) => {
-  const token = getSessionToken(req);
-  if (token) destroySession(token);
-  clearSessionCookie(res);
-  res.json({ ok: true });
-});
+// ── Auth routes (login/register/verify-email/change-password/logout/me) ───
+registerAuthRoutes(app);
 
 // ── Presets ───────────────────────────────────────────────────────────────
-// Stored as a JSON file per username in server/data/presets-<username>.json.
-// The data directory is gitignored so presets are never committed.
-const DATA_DIR = path.join(ROOT_DIR, 'server', 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-function presetsFile() {
-  // Single-user app — username is fixed by the APP_USERNAME env var
-  return path.join(DATA_DIR, `presets-${USERNAME}.json`);
+// Stored as a JSON file per user in server/data/presets-<sanitized-email>.json
+// (one per account since 2026-09-26's move to self-registration — was a
+// single shared presets-<APP_USERNAME>.json before). The data directory is
+// gitignored so presets are never committed.
+function sanitizeEmailForFilename(email) {
+  return email.toLowerCase().replace(/[^a-z0-9]/g, '_');
 }
 
-function readPresets() {
-  try { return JSON.parse(fs.readFileSync(presetsFile(), 'utf8')); }
+function presetsFile(email) {
+  return path.join(DATA_DIR, `presets-${sanitizeEmailForFilename(email)}.json`);
+}
+
+function readPresets(email) {
+  try { return JSON.parse(fs.readFileSync(presetsFile(email), 'utf8')); }
   catch { return []; }
 }
 
 // Keeps a single rolling backup (presets-<user>.json.bak) of the file's content
 // *before* every write, so an accidental delete can be recovered by copying the
 // .bak file back — there is no other history/versioning of preset data.
-function writePresets(list) {
-  const file = presetsFile();
+function writePresets(email, list) {
+  const file = presetsFile(email);
   if (fs.existsSync(file)) {
     try { fs.copyFileSync(file, file + '.bak'); } catch { /* best-effort */ }
   }
@@ -200,7 +130,7 @@ function writePresets(list) {
 }
 
 app.get('/api/presets', requireAuth, (req, res) => {
-  res.json(readPresets());
+  res.json(readPresets(req.user.email));
 });
 
 app.post('/api/presets', requireAuth, (req, res) => {
@@ -208,15 +138,15 @@ app.post('/api/presets', requireAuth, (req, res) => {
   if (!preset?.id || !preset?.name || !preset?.props) {
     return res.status(400).json({ error: 'Invalid preset' });
   }
-  const list = readPresets();
+  const list = readPresets(req.user.email);
   list.push(preset);
-  writePresets(list);
+  writePresets(req.user.email, list);
   res.json({ ok: true });
 });
 
 app.delete('/api/presets/:id', requireAuth, (req, res) => {
-  const list = readPresets().filter(p => p.id !== req.params.id);
-  writePresets(list);
+  const list = readPresets(req.user.email).filter(p => p.id !== req.params.id);
+  writePresets(req.user.email, list);
   res.json({ ok: true });
 });
 
@@ -397,8 +327,11 @@ server.on('error', (err) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Travel Map server running on http://localhost:${PORT}`);
-  if (!process.env.APP_PASSWORD || process.env.APP_PASSWORD === 'changeme') {
-    console.warn('[warn] Set APP_PASSWORD in .env before exposing to the internet!');
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[warn] RESEND_API_KEY is not set — registration emails will fail to send.');
+  }
+  if (!process.env.APP_URL) {
+    console.warn(`[warn] APP_URL is not set — confirmation links will use http://localhost:${PORT}, wrong in production.`);
   }
 });
 

@@ -115,6 +115,18 @@ Key CSS rules inside `@media (max-width: 640px)`:
 
 `.login-card` uses `width: 100%; max-width: 360px` (not a fixed `width: 360px`) so it fills narrow viewports without overflowing. On mobile, `.login-field input` is set to `font-size: 16px` — below 16 px iOS Safari auto-zooms the viewport on input focus, which is disorienting on a centered card.
 
+**Restyled 2026-09-26** alongside the auth overhaul (email+password, self-registration — see
+CLAUDE.md's "Authentication" section): the card itself is now the "Travel route" burnt-orange
+(`#DD6B3B`), same light-on-colour pattern as the sidebar's section cards — white/near-white
+text and labels, white `.field`-style inputs, and (since a solid orange `.btn-primary` would
+have no contrast against an already-orange card) an *inverted* primary button — white
+background, orange text — scoped via `.login-card .btn-primary`. `.login-error`/`.login-banner`
+are solid white pills with semantically-coloured text (red for errors, green for the
+"?verify=ok" success banner), same reasoning as `.upload-status`/`presetError` elsewhere: a
+colour-tinted background isn't guaranteed legible the way white-on-solid always is. `LoginPage`
+now has three states (`mode`: `'login' | 'register' | 'registered'`), toggled by `.login-switch`
+links, plus a one-time `?verify=` banner read from the confirmation-link redirect.
+
 ---
 
 ## Typography

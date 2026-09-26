@@ -23,8 +23,11 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `src/countryData.ts` | Static `COUNTRIES` list (ISO 3166-1 alpha-2 code + name) powering the country picker |
 | `src/easing.ts` | Timing/easing utilities (`easeInOutCubic`, `windowT`, `interpolateEased`, …) |
 | `src/Root.tsx` | Remotion composition root; `calculateMetadata` sets dynamic width/height |
-| `server/index.cjs` | Express: auth, GPX upload, Remotion render, auto-update endpoints, serves `webapp/dist` in prod |
-| `webapp/src/App.tsx` | Root React app; auth state; mobile tab switcher; update banner (`updateState`) |
+| `server/index.cjs` | Express: GPX upload, Remotion render, auto-update endpoints, serves `webapp/dist` in prod; wires in `server/auth.cjs` |
+| `server/auth.cjs` | Email+password auth: `initAuth(dataDir)` → login/register/verify-email/change-password/logout/me routes, bcrypt, Resend confirmation email, in-memory sessions |
+| `webapp/src/App.tsx` | Root React app; auth state (now tracks `userEmail`); mobile tab switcher; update banner (`updateState`); change-password panel toggle |
+| `webapp/src/LoginPage.tsx` | Sign-in + registration (toggled `mode` state) + `?verify=` banner from the confirmation-link redirect |
+| `webapp/src/ChangePasswordPanel.tsx` | Small form toggled from the sidebar header, `POST /api/change-password` |
 | `webapp/src/PropsForm.tsx` | Full sidebar form — all sections collapsible via `closed` Set state |
 | `webapp/src/types.ts` | TypeScript mirror of schema + `DEFAULT_PROPS` |
 | `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper; dynamic `compositionWidth/Height`; plays via `useEffect` |
@@ -37,10 +40,11 @@ Start dev: `npm run dev` (starts both servers concurrently)
 ```
 MAPBOX_TOKEN=pk.eyJ1Ijoic2hhZ2d5NzIi...   # required
 MAPBOX_STYLE=shaggy72/cmpma5agg000101qr4tt68gad  # optional, falls back to mapbox/light-v11
-APP_USERNAME=micha
-APP_PASSWORD=micha
+RESEND_API_KEY=re_...                     # required — account-confirmation emails, see "Authentication" below
+APP_URL=https://travelmap.luyens.be       # required in production — confirmation-link base URL
 PORT=3002
 ```
+`APP_USERNAME`/`APP_PASSWORD` were removed 2026-09-26 — see "Authentication" below.
 
 ## Architecture patterns
 - **Props flow**: `PropsForm` → `App` state → `PreviewPlayer` (live preview) + `POST /api/render` (MP4)
@@ -171,8 +175,70 @@ nothing hidden behind swipes, just reskinned.
 - Y-axis scale fixed to full route min/max so the scale doesn't jump during animation
 - `elevationBgColor` defaults to `#ffffffcc` (semi-transparent white via 8-char hex)
 
+## Authentication (server/auth.cjs, added 2026-09-26)
+Replaced the old single shared `APP_USERNAME`/`APP_PASSWORD` account with email+password,
+self-registration (anyone can sign up), and per-account presets — user request, explicitly
+modelled on `costa-rica-trip`'s `server/auth.js` pattern (bcrypt + a JSON user store +
+`express-rate-limit` + Resend for the confirmation email), simplified: no
+admin/participant/supporter roles (every account is equal — Travel Map has no admin-only
+actions to gate), and no "forgot password" flow (deliberate scope cut, not an oversight —
+add one later following the same reset-token-hash pattern `costa-rica-trip` uses if needed).
+
+- **`initAuth(dataDir)`** returns `{ requireAuth, registerAuthRoutes, loadUsers, saveUsers }`.
+  `requireAuth` attaches `req.user` (the full user record) on success — every route that needs
+  the current account (presets, later anything else) reads `req.user.email` instead of a fixed
+  constant.
+- **Users**: `server/data/users.json` — `{ id, email, passwordHash (bcrypt, 12 rounds),
+  verified, verificationTokenHash, verificationTokenExpiry, createdAt }`. Token stored only as
+  a SHA-256 hash (same reasoning as `costa-rica-trip`: reading the file — e.g. in a backup —
+  can't produce a working confirmation link).
+- **Sessions**: same lightweight in-memory `Map` the old single-account version already had
+  (`token → data`, no `express-session` dependency despite it being in `package.json` — unused
+  leftover) — just now the value is `{ email, createdAt }` instead of a bare timestamp, so
+  `requireAuth` can look up which account a session belongs to. 7-day expiry, unchanged. Still
+  doesn't survive a `pm2 restart` — see "Restart button" in Key bug fixes below; this is a
+  *bigger* deal now than under the old single-account model, since every registered user gets
+  logged out on every deploy, not just one shared account.
+- **Registration**: `POST /api/register` — creates the account immediately (`verified: false`)
+  and emails a confirmation link via Resend (`from: 'Travel Map <travelmap@luyens.be>'` — same
+  `@luyens.be` domain `costa-rica-trip` already sends from, so the same Resend account/API key
+  works, no new domain verification needed). If the Resend call fails, the account is **not**
+  rolled back — same tradeoff `costa-rica-trip` makes, since a re-registration attempt would
+  otherwise just hit "email already registered" with no way to retry the mail.
+- **Login**: `POST /api/login` — blocked with 403 until `verified: true`.
+- **Verification**: `GET /api/verify-email?token=...` — not an API call from the SPA, a direct
+  browser navigation from the email link. Redirects to `/?verify=ok|invalid|expired|missing`;
+  `LoginPage.tsx`'s `useVerifyBanner()` reads that param once on mount, shows a banner, then
+  strips it via `history.replaceState` so a refresh doesn't re-show it. Only rendered on the
+  login page — a user who's *already logged in* (e.g. clicking a confirmation link for a
+  second account in the same browser) won't see the banner, since `App.tsx` skips `LoginPage`
+  entirely once `auth === 'logged-in'`. Known gap, not fixed — rare enough not to be worth the
+  complexity of surfacing it elsewhere too.
+- **Change password**: `POST /api/change-password` (requires current password) — UI is
+  `ChangePasswordPanel.tsx`, toggled from a link in `App.tsx`'s sidebar header.
+- **Verified locally before shipping**: ran the real server with a throwaway `.env` (no real
+  `RESEND_API_KEY` — deliberately, to test the "mail failed but account still created" path),
+  registered a test account through the actual UI, confirmed the graceful-failure error message
+  renders correctly, then drove the rest of the flow (login-blocked-until-verified, manually
+  flipping `verified: true` in `users.json` to simulate clicking the email link, successful
+  login, change-password wrong/right-current-password cases, the `?verify=ok` banner) via
+  direct `fetch()`/JS calls in the browser console rather than simulated clicks — the browser
+  automation tool was unreliable at clicking precise coordinates on this page in this session,
+  but that's an environment quirk, not a rendering bug (confirmed by cross-checking `element
+  .getBoundingClientRect()` against click coordinates), and it doesn't affect a real user
+  clicking normally. Test account/`.env` deleted after.
+
 ## Presets (server-side)
-- Stored in `server/data/presets-<USERNAME>.json` (gitignored directory, created automatically)
+- Stored in `server/data/presets-<sanitized-email>.json` — one file per registered account
+  (was a single shared `presets-<APP_USERNAME>.json` before the 2026-09-26 auth change).
+  `sanitizeEmailForFilename()` in `server/index.cjs` lowercases and replaces every non-`[a-z0-9]`
+  character with `_`.
+  **Migration note**: the pre-existing `presets-micha.json` (the owner's real presets, from
+  before self-registration existed) was **not** automatically migrated — there was no way to
+  know in advance which email the owner would register with. After registering, manually `cp
+  server/data/presets-micha.json server/data/presets-<new-sanitized-email>.json` on the VPS (or
+  the user just re-adds presets from scratch, which was flagged as an explicit tradeoff of the
+  "per-account presets" choice when asked).
 - Three endpoints: `GET /api/presets`, `POST /api/presets`, `DELETE /api/presets/:id`
 - Client loads on mount via `useEffect`; save/delete are optimistic (updates local state immediately on 200)
 - Saves ALL props — including route addresses, GPX file, colours, fonts, elevation settings, etc.
@@ -466,7 +532,7 @@ Appears in both the Route (Directions mode) and GPX file sections, alongside the
 ## Production deployment
 ```bash
 # First deploy (seeds .env from inline vars):
-MAPBOX_TOKEN=pk.xxx APP_USERNAME=micha APP_PASSWORD=micha \
+MAPBOX_TOKEN=pk.xxx RESEND_API_KEY=re_xxx APP_URL=https://travelmap.luyens.be \
   bash <(curl -s https://raw.githubusercontent.com/shaggy72/Travel-map/main/deploy.sh)
 
 # Update via browser: "🔄 Update available" banner → Install → Restart now

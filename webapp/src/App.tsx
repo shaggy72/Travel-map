@@ -16,6 +16,7 @@
  */
 import React, { useState, useEffect, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import LoginPage from './LoginPage';
+import ChangePasswordPanel from './ChangePasswordPanel';
 import PropsForm from './PropsForm';
 import { Props, DEFAULT_PROPS } from './types';
 
@@ -67,6 +68,11 @@ export default function App() {
   type UpdateState = 'idle' | 'available' | 'updating' | 'restart-needed' | 'restarting';
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [updateErr,   setUpdateErr]   = useState('');
+  // Signed-in user's email (from /api/me) — shown in the header, and the
+  // "Change password" panel toggle, added alongside 2026-09-26's move to
+  // email+password self-registration.
+  const [userEmail,          setUserEmail]          = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -74,10 +80,15 @@ export default function App() {
     const timer = setTimeout(() => ctrl.abort(), 5000);
 
     fetch('/api/me', { signal: ctrl.signal })
-      .then(r => {
+      .then(async r => {
         clearTimeout(timer);
-        if (r.ok) { setAuth('logged-in'); fetchGpxFiles(); checkForUpdate(); }
-        else       { setAuth('logged-out'); }
+        if (r.ok) {
+          const body = await r.json().catch(() => ({}));
+          setUserEmail(body.email ?? '');
+          setAuth('logged-in'); fetchGpxFiles(); checkForUpdate();
+        } else {
+          setAuth('logged-out');
+        }
       })
       .catch(() => { clearTimeout(timer); setAuth('logged-out'); });
 
@@ -147,7 +158,20 @@ export default function App() {
 
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
+    setUserEmail('');
+    setShowChangePassword(false);
     setAuth('logged-out');
+  }
+
+  /** Called by LoginPage after a successful sign-in — fetches the email for the header. */
+  async function handleLoginSuccess() {
+    setAuth('logged-in');
+    fetchGpxFiles();
+    checkForUpdate();
+    try {
+      const r = await fetch('/api/me');
+      if (r.ok) setUserEmail((await r.json()).email ?? '');
+    } catch { /* header just shows nothing — not worth failing the login over */ }
   }
 
   async function handleRender() {
@@ -190,7 +214,7 @@ export default function App() {
   }
 
   if (auth === 'logged-out') {
-    return <LoginPage onLogin={() => { setAuth('logged-in'); fetchGpxFiles(); checkForUpdate(); }} />;
+    return <LoginPage onLogin={handleLoginSuccess} />;
   }
 
   // ── Main app ─────────────────────────────────────────────────────────────
@@ -203,7 +227,20 @@ export default function App() {
             <h1>Travel Map</h1>
             <button className="logout-btn" onClick={handleLogout}>Sign out</button>
           </div>
-          <p>Configure and preview your animation</p>
+          <p>
+            {userEmail || 'Configure and preview your animation'}
+            {userEmail && (
+              <>
+                {' · '}
+                <button className="logout-btn" onClick={() => setShowChangePassword(s => !s)}>
+                  Change password
+                </button>
+              </>
+            )}
+          </p>
+          {showChangePassword && (
+            <ChangePasswordPanel onClose={() => setShowChangePassword(false)} />
+          )}
 
           {/* ── Update banner — hidden when idle ────────────────────── */}
           {updateState !== 'idle' && (

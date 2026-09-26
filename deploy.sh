@@ -6,7 +6,7 @@
 # To update:   bash deploy.sh          (pulls latest code, rebuilds, restarts)
 #
 # Env vars can be passed inline to skip the .env prompt on first run:
-#   MAPBOX_TOKEN=pk.xxx APP_USERNAME=micha APP_PASSWORD=secret bash deploy.sh
+#   MAPBOX_TOKEN=pk.xxx RESEND_API_KEY=re_xxx APP_URL=https://travelmap.luyens.be bash deploy.sh
 # =============================================================================
 set -euo pipefail
 
@@ -79,11 +79,11 @@ if [ ! -f ".env" ]; then
 
   # Seed from environment variables if passed inline (e.g. MAPBOX_TOKEN=pk.xxx bash deploy.sh)
   # This allows a fully automated first deployment without a second run.
-  [ -n "${MAPBOX_TOKEN:-}" ]  && sed -i "s|MAPBOX_TOKEN=.*|MAPBOX_TOKEN=${MAPBOX_TOKEN}|"   .env
-  [ -n "${MAPBOX_STYLE:-}" ]  && sed -i "s|MAPBOX_STYLE=.*|MAPBOX_STYLE=${MAPBOX_STYLE}|"   .env
-  [ -n "${APP_USERNAME:-}" ]  && sed -i "s|APP_USERNAME=.*|APP_USERNAME=${APP_USERNAME}|"   .env
-  [ -n "${APP_PASSWORD:-}" ]  && sed -i "s|APP_PASSWORD=.*|APP_PASSWORD=${APP_PASSWORD}|"   .env
-  [ -n "${PORT:-}" ]          && sed -i "s|PORT=.*|PORT=${PORT}|"                           .env
+  [ -n "${MAPBOX_TOKEN:-}" ]    && sed -i "s|MAPBOX_TOKEN=.*|MAPBOX_TOKEN=${MAPBOX_TOKEN}|"       .env
+  [ -n "${MAPBOX_STYLE:-}" ]    && sed -i "s|MAPBOX_STYLE=.*|MAPBOX_STYLE=${MAPBOX_STYLE}|"       .env
+  [ -n "${RESEND_API_KEY:-}" ]  && sed -i "s|RESEND_API_KEY=.*|RESEND_API_KEY=${RESEND_API_KEY}|" .env
+  [ -n "${APP_URL:-}" ]         && sed -i "s|APP_URL=.*|APP_URL=${APP_URL}|"                      .env
+  [ -n "${PORT:-}" ]            && sed -i "s|PORT=.*|PORT=${PORT}|"                               .env
 
   warn ".env created from template."
 fi
@@ -99,7 +99,7 @@ if grep -q "^MAPBOX_TOKEN=your_mapbox_token_here" .env 2>/dev/null || \
   echo "     bash $APP_DIR/deploy.sh"
   echo ""
   echo "   Option B — pass it inline:"
-  echo "     MAPBOX_TOKEN=pk.xxx APP_USERNAME=you APP_PASSWORD=secret bash $APP_DIR/deploy.sh"
+  echo "     MAPBOX_TOKEN=pk.xxx RESEND_API_KEY=re_xxx APP_URL=https://travelmap.luyens.be bash $APP_DIR/deploy.sh"
   exit 0
 fi
 ok ".env ready"
