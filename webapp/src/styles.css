@@ -674,6 +674,21 @@ select {
   color: var(--text);
 }
 
+/* ── Subsection sub-headings (e.g. "Elevation profile" inside Travel route,
+   "City labels" inside Map style) — merged sections from the 2026-09-26
+   reorg use these to visually separate their inline sub-groups. */
+.subsection-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin: 14px 0 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.subsection-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
 /* ── City tier sub-headings (Big / Medium / Small inside City labels section) */
 .city-tier-label {
   font-size: 9px;

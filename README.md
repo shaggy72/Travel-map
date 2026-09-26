@@ -102,7 +102,7 @@ User clicks "Render & Download"
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
 4. Pick **Start/End country** (searchable dropdown, shows a flag) and **Start/End city** for each endpoint — these feed the two-row "Air France" style label box (flag + country on top, city below)
-6. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Route labels** (animation, font, background/text color — applied to both label rows)
+6. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, font, background/text color — applied to both label rows)
 7. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
 8. Optionally add an **End marker** in the Track line section: a dark navy circular badge ("Air France" style, independent of the route line's own colour) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line as it draws — the icon stays upright, it does not rotate to face the direction of travel
 9. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
@@ -158,7 +158,7 @@ Express server (port 3002) that:
 - In production, serves the built webapp from `webapp/dist`
 
 ### `webapp/src/PropsForm.tsx`
-The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; Mode, Route, and Track line are open by default. The **Presets** section (top of form) saves/loads full configurations to/from the server.
+The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; **Travel route** and **Track line** are open by default. Reorganized 2026-09-26 into 6 sections (Presets, Travel route, Labels, Track line, Map style, Export) — see CLAUDE.md's "Form section order + structure" for the full breakdown, including which fields moved where. The **Presets** section (top of form) saves/loads full configurations to/from the server.
 
 ### `src/routeIcons.tsx`
 Exports `RouteMarkerIcon({ type })`, a React component that renders the official Google Material Symbols glyph for each supported marker type (car, camper, plane, bike, walk) as a flat white silhouette, scaled into this project's ±10-unit icon design space. Replaced the original hand-drawn icons 2026-09-25 after user feedback that the plane icon "looked more like a fish."

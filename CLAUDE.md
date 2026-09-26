@@ -77,18 +77,34 @@ All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
 Preview aspect ratio set inline in `App.tsx`; removed from CSS.
 
 ## Form section order + structure (PropsForm.tsx)
-1. Presets — save/load named configurations (server-side, `GET/POST/DELETE /api/presets`)
-2. Mode (+ Travel sub-section in Directions mode)
-3. Route (Directions) — Start address → Start label → End address → End label
-4. GPX file (GPX mode) — Select track → Start label → End label → Upload
-5. Track line
-6. Map
-7. Route labels (Labels mode, animation, bg colour, text colour, font)
-8. Elevation profile (GPX mode only) — show/hide, colours, position (left/top %) and size (width/height %)
-9. Animation (format + duration)
-10. City labels
+Reorganized 2026-09-26 (user request, from a pasted outline) — 6 sections, down from 10:
+1. **Presets** — save/load named configurations (server-side, `GET/POST/DELETE /api/presets`)
+2. **Travel route** — merges the old Mode + Route + GPX file + Elevation profile sections.
+   A `mode` radio toggle (Directions / GPS track) at the top reveals only the relevant
+   fields below it:
+   - *Directions*: Travel mode icons (Car/Bike/Walk/Fly) → Arc curve (Fly only) → Start
+     address → End address
+   - *GPS track*: Select track → Upload new GPX → an inline "Elevation profile" sub-group
+     (`.subsection-label`, GPS-track-only — show/hide, colours, position/size %) — this
+     used to be its own independently-collapsible top-level section
+3. **Labels** — merges the old Route labels section with the start/end country+city fields
+   that used to be **duplicated** between Route (Directions) and GPX file — now a single
+   shared set of fields regardless of `mode`: Show (labelMode, relabelled On/Off/Animated →
+   **Yes/No/Animated**) → Animation (Animated only) → Start country/city → End country/city
+   → Font → Background → Text color
+4. **Track line** — unchanged, except "End marker"/"Marker size" fields relabelled
+   **"Transport marker"/"Transport marker size"** to match the user's outline
+5. **Map style** (renamed from "Map") — merges the old Map section with City labels as an
+   inline "City labels" sub-group (`.subsection-label`) — also no longer independently
+   collapsible. Field relabelled Style → **Map type**.
+6. **Export** (renamed from "Animation") — Format + Duration, unchanged content
 
-**All sections are collapsible.** Default open: Mode, Route/GPX, Track line. Default closed: Presets, Map, Route labels, Elevation profile, Animation, City labels.
+**All sections are collapsible.** Default open: Travel route, Track line. Default closed:
+Presets, Labels, Map style, Export. Elevation profile and City labels don't have their own
+open/closed state any more — they're always-visible inline sub-groups (separated by a
+`.subsection-label` sub-heading with a top border) within their new parent section, not
+separate accordions. If either grows dense enough to warrant its own collapse again, that's
+a deliberate follow-up, not an oversight.
 - State: `const [closed, setClosed] = useState<Set<string>>(() => new Set([...]))` in `PropsForm`
 - Toggle button: `<button className="section-title">` with `<span className="section-chevron">` before the label text
 - Body: `.section-body` + `.section-body-inner`; collapse uses `max-height: 0` / `overflow: hidden` (NOT CSS grid 0fr — that causes 1px border bleed in some browsers)
@@ -333,7 +349,8 @@ the two-row layout is the only one.
 - **Row 2**: city name (`startLabel`/`endLabel` — same fields as before, meaning unchanged),
   lighter weight, `labelTextColor` at `fillOpacity={0.7}` for visual hierarchy — **no
   separate sub-text-color prop**; font/background/text-color customisation (`labelFont`,
-  `labelBgColor`, `labelTextColor` in PropsForm's "Route labels" section) already applied to
+  `labelBgColor`, `labelTextColor` in PropsForm's "Labels" section, renamed from "Route labels"
+  in the 2026-09-26 reorg) already applied to
   both rows before this change, so no new controls were needed there
 - New schema fields: `startCountry`/`endCountry` (display name) + `startCountryCode`/
   `endCountryCode` (lowercase ISO 3166-1 alpha-2, e.g. `"be"`) — independent of `mode`, so

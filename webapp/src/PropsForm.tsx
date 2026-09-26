@@ -22,8 +22,20 @@
  *    Each .form-section has a <button className="section-title"> toggle. A Set of
  *    closed section IDs is stored in state. The section body uses a CSS grid-rows
  *    transition (0fr ↔ 1fr) for a smooth open/close animation without needing to
- *    know the content height. Default open: Mode, Route, Track line.
- *    Default closed: Map, Route labels, Animation, City labels.
+ *    know the content height. Default open: Travel route, Track line.
+ *    Default closed: Presets, Labels, Map style, Export.
+ *
+ *  Section layout (reorganized 2026-09-26, user request)
+ *    Presets → Travel route (old Mode + Route + GPX file + Elevation profile,
+ *    merged — Directions vs GPS track is a radio toggle at the top, each
+ *    revealing its own fields; Elevation profile is a GPS-track-only inline
+ *    sub-group under a ".subsection-label") → Labels (old Route labels +
+ *    start/end country+city, which used to be duplicated across Route/GPX
+ *    file — now a single shared set regardless of mode) → Track line
+ *    (unchanged) → Map style (old Map + City labels, merged — City labels is
+ *    an inline sub-group) → Export (renamed from Animation). Elevation
+ *    profile and City labels are no longer independently collapsible
+ *    sections; they're always-visible sub-groups within their new parent.
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Props, DEFAULT_PROPS } from './types';
@@ -488,9 +500,9 @@ function MarkerPicker({ value, onChange }: { value: MarkerValue; onChange: (v: M
 // ── Label Mode Picker ─────────────────────────────────────────────────────
 
 const LABEL_MODE_OPTIONS: { value: Props['labelMode']; label: string }[] = [
+  { value: 'on',       label: 'Yes' },
+  { value: 'off',      label: 'No' },
   { value: 'animated', label: 'Animated' },
-  { value: 'on',       label: 'On' },
-  { value: 'off',      label: 'Off' },
 ];
 
 function LabelModePicker({ value, onChange }: { value: Props['labelMode']; onChange: (v: Props['labelMode']) => void }) {
@@ -847,10 +859,18 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
   }
 
   // ── Collapsible sections ─────────────────────────────────────────────────
-  // Sections NOT in this set are open. Mode / Route / Track line start open.
-  // Map, Route labels, Animation, City labels start collapsed.
+  // Sections NOT in this set are open. Travel route / Track line start open.
+  // Presets, Labels, Map style, Export start collapsed. Reorganized 2026-09-26
+  // (user request) from the old Mode/Route/GPX file/Map/Route labels/Elevation
+  // profile/Animation/City labels into: Presets, Travel route (Mode + Route +
+  // GPX file + Elevation profile merged), Labels (Route labels + the start/end
+  // country+city fields, now shared between Directions and GPX mode instead of
+  // duplicated), Track line (unchanged), Map style (Map + City labels merged),
+  // Export (renamed from Animation). Elevation profile and City labels are no
+  // longer independently collapsible — they're inline sub-groups within their
+  // new parent section (see the "ELEVATION PROFILE"/"CITY LABELS" sub-headers).
   const [closed, setClosed] = useState<Set<string>>(
-    () => new Set(['presets', 'map', 'routeLabels', 'elevation', 'animation', 'cityLabels'])
+    () => new Set(['presets', 'labels', 'map', 'export'])
   );
   /** Toggle a section open/closed by its ID. */
   const toggle = (id: string) =>
@@ -950,13 +970,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         </div>
       </div>
 
-      {/* ── Mode ─────────────────────────────────────────────────── */}
+      {/* ── Travel route (Mode + Route + GPX file + Elevation profile merged, ──
+             2026-09-26 reorg) ───────────────────────────────────────── */}
       <div className="form-section">
-        <button className="section-title" onClick={() => toggle('mode')} aria-expanded={isOpen('mode')}>
-          <span className={`section-chevron${isOpen('mode') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Mode
+        <button className="section-title" onClick={() => toggle('travelRoute')} aria-expanded={isOpen('travelRoute')}>
+          <span className={`section-chevron${isOpen('travelRoute') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Travel route
         </button>
-        <div className={`section-body${isOpen('mode') ? ' section-body--open' : ''}`}>
+        <div className={`section-body${isOpen('travelRoute') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
             <div className="field">
               <div className="radio-group">
@@ -975,14 +996,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                     onChange({ ...props, mode: 'gpx', gpxFile });
                   }}
                 />
-                <label htmlFor="mode-gpx">GPX track</label>
+                <label htmlFor="mode-gpx">GPS track</label>
               </div>
             </div>
 
-            {/* ── Travel mode (Directions only) ────────────────────── */}
-            {props.mode === 'directions' && (
+            {/* ── Directions ────────────────────────────────────────── */}
+            {props.mode === 'directions' && (<>
               <div className="field">
-                <label>Travel</label>
+                <label>Travel mode</label>
                 <div className="radio-group travel-mode-group">
                   <input type="radio" id="travel-driving" name="travelMode"
                     checked={props.travelMode === 'driving'}
@@ -1006,33 +1027,20 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                     checked={props.travelMode === 'flight'}
                     onChange={() => upd('travelMode', 'flight')}
                   />
-                  <label htmlFor="travel-flight" title="Flight"><FlightIcon /></label>
+                  <label htmlFor="travel-flight" title="Fly"><FlightIcon /></label>
                 </div>
               </div>
-            )}
 
-            {/* Arc curve slider — only visible in flight mode */}
-            {props.mode === 'directions' && props.travelMode === 'flight' && (
-              <RangeField
-                label="Arc curve"
-                value={props.flightCurve}
-                min={0} max={100} step={5}
-                onChange={v => upd('flightCurve', v)}
-              />
-            )}
-          </div>
-        </div>
-      </div>
+              {/* Arc curve slider — only visible in flight mode */}
+              {props.travelMode === 'flight' && (
+                <RangeField
+                  label="Arc curve"
+                  value={props.flightCurve}
+                  min={0} max={100} step={5}
+                  onChange={v => upd('flightCurve', v)}
+                />
+              )}
 
-      {/* ── Route (Directions mode) ───────────────────────────────── */}
-      {props.mode === 'directions' && (
-        <div className="form-section">
-          <button className="section-title" onClick={() => toggle('route')} aria-expanded={isOpen('route')}>
-            <span className={`section-chevron${isOpen('route') ? ' open' : ''}`} aria-hidden="true">▾</span>
-            Route
-          </button>
-          <div className={`section-body${isOpen('route') ? ' section-body--open' : ''}`}>
-            <div className="section-body-inner">
               <div className="field">
                 <label>Start address</label>
                 <input
@@ -1040,21 +1048,6 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                   value={props.startAddress}
                   onChange={e => upd('startAddress', e.target.value)}
                   placeholder="e.g. Ghent, Belgium"
-                />
-              </div>
-              <div className="field">
-                <label>Start country</label>
-                <CountryPicker
-                  value={props.startCountryCode}
-                  onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))}
-                />
-              </div>
-              <div className="field">
-                <label>Start city</label>
-                <input
-                  type="text"
-                  value={props.startLabel}
-                  onChange={e => upd('startLabel', e.target.value)}
                 />
               </div>
               <div className="field">
@@ -1066,35 +1059,10 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                   placeholder="e.g. Paris, France"
                 />
               </div>
-              <div className="field">
-                <label>End country</label>
-                <CountryPicker
-                  value={props.endCountryCode}
-                  onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))}
-                />
-              </div>
-              <div className="field">
-                <label>End city</label>
-                <input
-                  type="text"
-                  value={props.endLabel}
-                  onChange={e => upd('endLabel', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </>)}
 
-      {/* ── GPX file (GPX mode) ───────────────────────────────────── */}
-      {props.mode === 'gpx' && (
-        <div className="form-section">
-          <button className="section-title" onClick={() => toggle('gpx')} aria-expanded={isOpen('gpx')}>
-            <span className={`section-chevron${isOpen('gpx') ? ' open' : ''}`} aria-hidden="true">▾</span>
-            GPX file
-          </button>
-          <div className={`section-body${isOpen('gpx') ? ' section-body--open' : ''}`}>
-            <div className="section-body-inner">
+            {/* ── GPS track ─────────────────────────────────────────── */}
+            {props.mode === 'gpx' && (<>
               <div className="field">
                 <label>Select track</label>
                 <select
@@ -1106,36 +1074,6 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                     <option key={f} value={f}>{f}</option>
                   ))}
                 </select>
-              </div>
-              <div className="field">
-                <label>Start country</label>
-                <CountryPicker
-                  value={props.startCountryCode}
-                  onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))}
-                />
-              </div>
-              <div className="field">
-                <label>Start city</label>
-                <input
-                  type="text"
-                  value={props.startLabel}
-                  onChange={e => upd('startLabel', e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>End country</label>
-                <CountryPicker
-                  value={props.endCountryCode}
-                  onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))}
-                />
-              </div>
-              <div className="field">
-                <label>End city</label>
-                <input
-                  type="text"
-                  value={props.endLabel}
-                  onChange={e => upd('endLabel', e.target.value)}
-                />
               </div>
               <div className="field">
                 <label>Upload new GPX</label>
@@ -1151,10 +1089,126 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               {uploadMsg && (
                 <div className={`upload-status ${uploadStatus}`}>{uploadMsg}</div>
               )}
-            </div>
+
+              <div className="subsection-label">Elevation profile</div>
+              <div className="field">
+                <label>Show profile</label>
+                <div className="radio-group">
+                  <input type="radio" id="elev-on" name="showElevationProfile"
+                    checked={props.showElevationProfile}
+                    onChange={() => upd('showElevationProfile', true)} />
+                  <label htmlFor="elev-on">On</label>
+                  <input type="radio" id="elev-off" name="showElevationProfile"
+                    checked={!props.showElevationProfile}
+                    onChange={() => upd('showElevationProfile', false)} />
+                  <label htmlFor="elev-off">Off</label>
+                </div>
+              </div>
+              {props.showElevationProfile && (<>
+                <ColorField label="Line colour"
+                  value={props.elevationColor}
+                  onChange={v => upd('elevationColor', v)} />
+                <ColorField label="Background"
+                  value={props.elevationBgColor}
+                  onChange={v => upd('elevationBgColor', v)} />
+                <RangeField label={`Left — ${props.elevationLeft}%`}
+                  value={props.elevationLeft} min={0} max={90}
+                  onChange={v => upd('elevationLeft', v)} />
+                <RangeField label={`Top — ${props.elevationTop}%`}
+                  value={props.elevationTop} min={0} max={95}
+                  onChange={v => upd('elevationTop', v)} />
+                <RangeField label={`Width — ${props.elevationWidth}%`}
+                  value={props.elevationWidth} min={10} max={100}
+                  onChange={v => upd('elevationWidth', v)} />
+                <RangeField label={`Height — ${props.elevationHeight}%`}
+                  value={props.elevationHeight} min={3} max={50}
+                  onChange={v => upd('elevationHeight', v)} />
+              </>)}
+            </>)}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* ── Labels (Route labels + start/end country+city merged, shared ──
+             between Directions and GPS track instead of duplicated,
+             2026-09-26 reorg) ───────────────────────────────────────── */}
+      <div className="form-section">
+        <button className="section-title" onClick={() => toggle('labels')} aria-expanded={isOpen('labels')}>
+          <span className={`section-chevron${isOpen('labels') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Labels
+        </button>
+        <div className={`section-body${isOpen('labels') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            <div className="field">
+              <label>Show</label>
+              <LabelModePicker
+                value={props.labelMode}
+                onChange={v => upd('labelMode', v)}
+              />
+            </div>
+
+            {props.labelMode === 'animated' && (
+              <div className="field">
+                <label>Animation</label>
+                <LabelAnimationPicker
+                  value={props.labelAnimation}
+                  onChange={v => upd('labelAnimation', v)}
+                />
+              </div>
+            )}
+
+            {props.labelMode !== 'off' && (<>
+              <div className="field">
+                <label>Start country</label>
+                <CountryPicker
+                  value={props.startCountryCode}
+                  onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))}
+                />
+              </div>
+              <div className="field">
+                <label>Start city</label>
+                <input
+                  type="text"
+                  value={props.startLabel}
+                  onChange={e => upd('startLabel', e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>End country</label>
+                <CountryPicker
+                  value={props.endCountryCode}
+                  onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))}
+                />
+              </div>
+              <div className="field">
+                <label>End city</label>
+                <input
+                  type="text"
+                  value={props.endLabel}
+                  onChange={e => upd('endLabel', e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>Font</label>
+                <FontPicker
+                  value={props.labelFont}
+                  onChange={v => upd('labelFont', v as Props['labelFont'])}
+                />
+              </div>
+              <ColorField
+                label="Background"
+                value={props.labelBgColor}
+                onChange={v => upd('labelBgColor', v)}
+              />
+              <ColorField
+                label="Text color"
+                value={props.labelTextColor}
+                onChange={v => upd('labelTextColor', v)}
+              />
+            </>)}
+          </div>
+        </div>
+      </div>
 
       {/* ── Track line ───────────────────────────────────────────── */}
       <div className="form-section">
@@ -1199,12 +1253,12 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             />
             {/* Route tip marker — icon that travels along the line */}
             <div className="field">
-              <label>End marker</label>
+              <label>Transport marker</label>
               <MarkerPicker value={props.routeMarker} onChange={v => upd('routeMarker', v)} />
             </div>
             {props.routeMarker !== 'none' && (
               <RangeField
-                label="Marker size"
+                label="Transport marker size"
                 value={props.routeMarkerSize}
                 min={20} max={120}
                 onChange={v => upd('routeMarkerSize', v)}
@@ -1214,16 +1268,16 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         </div>
       </div>
 
-      {/* ── Map ──────────────────────────────────────────────────── */}
+      {/* ── Map style (Map + City labels merged, 2026-09-26 reorg) ────── */}
       <div className="form-section">
         <button className="section-title" onClick={() => toggle('map')} aria-expanded={isOpen('map')}>
           <span className={`section-chevron${isOpen('map') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Map
+          Map style
         </button>
         <div className={`section-body${isOpen('map') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
             <div className="field">
-              <label>Style</label>
+              <label>Map type</label>
               <MapStylePicker
                 value={props.mapStyle}
                 onChange={v => upd('mapStyle', v)}
@@ -1263,163 +1317,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 onChange={v => upd('zoom', v)}
               />
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* ── Route labels ─────────────────────────────────────────── */}
-      <div className="form-section">
-        <button className="section-title" onClick={() => toggle('routeLabels')} aria-expanded={isOpen('routeLabels')}>
-          <span className={`section-chevron${isOpen('routeLabels') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Route labels
-        </button>
-        <div className={`section-body${isOpen('routeLabels') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            <div className="field">
-              <label>Labels</label>
-              <LabelModePicker
-                value={props.labelMode}
-                onChange={v => upd('labelMode', v)}
-              />
-            </div>
-
-            {props.labelMode === 'animated' && (
-              <div className="field">
-                <label>Animation</label>
-                <LabelAnimationPicker
-                  value={props.labelAnimation}
-                  onChange={v => upd('labelAnimation', v)}
-                />
-              </div>
-            )}
-
-            {props.labelMode !== 'off' && (<>
-              <div className="field">
-                <label>Font</label>
-                <FontPicker
-                  value={props.labelFont}
-                  onChange={v => upd('labelFont', v as Props['labelFont'])}
-                />
-              </div>
-              <ColorField
-                label="Background"
-                value={props.labelBgColor}
-                onChange={v => upd('labelBgColor', v)}
-              />
-              <ColorField
-                label="Text color"
-                value={props.labelTextColor}
-                onChange={v => upd('labelTextColor', v)}
-              />
-            </>)}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Elevation profile (GPX mode only) ───────────────────── */}
-      {props.mode === 'gpx' && (
-      <div className="form-section">
-        <button className="section-title" onClick={() => toggle('elevation')} aria-expanded={isOpen('elevation')}>
-          <span className={`section-chevron${isOpen('elevation') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Elevation profile
-        </button>
-        <div className={`section-body${isOpen('elevation') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            <div className="field">
-              <label>Show profile</label>
-              <div className="radio-group">
-                <input type="radio" id="elev-on" name="showElevationProfile"
-                  checked={props.showElevationProfile}
-                  onChange={() => upd('showElevationProfile', true)} />
-                <label htmlFor="elev-on">On</label>
-                <input type="radio" id="elev-off" name="showElevationProfile"
-                  checked={!props.showElevationProfile}
-                  onChange={() => upd('showElevationProfile', false)} />
-                <label htmlFor="elev-off">Off</label>
-              </div>
-            </div>
-            {props.showElevationProfile && (<>
-              <ColorField label="Line colour"
-                value={props.elevationColor}
-                onChange={v => upd('elevationColor', v)} />
-              <ColorField label="Background"
-                value={props.elevationBgColor}
-                onChange={v => upd('elevationBgColor', v)} />
-              <RangeField label={`Left — ${props.elevationLeft}%`}
-                value={props.elevationLeft} min={0} max={90}
-                onChange={v => upd('elevationLeft', v)} />
-              <RangeField label={`Top — ${props.elevationTop}%`}
-                value={props.elevationTop} min={0} max={95}
-                onChange={v => upd('elevationTop', v)} />
-              <RangeField label={`Width — ${props.elevationWidth}%`}
-                value={props.elevationWidth} min={10} max={100}
-                onChange={v => upd('elevationWidth', v)} />
-              <RangeField label={`Height — ${props.elevationHeight}%`}
-                value={props.elevationHeight} min={3} max={50}
-                onChange={v => upd('elevationHeight', v)} />
-            </>)}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* ── Animation ────────────────────────────────────────────── */}
-      <div className="form-section">
-        <button className="section-title" onClick={() => toggle('animation')} aria-expanded={isOpen('animation')}>
-          <span className={`section-chevron${isOpen('animation') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Animation
-        </button>
-        <div className={`section-body${isOpen('animation') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            {/* Output format — controls canvas dimensions (width × height) of the render */}
-            <div className="field">
-              <label>Format</label>
-              <div className="radio-group">
-                <input
-                  type="radio" id="fmt-portrait" name="outputFormat"
-                  checked={props.outputFormat === 'portrait'}
-                  onChange={() => upd('outputFormat', 'portrait')}
-                />
-                <label htmlFor="fmt-portrait"  title="Portrait (1080×1920)">9:16</label>
-                <input
-                  type="radio" id="fmt-landscape" name="outputFormat"
-                  checked={props.outputFormat === 'landscape'}
-                  onChange={() => upd('outputFormat', 'landscape')}
-                />
-                <label htmlFor="fmt-landscape" title="Landscape (1920×1080)">16:9</label>
-                <input
-                  type="radio" id="fmt-square" name="outputFormat"
-                  checked={props.outputFormat === 'square'}
-                  onChange={() => upd('outputFormat', 'square')}
-                />
-                <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
-                <input
-                  type="radio" id="fmt-ig" name="outputFormat"
-                  checked={props.outputFormat === 'instagram-post'}
-                  onChange={() => upd('outputFormat', 'instagram-post')}
-                />
-                <label htmlFor="fmt-ig" title="Instagram post (1080×1350)">4:5</label>
-              </div>
-            </div>
-
-            <RangeField
-              label="Duration"
-              value={props.duration}
-              min={1} max={60} unit="s"
-              onChange={v => upd('duration', v)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── City labels ──────────────────────────────────────────── */}
-      <div className="form-section">
-        <button className="section-title" onClick={() => toggle('cityLabels')} aria-expanded={isOpen('cityLabels')}>
-          <span className={`section-chevron${isOpen('cityLabels') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          City labels
-        </button>
-        <div className={`section-body${isOpen('cityLabels') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
+            <div className="subsection-label">City labels</div>
             <div className="field">
               <label>Show</label>
               <CitySlider
@@ -1494,6 +1393,55 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 onChange={v => upd('citySizeSmall', v)}
               />
             </>)}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Export (renamed from Animation, 2026-09-26 reorg) ─────────── */}
+      <div className="form-section">
+        <button className="section-title" onClick={() => toggle('export')} aria-expanded={isOpen('export')}>
+          <span className={`section-chevron${isOpen('export') ? ' open' : ''}`} aria-hidden="true">▾</span>
+          Export
+        </button>
+        <div className={`section-body${isOpen('export') ? ' section-body--open' : ''}`}>
+          <div className="section-body-inner">
+            {/* Output format — controls canvas dimensions (width × height) of the render */}
+            <div className="field">
+              <label>Format</label>
+              <div className="radio-group">
+                <input
+                  type="radio" id="fmt-portrait" name="outputFormat"
+                  checked={props.outputFormat === 'portrait'}
+                  onChange={() => upd('outputFormat', 'portrait')}
+                />
+                <label htmlFor="fmt-portrait"  title="Portrait (1080×1920)">9:16</label>
+                <input
+                  type="radio" id="fmt-landscape" name="outputFormat"
+                  checked={props.outputFormat === 'landscape'}
+                  onChange={() => upd('outputFormat', 'landscape')}
+                />
+                <label htmlFor="fmt-landscape" title="Landscape (1920×1080)">16:9</label>
+                <input
+                  type="radio" id="fmt-square" name="outputFormat"
+                  checked={props.outputFormat === 'square'}
+                  onChange={() => upd('outputFormat', 'square')}
+                />
+                <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
+                <input
+                  type="radio" id="fmt-ig" name="outputFormat"
+                  checked={props.outputFormat === 'instagram-post'}
+                  onChange={() => upd('outputFormat', 'instagram-post')}
+                />
+                <label htmlFor="fmt-ig" title="Instagram post (1080×1350)">4:5</label>
+              </div>
+            </div>
+
+            <RangeField
+              label="Duration"
+              value={props.duration}
+              min={1} max={60} unit="s"
+              onChange={v => upd('duration', v)}
+            />
           </div>
         </div>
       </div>
