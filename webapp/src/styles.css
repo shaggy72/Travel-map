@@ -295,15 +295,24 @@ html, body, #root {
   text-overflow: ellipsis;
 }
 
-/* Controls that sit directly inside .field fill the remaining space */
+/* Controls that sit directly inside .field fill the remaining space.
+   2026-09-27 critique follow-up: these used to be borderless/transparent,
+   sharing the exact same background as the label to their left — the user
+   flagged that this made it look like the label text sat "inside the text
+   box" instead of the two reading as separate label + editable control. Now
+   the input gets its own tinted, bordered pill (nested inside the outer
+   .field pill, the way the ls-picker trigger and CountryPicker already
+   visually read as distinct clickable controls). */
 .field > input[type="text"],
 .field > input[type="number"],
 .field > select {
   flex: 1;
+  min-width: 0;
   text-align: right;
-  border: none;
-  background: transparent;
-  padding: 6px 0;
+  border: 1px solid var(--border);
+  background: var(--field-hover);
+  border-radius: calc(var(--radius) - 3px);
+  padding: 4px 8px;
   color: var(--text-muted);
   font-size: 10px;
 }
@@ -312,6 +321,8 @@ html, body, #root {
 .field > input[type="number"]:focus,
 .field > select:focus {
   color: var(--text);
+  border-color: var(--accent);
+  background: var(--field-bg);
   outline: none;
 }
 
