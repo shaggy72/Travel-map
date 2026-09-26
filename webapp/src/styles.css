@@ -794,6 +794,45 @@ select {
   flex-shrink: 0;
 }
 
+/* ── Preset Picker (a row with two independent click targets: apply + delete,
+   unlike the single-button .ls-option other pickers use) ─────────────────── */
+.ls-option-row {
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.ls-option-apply {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 7px 0 7px 12px;
+  font-family: var(--font);
+  font-size: 10px;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-option-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text-light);
+  transition: color .1s;
+}
+
+.ls-option-delete:hover {
+  color: var(--danger, #c0392b);
+}
+
 /* ── File Upload ──────────────────────────────────────────────────────── */
 .upload-area {
   border: 1.5px dashed var(--border);

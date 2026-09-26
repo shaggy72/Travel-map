@@ -689,6 +689,90 @@ interface Preset {
   createdAt: string;
 }
 
+// ── Preset Picker ─────────────────────────────────────────────────────────
+// Same ls-picker combobox pattern as MapStylePicker/CountryPicker/etc, chosen
+// 2026-09-25 over the old always-expanded list of stacked buttons — one row
+// per preset now lives inside a dropdown panel instead of pushing the rest of
+// the sidebar down. Each row is its own flex container (not a single <button>
+// like the simpler pickers) so it can hold two independent click targets:
+// the name (apply) and a "×" (delete) — the delete button was kept inline in
+// the dropdown per user preference, rather than moved to a separate control.
+function PresetPicker({
+  presets, selectedId, onApply, onDelete,
+}: {
+  presets:    Preset[];
+  selectedId: string | null;
+  onApply:    (p: Preset) => void;
+  onDelete:   (id: string, name: string) => void;
+}) {
+  const [open,     setOpen]     = useState(false);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+
+  function openPanel() {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: Math.max(220, r.width + 16) });
+    }
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  const current = presets.find(p => p.id === selectedId);
+
+  return (
+    <div className="ls-picker">
+      <button ref={triggerRef} className="ls-trigger" onClick={() => open ? setOpen(false) : openPanel()}>
+        <span className="ls-label">{current ? current.name : 'Select preset…'}</span>
+        <span className="ls-arrow">▾</span>
+      </button>
+      {open && (
+        <div
+          ref={panelRef}
+          className="ls-panel"
+          style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
+        >
+          <div className="ls-options-scroll">
+            {presets.map(p => (
+              <div key={p.id} className={`ls-option ls-option-row${p.id === selectedId ? ' selected' : ''}`}>
+                <button
+                  className="ls-option-apply"
+                  title={`Apply "${p.name}"`}
+                  onClick={() => { onApply(p); setOpen(false); }}
+                >
+                  {p.name}
+                </button>
+                <button
+                  className="ls-option-delete"
+                  title="Delete preset"
+                  onClick={(e) => { e.stopPropagation(); onDelete(p.id, p.name); }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {presets.length === 0 && (
+              <div className="ls-option" style={{ cursor: 'default' }}>No presets saved yet.</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 
 export default function PropsForm({ props, onChange, gpxFiles, onUpload }: PropsFormProps) {
@@ -699,6 +783,12 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
   const [presets,     setPresets]     = useState<Preset[]>([]);
   const [savingName,  setSavingName]  = useState('');
   const [showSaveBox, setShowSaveBox] = useState(false);
+  // Tracks the last-applied preset so PresetPicker can show its name as the
+  // trigger label. Purely a "last choice" indicator, not a "props still
+  // match this preset exactly" check — same simplification the other
+  // ls-pickers make (they show the last selected option, not re-derive it
+  // from the underlying value on every render).
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   // Surfaces failures that would otherwise fail silently (e.g. a stale session
   // after the server restarted — sessions are in-memory, see CLAUDE.md) —
   // previously a 401 here just did nothing with no feedback to the user.
@@ -730,6 +820,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       });
       if (r.ok) {
         setPresets(prev => [...prev, preset]);
+        setSelectedPresetId(preset.id);
         setSavingName('');
         setShowSaveBox(false);
       } else {
@@ -744,8 +835,12 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
     setPresetError('');
     try {
       const r = await fetch(`/api/presets/${id}`, { method: 'DELETE' });
-      if (r.ok) setPresets(prev => prev.filter(p => p.id !== id));
-      else setPresetError(presetErrorMessage(r.status));
+      if (r.ok) {
+        setPresets(prev => prev.filter(p => p.id !== id));
+        setSelectedPresetId(prev => prev === id ? null : prev);
+      } else {
+        setPresetError(presetErrorMessage(r.status));
+      }
     } catch {
       setPresetError('Could not reach the server. Check your connection and try again.');
     }
@@ -816,9 +911,20 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
               <p style={{ fontSize: 11, color: 'var(--danger, #c0392b)', margin: '0 0 8px' }}>{presetError}</p>
             )}
 
+            {/* Load a saved preset */}
+            <div className="field">
+              <label>Load preset</label>
+              <PresetPicker
+                presets={presets}
+                selectedId={selectedPresetId}
+                onApply={p => { onChange({ ...DEFAULT_PROPS, ...p.props }); setSelectedPresetId(p.id); }}
+                onDelete={(id, name) => { if (window.confirm(`Delete preset "${name}"? This cannot be undone.`)) handleDeletePreset(id); }}
+              />
+            </div>
+
             {/* Save current settings */}
             {showSaveBox ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                 <div className="field">
                   <input
                     type="text"
@@ -835,39 +941,9 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
                 </div>
               </div>
             ) : (
-              <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => setShowSaveBox(true)}>
+              <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8 }} onClick={() => setShowSaveBox(true)}>
                 Save current settings…
               </button>
-            )}
-
-            {/* Saved presets list */}
-            {presets.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
-                {presets.map(p => (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                      title={`Apply "${p.name}"`}
-                      onClick={() => onChange({ ...DEFAULT_PROPS, ...p.props })}
-                    >
-                      {p.name}
-                    </button>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ padding: '4px 8px', color: 'var(--muted)', flexShrink: 0 }}
-                      title="Delete preset"
-                      onClick={() => { if (window.confirm(`Delete preset "${p.name}"? This cannot be undone.`)) handleDeletePreset(p.id); }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {presets.length === 0 && !showSaveBox && (
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>No presets saved yet.</p>
             )}
 
           </div>

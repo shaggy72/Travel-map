@@ -133,6 +133,33 @@ Preview aspect ratio set inline in `App.tsx`; removed from CSS.
   other failures/network errors. **General lesson**: any `fetch()` call gated by `requireAuth`
   needs visible error handling, not just a `r.ok` happy-path check — a stale session after a
   deploy is a realistic, recurring failure mode in this app, not an edge case.
+- **UI redesign to a dropdown** (2026-09-26, user request — wanted a dropdown "zoals moderne
+  apps" instead of an always-expanded stack of buttons, one per preset): the preset list now
+  lives inside a `PresetPicker` component (`webapp/src/PropsForm.tsx`), reusing the same
+  `ls-picker` combobox pattern as `MapStylePicker`/`CountryPicker`/etc — trigger button shows
+  the last-applied preset's name, opens a dropdown panel listing all presets. Per user's
+  explicit choice (asked directly rather than assumed): the delete "×" stays **inline in each
+  dropdown row**, not moved to a separate control. "Save current settings…" stays as its own
+  button below the picker — saving a new preset is a different action from selecting an
+  existing one.
+  - Each row is a `<div className="ls-option ls-option-row">` (not a single `<button>` like
+    the simpler pickers) containing two independent buttons: `.ls-option-apply` (flex:1,
+    `min-width:0` + `overflow:hidden`/`text-overflow:ellipsis` so long names truncate instead
+    of forcing the row wider than the panel) and `.ls-option-delete` (flex-shrink:0). New CSS
+    in `styles.css`.
+  - `selectedPresetId` (local state) drives the trigger label — it's a "last choice" indicator
+    only, not a live check that the current props still match that preset exactly (same
+    simplification every other `ls-picker` in this file already makes).
+  - **Testing gotcha for next time**: a quick static-HTML mockup of this component (outside
+    the real app, to sanity-check the row layout before shipping) initially seemed to show the
+    delete button completely missing. Root cause was the mockup using `position: static` for
+    the panel instead of the real component's `position: fixed` with an explicit pixel
+    `width` — under `position: static`, the row's flex content overflowed its container
+    instead of being properly constrained. Switching the mockup to `position: fixed` + a fixed
+    width (matching the real component) reproduced the correct, working layout. If a future
+    icon/layout check via a standalone HTML file gives a suspicious result, double-check the
+    mockup's positioning context matches the real component's before concluding there's an
+    actual bug.
 
 ## Map styles (MAP_STYLE_OPTIONS in PropsForm.tsx)
 - `shaggy72/cmpma5agg000101qr4tt68gad` — Gray (custom)
