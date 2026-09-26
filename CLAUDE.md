@@ -521,6 +521,17 @@ Appears in both the Route (Directions mode) and GPX file sections, alongside the
 - Update banner in `.sidebar-header`; Install disabled while rendering
 - After restart: polls `GET /api/me` every 2 s; **any HTTP response** (200 or 401) triggers `window.location.reload()` — sessions are in-memory so the server returns 401 after restart, not 200
 
+## Sidebar visual redesign — critique pass (2026-09-27)
+Ran `image-to-code-skill` (a Claude Code custom skill, `~/.claude/skills/image-to-code-skill/SKILL.md`) as a design critique against a screenshot of the main screen (sidebar + preview), then implemented all 6 points it raised, in `webapp/src/styles.css`:
+1. **Brand consistency** — `.sidebar-header h1` ("Travel Map") was 12px/600, a much weaker treatment than the login card's 22px/800 for the same wordmark. Bumped to 18px/800.
+2. **Typographic contrast** — `.section-title-main` 12px→14px, `.section-summary` 9.5px→10.5px; everything used to sit in an 8–12px range with little hierarchy.
+3. **Spacing** — card gap 10px→16px, `.section-title` padding 13/15px→16/18px, `.section-body-inner` 14px→18/16px, `.field` padding/min-height/margin bumped — cards and fields were nearly touching.
+4. **Systematic card palette** — the 6 `--card-color` values were picked by eye (mustard/tan were only a few degrees apart). Now all 5 content cards share the same OKLCH lightness (64%) and chroma (0.09), only hue rotates; Export is a deliberate desaturated exception (utility step, not content).
+5. **Render button distinction** — `.sidebar-footer .btn-primary` (only that scope, not the global `.btn-primary`) now gets a near-black `oklch(22% 0.01 250)` background, since the global `--accent` orange sat in the same hue family as the Travel route card directly above it.
+6. **Sidebar width** — `--sidebar-w` 280px→320px, root cause of truncated labels ("Transport ma..."). Widening alone wasn't enough because `.field > label { width: 38% }` is a percentage, not absolute — also bumped that to 46% so "Transport marker" (the longest field label) renders in full.
+
+Rollback: commit `eecb220` is the last clean commit before this pass — `git revert <this-pass-commit>` or checkout `eecb220` undoes it cleanly since it landed as its own commit, not amended.
+
 ## Mobile-specific fixes
 - **Login screen**: `.login-card` uses `width: 100%; max-width: 360px`; on mobile `.login-field input` has `font-size: 16px` (prevents iOS Safari auto-zoom); `.login-page` uses `min-height: 100svh`
 - **Mobile render button**: `.mobile-render-area` (hidden on desktop, shown in preview tab on mobile) — same `handleRender` handler as sidebar footer

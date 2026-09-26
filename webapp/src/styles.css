@@ -29,7 +29,7 @@
 
   --shadow:      0 1px 2px rgba(0,0,0,.05);
   --shadow-md:   0 2px 16px rgba(0,0,0,.10);
-  --sidebar-w:   280px;
+  --sidebar-w:   320px; /* was 280px — the main cause of cramped text/truncated labels ("Transport ma...") per the 2026-09-27 critique pass */
 }
 
 html, body, #root {
@@ -59,33 +59,38 @@ html, body, #root {
 }
 
 .sidebar-header {
-  padding: 13px 13px 10px;
+  padding: 16px 16px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
+/* Bumped from 12px/600 to 18px/800 (2026-09-27, image-to-code-skill critique
+   pass) — was a totally different, much weaker treatment of the same
+   "Travel Map" wordmark than the login card's 22px/800, no shared brand
+   identity between the two screens. Still can't literally match login's size
+   (this sits in a ~300px-wide header, not a big centred card) but now reads
+   as the same bold display treatment, just scaled down. */
 .sidebar-header h1 {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 800;
   color: var(--text);
   letter-spacing: -0.01em;
 }
 
 .sidebar-header p {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .sidebar-body {
   flex: 1;
   overflow-y: auto;
-  /* 8px on each side (was 4px pre-card-redesign) gives the rounded colourful
-     cards a bit of breathing room from the sidebar edge, while still keeping
-     content clear of the scrollbar.
-     scrollbar-gutter: stable reserves additional space for classic scrollbars.
-     Together these ensure the scrollbar never overlaps content on any platform. */
-  padding: 10px 8px 8px 8px;
+  /* 12px sides (was 8px) — more breathing room around the colourful cards,
+     2026-09-27 critique pass ("spacing generosity" — cards felt packed
+     against the sidebar edge). scrollbar-gutter: stable reserves additional
+     space for classic scrollbars so this still never overlaps content. */
+  padding: 14px 12px 12px 12px;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -146,17 +151,25 @@ html, body, #root {
   background: var(--card-color, var(--sidebar-bg));
 }
 .form-section + .form-section {
-  margin-top: 10px;
+  margin-top: 16px; /* was 10px — 2026-09-27 critique pass: cards nearly touched */
 }
 
-/* One accent colour per section — a warm, muted palette distinct from the
-   sidebar's own neutral tones, chosen to match the picked mockup. */
-.form-section--presets     { --card-color: #8FA69C; } /* dusty teal   */
-.form-section--travelRoute { --card-color: #DD6B3B; } /* burnt orange */
-.form-section--labels      { --card-color: #6E7F52; } /* olive green  */
-.form-section--trackLine   { --card-color: #B69A5C; } /* tan          */
-.form-section--map         { --card-color: #D4A24C; } /* mustard      */
-.form-section--export      { --card-color: #6B7280; } /* slate        */
+/* One accent colour per section — 2026-09-27 critique pass: the previous six
+   hex values were picked by eye (mustard and tan sat only a few degrees apart
+   on the wheel) and didn't read as one family. Now derived systematically:
+   every content section shares the same OKLCH lightness (64%) and chroma
+   (0.09) — equal visual weight and equal contrast against the white
+   title/summary text — and only the hue rotates, evenly spaced around the
+   wheel so each card is clearly distinguishable from its neighbours. Export
+   is the deliberate exception: it's a utility/output step, not a content
+   category, so it stays desaturated near-neutral to visually set it apart
+   from the five content cards above it. */
+.form-section--presets     { --card-color: oklch(64% 0.09 165); } /* teal   */
+.form-section--travelRoute { --card-color: oklch(64% 0.09 45);  } /* orange */
+.form-section--labels      { --card-color: oklch(64% 0.09 125); } /* green  */
+.form-section--trackLine   { --card-color: oklch(64% 0.09 85);  } /* olive  */
+.form-section--map         { --card-color: oklch(64% 0.09 235); } /* blue   */
+.form-section--export      { --card-color: oklch(55% 0.015 250); } /* slate (desaturated, intentional exception) */
 
 /* Section title doubles as a collapse toggle button — icon + title/summary
    text block + chevron, all in white/near-white since it sits directly on
@@ -165,11 +178,11 @@ html, body, #root {
 .section-title {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   width: 100%;
   background: none;
   border: none;
-  padding: 13px 15px;
+  padding: 16px 18px; /* was 13px 15px — 2026-09-27 critique pass */
   cursor: pointer;
   text-align: left;
   font-family: var(--font);
@@ -197,13 +210,13 @@ html, body, #root {
   gap: 1px;
 }
 .section-title-main {
-  font-size: 12px;
+  font-size: 14px; /* was 12px — 2026-09-27 critique pass: too little contrast against the 10px field text below it */
   font-weight: 700;
   color: #fff;
   line-height: 1.25;
 }
 .section-summary {
-  font-size: 9.5px;
+  font-size: 10.5px; /* was 9.5px */
   color: rgba(255,255,255,0.75);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -240,8 +253,9 @@ html, body, #root {
 }
 .section-body-inner {
   /* side/bottom padding so fields don't sit flush against the card edge;
-     no top padding — the header above already has its own bottom padding */
-  padding: 0 14px 14px;
+     no top padding — the header above already has its own bottom padding.
+     Bumped from 14px 14px to 16px 18px, 2026-09-27 critique pass. */
+  padding: 0 18px 16px;
 }
 
 /* ── Field cards ──────────────────────────────────────────────────────── */
@@ -252,10 +266,10 @@ html, body, #root {
   background: var(--field-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0 12px 0 8px;
-  min-height: 27px;
-  margin-bottom: 4px;
-  gap: 6px;
+  padding: 0 14px 0 10px; /* was 0 12px 0 8px */
+  min-height: 30px; /* was 27px */
+  margin-bottom: 6px; /* was 4px — 2026-09-27 critique pass, fields felt packed */
+  gap: 7px;
   transition: background .12s;
   overflow: hidden; /* clips slider thumb + focus ring to the rounded pill shape */
 }
@@ -270,7 +284,12 @@ html, body, #root {
   font-weight: 400;           /* regular weight — matches reference        */
   color: var(--text-muted);   /* warm brownish, not black                  */
   margin: 0;
-  width: 38%;
+  /* Bumped from 38% (2026-09-27 critique pass): even at the new 320px
+     sidebar width, a fixed percentage still ellipsised the longest labels
+     ("Transport marker") because it scales with the field, not with the
+     text. 46% gives those labels enough room while the sidebar widening
+     still does most of the work for everything shorter. */
+  width: 46%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -968,6 +987,19 @@ select {
 }
 
 .btn:active { transform: scale(0.98); }
+
+/* The sidebar's "Render & Download" button sits directly under the
+   .form-section--travelRoute card, which is the same orange hue family as
+   --accent (39°) — 2026-09-27 critique pass flagged the two as visually
+   merging into one blob instead of reading as "content card" + "separate
+   action". Scoped to .sidebar-footer only, so the global .btn-primary
+   (used elsewhere, e.g. inside modals) is unaffected. */
+.sidebar-footer .btn-primary {
+  background: oklch(22% 0.01 250);
+}
+.sidebar-footer .btn-primary:hover {
+  background: oklch(30% 0.01 250);
+}
 
 .btn-primary {
   background: var(--accent);

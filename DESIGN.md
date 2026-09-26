@@ -6,7 +6,7 @@ All UI styles live in `webapp/src/styles.css`. There is no external component li
 
 ## Design language
 
-The UI uses the **tweakcn "Claude" theme** — a warm cream/white palette with Claude's signature terracotta orange as the accent colour. Colours are defined in [OKLCH](https://oklch.com/) colour space for perceptual uniformity. The sidebar is compact (280 px wide, 11 px base font) to give as much space as possible to the map preview.
+The UI uses the **tweakcn "Claude" theme** — a warm cream/white palette with Claude's signature terracotta orange as the accent colour. Colours are defined in [OKLCH](https://oklch.com/) colour space for perceptual uniformity. The sidebar is 320px wide (widened from 280px 2026-09-27 — see CLAUDE.md's "Sidebar visual redesign" entry — the narrower width truncated longer field labels), 11 px base font, to give as much space as possible to the map preview.
 
 Source: [`https://tweakcn.com/r/themes/claude.json`](https://tweakcn.com/r/themes/claude.json)
 
@@ -53,7 +53,7 @@ legible against all 6 card colours the way white-on-dark always is.
 
 | Variable | Value | Used for |
 |---|---|---|
-| `--sidebar-w` | `280px` | Fixed sidebar width |
+| `--sidebar-w` | `320px` | Fixed sidebar width (280px until 2026-09-27) |
 
 ---
 
@@ -64,7 +64,7 @@ legible against all 6 card colours the way white-on-dark always is.
 │  .layout  (display: flex, height: 100vh)            │
 │  ┌──────────────┐  ┌───────────────────────────────┐│
 │  │  .sidebar    │  │  .preview-panel               ││
-│  │  280px wide  │  │  flex: 1                      ││
+│  │  320px wide  │  │  flex: 1                      ││
 │  │              │  │  centred column               ││
 │  │ .sidebar-    │  │                               ││
 │  │  header      │  │  .preview-player-wrapper      ││
@@ -150,7 +150,7 @@ pill's own contrast against a neutral background) plus larger `padding`/`font-si
   Helvetica/Inter/Georgia/Oswald/Merriweather) are a separate per-render user choice and
   untouched by this.
 - **Base size**: 11px on `html/body` — everything else is relative to this
-- **Scale in use**: 8px (tiny labels) / 9px (section titles, picker internals) / 10px (field labels and values) / 11px (font preview) / 12px (sidebar heading) / 13px (login form)
+- **Scale in use**: 8px (tiny labels) / 9px (picker internals) / 10px (field labels and values) / 11px (font preview) / 13px (login form) / 14px (section titles, bumped from 12px 2026-09-27) / 18px (sidebar heading "Travel Map", bumped from 12px 2026-09-27 — see CLAUDE.md's "Sidebar visual redesign" entry)
 - **Section titles**: 9px, 600 weight, uppercase, `letter-spacing: 0.09em`, `--text-muted` colour
 
 ---
@@ -175,14 +175,14 @@ The fundamental unit of the form. A rounded card with a label on the left and a 
   background: var(--field-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0 12px 0 8px;
-  min-height: 27px;
-  margin-bottom: 4px;
+  padding: 0 14px 0 10px;
+  min-height: 30px;
+  margin-bottom: 6px;
 }
-.field > label { width: 38%; flex-shrink: 0; color: var(--text-muted); }
+.field > label { width: 46%; flex-shrink: 0; color: var(--text-muted); }
 ```
 
-The label takes 38% of the width. The control (`input`, `.range-row`, `.color-row`, `.radio-group`, `.ls-picker`) takes `flex: 1`.
+The label takes 46% of the width (bumped from 38% 2026-09-27 — even at the wider 320px sidebar, 38% still ellipsised the longest label, "Transport marker"). The control (`input`, `.range-row`, `.color-row`, `.radio-group`, `.ls-picker`) takes `flex: 1`.
 
 **Two-column layout** — wrap two fields in `.field-row` (CSS grid, 2 equal columns):
 ```jsx
@@ -225,10 +225,15 @@ title + one-line summary of the current settings.
 </div>
 ```
 
-**Colour per section** (`webapp/src/styles.css`): Presets `#8FA69C` (dusty teal), Travel route
-`#DD6B3B` (burnt orange), Labels `#6E7F52` (olive green), Track line `#B69A5C` (tan), Map style
-`#D4A24C` (mustard), Export `#6B7280` (slate) — independent of the sidebar's own neutral
-"Claude" theme tokens (`--bg`, `--sidebar-bg`, etc.), which this redesign left untouched.
+**Colour per section** (`webapp/src/styles.css`) — replaced with a systematic OKLCH ramp
+2026-09-27 (the original 6 hex values were picked by eye; mustard and tan sat only a few
+degrees apart and didn't read as one family). All 5 content cards now share the same
+lightness (64%) and chroma (0.09), only hue rotates: Presets `oklch(64% 0.09 165)` (teal),
+Travel route `oklch(64% 0.09 45)` (orange), Labels `oklch(64% 0.09 125)` (green), Track line
+`oklch(64% 0.09 85)` (olive), Map style `oklch(64% 0.09 235)` (blue). Export is a deliberate
+exception — `oklch(55% 0.015 250)`, desaturated near-neutral, since it's a utility/output step
+rather than a content category. Independent of the sidebar's own neutral "Claude" theme tokens
+(`--bg`, `--sidebar-bg`, etc.), which this redesign left untouched.
 
 **Why most fields needed zero changes**: `RangeField`, `ColorField`, text inputs, `ls-picker`
 dropdowns and `radio-group`s nested inside `.field` already render as **white pills** — already
@@ -253,6 +258,11 @@ and expanded.
 
 **Collapse state** is a `Set<string>` in `PropsForm` (`closed`), toggled by `toggle(id)`.
 Default closed: `presets`, `labels`, `map`, `export`. Default open: `travelRoute`, `trackLine`.
+
+**Render button vs. Travel route card** (2026-09-27): `.sidebar-footer .btn-primary` (scoped —
+not the global `.btn-primary`) overrides the background to a near-black `oklch(22% 0.01 250)`.
+The global `--accent` orange sits in the same hue family as the Travel route card, so the
+"Render & Download MP4" button used to blend into it instead of reading as a separate action.
 
 The Track line section also contains the **Transport marker** control — a `MarkerPicker`
 dropdown (same `ls-picker` pattern) followed by a conditional size slider when a marker is active.
