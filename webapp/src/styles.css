@@ -18,7 +18,6 @@
   --accent-hover:oklch(0.5300 0.1375 39.0427);  /* --primary ↓   accent on hover           */
   --accent-light:oklch(0.9245 0.0138 92.9892);  /* --secondary   selected option bg        */
   --danger:      oklch(0.6368 0.2078 25.3313);  /* destructive   errors (dark-mode red)    */
-  --success:     #4a7a50;
   --field-hover: oklch(0.9341 0.0153 90.2390);  /* --muted       field pill on hover       */
   --radius:      0.5rem;                        /* --radius      ≈ 8 px (rounder than 6)   */
   --radius-lg:   0.75rem;                       /* scaled        ≈ 12 px for larger panels */
@@ -76,10 +75,12 @@ html, body, #root {
 .sidebar-body {
   flex: 1;
   overflow-y: auto;
-  /* 4px on each side keeps content clear of the scrollbar.
+  /* 8px on each side (was 4px pre-card-redesign) gives the rounded colourful
+     cards a bit of breathing room from the sidebar edge, while still keeping
+     content clear of the scrollbar.
      scrollbar-gutter: stable reserves additional space for classic scrollbars.
      Together these ensure the scrollbar never overlaps content on any platform. */
-  padding: 10px 4px 6px 4px;
+  padding: 10px 8px 8px 8px;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -124,45 +125,91 @@ html, body, #root {
   background: var(--border); /* neutral tile placeholder while map loads */
 }
 
-/* ── Form Sections ────────────────────────────────────────────────────── */
+/* ── Form Sections — colourful cards ──────────────────────────────────────
+   Redesigned 2026-09-26 ("Option C" from a design-canvas mockup the user
+   picked): each section is now a bold, color-blocked rounded card instead of
+   a plain header on the neutral sidebar background — but the expand/collapse
+   behaviour and every field underneath are unchanged, so nothing users could
+   already do got hidden behind a swipe/tap-through interaction. See
+   CLAUDE.md for the full rationale and the fields-vs-.field-pill contrast
+   reasoning (most controls already render as white pills via .field, so
+   they needed no changes at all — only the header and a few standalone
+   labels needed a light-on-colour treatment). ───────────────────────────── */
 .form-section {
-  padding: 0 11px 4px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--card-color, var(--sidebar-bg));
 }
-
 .form-section + .form-section {
-  margin-top: 9px;
-  padding-top: 9px;
-  border-top: 1px solid var(--border);
+  margin-top: 10px;
 }
 
-/* Section title doubles as a collapse toggle button — reset all button styles
-   and lay out the chevron + text as a flex row.                              */
+/* One accent colour per section — a warm, muted palette distinct from the
+   sidebar's own neutral tones, chosen to match the picked mockup. */
+.form-section--presets     { --card-color: #8FA69C; } /* dusty teal   */
+.form-section--travelRoute { --card-color: #DD6B3B; } /* burnt orange */
+.form-section--labels      { --card-color: #6E7F52; } /* olive green  */
+.form-section--trackLine   { --card-color: #B69A5C; } /* tan          */
+.form-section--map         { --card-color: #D4A24C; } /* mustard      */
+.form-section--export      { --card-color: #6B7280; } /* slate        */
+
+/* Section title doubles as a collapse toggle button — icon + title/summary
+   text block + chevron, all in white/near-white since it sits directly on
+   the card's saturated background (unlike the fields below it, which are
+   still white .field pills and needed no colour changes at all). */
 .section-title {
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-  /* button reset */
   display: flex;
   align-items: center;
-  gap: 5px;           /* chevron sits to the left of the label */
+  gap: 11px;
   width: 100%;
   background: none;
   border: none;
-  padding: 0;
+  padding: 13px 15px;
   cursor: pointer;
   text-align: left;
   font-family: var(--font);
 }
-.section-title:hover { color: var(--text); }
+.section-title:hover { opacity: 0.93; }
 
-/* Chevron indicator — rotated right (▸) when collapsed, down (▾) when open.
-   11px = original 9px + ~20%.                                                */
+.section-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.section-icon .material-symbols-outlined { font-size: 16px; }
+
+.section-title-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.section-title-main {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.25;
+}
+.section-summary {
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+/* Chevron indicator — rotated right (▸) when collapsed, down (▾) when open. */
 .section-chevron {
   font-size: 11px;
-  color: var(--text-light);
+  color: rgba(255,255,255,0.85);
   transition: transform 0.18s ease;
   transform: rotate(-90deg);   /* ▸ points right = collapsed */
   flex-shrink: 0;
@@ -176,8 +223,8 @@ html, body, #root {
    max-height: 0 + overflow: hidden is the battle-tested approach for this.
    The CSS grid / 0fr technique causes the first child border to bleed past
    the collapsed track in some browsers regardless of overflow settings.
-   1500px is safely above the tallest section (City labels ≈ 400px in the
-   280px sidebar) so all content is revealed on open.                        */
+   1500px is safely above the tallest section (Travel route's GPS-track +
+   elevation-profile fields) so all content is revealed on open.            */
 .section-body {
   overflow: hidden;
   max-height: 0;
@@ -187,8 +234,9 @@ html, body, #root {
   max-height: 1500px;
 }
 .section-body-inner {
-  /* padding so the last field's bottom edge isn't flush against the clip */
-  padding-bottom: 2px;
+  /* side/bottom padding so fields don't sit flush against the card edge;
+     no top padding — the header above already has its own bottom padding */
+  padding: 0 14px 14px;
 }
 
 /* ── Field cards ──────────────────────────────────────────────────────── */
@@ -676,24 +724,28 @@ select {
 
 /* ── Subsection sub-headings (e.g. "Elevation profile" inside Travel route,
    "City labels" inside Map style) — merged sections from the 2026-09-26
-   reorg use these to visually separate their inline sub-groups. */
+   reorg use these to visually separate their inline sub-groups. Light-on-
+   colour (not var(--text-muted)) since 2026-09-26's card redesign: these
+   sit directly on the section's saturated background, not the old neutral
+   sidebar background. */
 .subsection-label {
   font-size: 9px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.75);
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin: 14px 0 6px;
   padding-top: 10px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255,255,255,0.22);
 }
 .subsection-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
-/* ── City tier sub-headings (Big / Medium / Small inside City labels section) */
+/* ── City tier sub-headings (Big / Medium / Small inside City labels section) —
+   light-on-colour for the same reason as .subsection-label above. */
 .city-tier-label {
   font-size: 9px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.75);
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin: 6px 0 3px;
@@ -704,7 +756,7 @@ select {
   text-transform: none;
   letter-spacing: 0;
   font-size: 8px;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
 /* ── City Slider ──────────────────────────────────────────────────────── */
@@ -849,12 +901,14 @@ select {
 }
 
 /* ── File Upload ──────────────────────────────────────────────────────── */
+/* Light-on-colour since 2026-09-26's card redesign — this sits directly on
+   the Travel route card's orange background, not the old neutral sidebar. */
 .upload-area {
-  border: 1.5px dashed var(--border);
+  border: 1.5px dashed rgba(255,255,255,0.4);
   border-radius: var(--radius);
   padding: 7px 10px;
   text-align: center;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.8);
   font-size: 9px;
   cursor: pointer;
   transition: border-color .15s, background .15s;
@@ -862,9 +916,9 @@ select {
 }
 
 .upload-area:hover {
-  border-color: var(--accent);
-  background: var(--accent-light);
-  color: var(--accent);
+  border-color: #fff;
+  background: rgba(255,255,255,0.14);
+  color: #fff;
 }
 
 .upload-area input[type="file"] {
@@ -878,14 +932,17 @@ select {
   padding: 0;
 }
 
+/* Solid dark pill (not just a coloured text tint) so it stays legible
+   regardless of which card colour it lands on, since 2026-09-26's redesign
+   put every field on a saturated background instead of the neutral sidebar. */
 .upload-status {
   font-size: 9px;
-  margin-top: 3px;
-  padding: 0 2px;
+  margin-top: 5px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(0,0,0,0.22);
 }
-
-.upload-status.ok    { color: var(--success); }
-.upload-status.error { color: var(--danger); }
 
 /* ── Buttons ──────────────────────────────────────────────────────────── */
 .btn {

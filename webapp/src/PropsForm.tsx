@@ -169,6 +169,15 @@ function FlightIcon() {
   );
 }
 
+// ── Section Header Icons (Material Symbols) — one per colorful card,
+// added for the 2026-09-26 "Option C" redesign (see CLAUDE.md) ────────────
+function PresetsIcon()   { return <span className="material-symbols-outlined">bookmark</span>; }
+function RouteIcon()     { return <span className="material-symbols-outlined">route</span>; }
+function LabelsIcon()    { return <span className="material-symbols-outlined">sell</span>; }
+function TrackLineIcon() { return <span className="material-symbols-outlined">timeline</span>; }
+function MapStyleIcon()  { return <span className="material-symbols-outlined">map</span>; }
+function ExportIcon()    { return <span className="material-symbols-outlined">download</span>; }
+
 // ── Map Style Picker ──────────────────────────────────────────────────────
 
 const MAP_STYLE_OPTIONS: { value: string; label: string }[] = [
@@ -915,20 +924,44 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
     e.target.value = '';
   }
 
+  // ── Section header summaries (2026-09-26 "Option C" redesign) ───────────
+  // One short line shown next to each card's title, both collapsed and open —
+  // just enough to see the current setting at a glance, matching the
+  // reference design's amount-on-the-right pattern.
+  const TRAVEL_MODE_LABEL: Record<Props['travelMode'], string> = {
+    driving: 'Car', cycling: 'Bike', walking: 'Walk', flight: 'Fly',
+  };
+  const OUTPUT_FORMAT_LABEL: Record<Props['outputFormat'], string> = {
+    portrait: '9:16', landscape: '16:9', square: '1:1', 'instagram-post': '4:5',
+  };
+  const selectedPreset = presets.find(p => p.id === selectedPresetId);
+  const presetsSummary = selectedPreset ? selectedPreset.name : 'None selected';
+  const travelRouteSummary = props.mode === 'directions'
+    ? `${TRAVEL_MODE_LABEL[props.travelMode]} · ${props.startLabel || '?'} → ${props.endLabel || '?'}`
+    : (props.gpxFile || 'No track selected');
+  const labelsSummary = LABEL_MODE_OPTIONS.find(o => o.value === props.labelMode)?.label ?? '';
+  const trackLineSummary = `${LINE_STYLE_OPTIONS.find(o => o.value === props.lineStyle)?.label ?? ''} · ${props.lineWidth}px`;
+  const mapStyleSummary = MAP_STYLE_OPTIONS.find(o => o.value === props.mapStyle)?.label ?? '';
+  const exportSummary = `${OUTPUT_FORMAT_LABEL[props.outputFormat]} · ${props.duration}s`;
+
   return (
     <div>
 
       {/* ── Presets ──────────────────────────────────────────────── */}
-      <div className="form-section">
+      <div className="form-section form-section--presets">
         <button className="section-title" onClick={() => toggle('presets')} aria-expanded={isOpen('presets')}>
+          <span className="section-icon"><PresetsIcon /></span>
+          <span className="section-title-text">
+            <span className="section-title-main">Presets</span>
+            <span className="section-summary">{presetsSummary}</span>
+          </span>
           <span className={`section-chevron${isOpen('presets') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Presets
         </button>
         <div className={`section-body${isOpen('presets') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
 
             {presetError && (
-              <p style={{ fontSize: 11, color: 'var(--danger, #c0392b)', margin: '0 0 8px' }}>{presetError}</p>
+              <p style={{ fontSize: 11, color: '#fff', background: 'rgba(0,0,0,0.22)', borderRadius: 8, padding: '6px 10px', margin: '0 0 8px' }}>{presetError}</p>
             )}
 
             {/* Load a saved preset */}
@@ -972,10 +1005,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
 
       {/* ── Travel route (Mode + Route + GPX file + Elevation profile merged, ──
              2026-09-26 reorg) ───────────────────────────────────────── */}
-      <div className="form-section">
+      <div className="form-section form-section--travelRoute">
         <button className="section-title" onClick={() => toggle('travelRoute')} aria-expanded={isOpen('travelRoute')}>
+          <span className="section-icon"><RouteIcon /></span>
+          <span className="section-title-text">
+            <span className="section-title-main">Travel route</span>
+            <span className="section-summary">{travelRouteSummary}</span>
+          </span>
           <span className={`section-chevron${isOpen('travelRoute') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Travel route
         </button>
         <div className={`section-body${isOpen('travelRoute') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -1132,10 +1169,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       {/* ── Labels (Route labels + start/end country+city merged, shared ──
              between Directions and GPS track instead of duplicated,
              2026-09-26 reorg) ───────────────────────────────────────── */}
-      <div className="form-section">
+      <div className="form-section form-section--labels">
         <button className="section-title" onClick={() => toggle('labels')} aria-expanded={isOpen('labels')}>
+          <span className="section-icon"><LabelsIcon /></span>
+          <span className="section-title-text">
+            <span className="section-title-main">Labels</span>
+            <span className="section-summary">{labelsSummary}</span>
+          </span>
           <span className={`section-chevron${isOpen('labels') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Labels
         </button>
         <div className={`section-body${isOpen('labels') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -1211,10 +1252,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       </div>
 
       {/* ── Track line ───────────────────────────────────────────── */}
-      <div className="form-section">
+      <div className="form-section form-section--trackLine">
         <button className="section-title" onClick={() => toggle('trackLine')} aria-expanded={isOpen('trackLine')}>
+          <span className="section-icon"><TrackLineIcon /></span>
+          <span className="section-title-text">
+            <span className="section-title-main">Track line</span>
+            <span className="section-summary">{trackLineSummary}</span>
+          </span>
           <span className={`section-chevron${isOpen('trackLine') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Track line
         </button>
         <div className={`section-body${isOpen('trackLine') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -1269,10 +1314,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       </div>
 
       {/* ── Map style (Map + City labels merged, 2026-09-26 reorg) ────── */}
-      <div className="form-section">
+      <div className="form-section form-section--map">
         <button className="section-title" onClick={() => toggle('map')} aria-expanded={isOpen('map')}>
+          <span className="section-icon"><MapStyleIcon /></span>
+          <span className="section-title-text">
+            <span className="section-title-main">Map style</span>
+            <span className="section-summary">{mapStyleSummary}</span>
+          </span>
           <span className={`section-chevron${isOpen('map') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Map style
         </button>
         <div className={`section-body${isOpen('map') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">
@@ -1398,10 +1447,14 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       </div>
 
       {/* ── Export (renamed from Animation, 2026-09-26 reorg) ─────────── */}
-      <div className="form-section">
+      <div className="form-section form-section--export">
         <button className="section-title" onClick={() => toggle('export')} aria-expanded={isOpen('export')}>
+          <span className="section-icon"><ExportIcon /></span>
+          <span className="section-title-text">
+            <span className="section-title-main">Export</span>
+            <span className="section-summary">{exportSummary}</span>
+          </span>
           <span className={`section-chevron${isOpen('export') ? ' open' : ''}`} aria-hidden="true">▾</span>
-          Export
         </button>
         <div className={`section-body${isOpen('export') ? ' section-body--open' : ''}`}>
           <div className="section-body-inner">

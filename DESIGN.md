@@ -33,9 +33,12 @@ All values use OKLCH. Map to tweakcn token shown in comments.
 | `--accent` | `oklch(0.6171 0.1375 39.0427)` | `--primary` | Active/selected state, slider thumb, primary button (Claude orange) |
 | `--accent-hover` | `oklch(0.5300 0.1375 39.0427)` | `--primary` darkened | Accent on hover |
 | `--accent-light` | `oklch(0.9245 0.0138 92.9892)` | `--secondary` | Selected option background in dropdowns |
-| `--danger` | `oklch(0.6368 0.2078 25.3313)` | `--destructive` (dark) | Error messages |
-| `--success` | `#4a7a50` | — | Upload success message |
+| `--danger` | `oklch(0.6368 0.2078 25.3313)` | `--destructive` (dark) | Error messages (login, render errors) — not upload/preset errors any more, see below |
 | `--field-hover` | `oklch(0.9341 0.0153 90.2390)` | `--muted` | Field pill on hover |
+
+`--success` was removed 2026-09-26 — its only use (`.upload-status.ok`) became a solid dark
+pill instead (see "Form section" below), since a colour-tinted message text isn't guaranteed
+legible against all 6 card colours the way white-on-dark always is.
 
 ### Shape & shadow
 
@@ -162,20 +165,30 @@ The label takes 38% of the width. The control (`input`, `.range-row`, `.color-ro
 
 ---
 
-### Form section — `.form-section`
+### Form section — `.form-section` (colourful card, redesigned 2026-09-26)
 
-Groups related fields. Sections are separated by a top border + margin. Each section has a collapsible body toggled by a `.section-title` button.
+Groups related fields. Each of the 6 sections is now a bold, color-blocked rounded **card**
+(one accent colour per section, `--card-color` set by a `.form-section--<id>` modifier class)
+rather than a plain header on the neutral sidebar background — see CLAUDE.md's "Sidebar visual
+redesign" entry for the full rationale (a user-provided reference screenshot + a Design-canvas
+mockup with 3 options, user picked this one: keep the collapsible behaviour exactly, just
+reskin it). Section body is still toggled by a `.section-title` button, now with an icon +
+title + one-line summary of the current settings.
 
 ```jsx
-<div className="form-section">
+<div className="form-section form-section--trackLine">
   {/* title is a <button> — clicking it calls toggle(id) */}
-  <button className="section-title" onClick={() => toggle('route')} aria-expanded={isOpen('route')}>
-    <span className={`section-chevron${isOpen('route') ? ' open' : ''}`} aria-hidden="true">▾</span>
-    Route
+  <button className="section-title" onClick={() => toggle('trackLine')} aria-expanded={isOpen('trackLine')}>
+    <span className="section-icon"><TrackLineIcon /></span>
+    <span className="section-title-text">
+      <span className="section-title-main">Track line</span>
+      <span className="section-summary">{trackLineSummary}</span>
+    </span>
+    <span className={`section-chevron${isOpen('trackLine') ? ' open' : ''}`} aria-hidden="true">▾</span>
   </button>
 
-  {/* body animates open/closed via CSS grid-template-rows transition */}
-  <div className={`section-body${isOpen('route') ? ' section-body--open' : ''}`}>
+  {/* body animates open/closed via a max-height transition */}
+  <div className={`section-body${isOpen('trackLine') ? ' section-body--open' : ''}`}>
     <div className="section-body-inner">
       <div className="field">...</div>
     </div>
@@ -183,19 +196,58 @@ Groups related fields. Sections are separated by a top border + margin. Each sec
 </div>
 ```
 
-**Collapse state** is a `Set<string>` in `PropsForm` (`closed`), toggled by `toggle(id)`. Default closed sections: `map`, `routeLabels`, `animation`, `cityLabels`. Default open: `mode`, `route`, `gpx`, `trackLine`.
+**Colour per section** (`webapp/src/styles.css`): Presets `#8FA69C` (dusty teal), Travel route
+`#DD6B3B` (burnt orange), Labels `#6E7F52` (olive green), Track line `#B69A5C` (tan), Map style
+`#D4A24C` (mustard), Export `#6B7280` (slate) — independent of the sidebar's own neutral
+"Claude" theme tokens (`--bg`, `--sidebar-bg`, etc.), which this redesign left untouched.
 
-The Track line section also contains the **End marker** control — a `MarkerPicker` dropdown (same `ls-picker` pattern) followed by a conditional size slider when a marker is active.
+**Why most fields needed zero changes**: `RangeField`, `ColorField`, text inputs, `ls-picker`
+dropdowns and `radio-group`s nested inside `.field` already render as **white pills** — already
+isolated from whatever's behind them. Only elements that sit directly on the card background
+(not wrapped in `.field`) needed a light-on-colour variant: `.section-title` itself,
+`.subsection-label`/`.city-tier-label` (the "Elevation profile"/"City labels" inline
+sub-headings — see "Subsection" below), `.upload-area`, and `.upload-status`/`presetError`
+(now solid dark pills, `rgba(0,0,0,0.22)` background + white text, rather than a colour-tinted
+text that isn't guaranteed legible against all 6 card colours).
+
+**Section icons** (`.section-icon` — a 30px circle, `rgba(255,255,255,0.22)` background):
+Material Symbols, same pattern as the travel-mode icons (`CarIcon` etc. in `PropsForm.tsx`) —
+`bookmark` (Presets), `route` (Travel route), `sell` (Labels), `timeline` (Track line), `map`
+(Map style), `download` (Export). The font is a curated subset requested by name in
+`webapp/index.html`'s `icon_names` query param — a new icon needs adding there or it silently
+fails to render.
+
+**Header summary** (`.section-summary`, e.g. "Car · Ghent → Lauris"): one `const ...Summary`
+per section, computed in `PropsForm` from `props` right before the JSX return, reusing existing
+option-label lookups (`MAP_STYLE_OPTIONS.find(...)` etc.) where available. Shown both collapsed
+and expanded.
+
+**Collapse state** is a `Set<string>` in `PropsForm` (`closed`), toggled by `toggle(id)`.
+Default closed: `presets`, `labels`, `map`, `export`. Default open: `travelRoute`, `trackLine`.
+
+The Track line section also contains the **Transport marker** control — a `MarkerPicker`
+dropdown (same `ls-picker` pattern) followed by a conditional size slider when a marker is active.
 
 **CSS animation** uses `max-height` + `overflow: hidden` (battle-tested approach):
 ```css
 .section-body        { overflow: hidden; max-height: 0;      transition: max-height 0.22s ease; }
 .section-body--open  { max-height: 1500px; }
-.section-body-inner  { padding-bottom: 2px; }
+.section-body-inner  { padding: 0 14px 14px; }
 ```
 The CSS grid `0fr` technique was tried first but causes the first child's 1px border to bleed past the collapsed track in some browsers regardless of `overflow: hidden` settings. `max-height: 0` clips unconditionally. 1500px is a safe ceiling above the tallest possible section.
 
-**Chevron** (`.section-chevron`) sits before the label text (flex row, `gap: 5px`). It rotates from −90° (▸, collapsed) to 0° (▾, open) with a 0.18s ease transition. Size: 11px (≈ 20% larger than the 9px section title text for visibility).
+**Chevron** (`.section-chevron`) sits after the title/summary text block (flex row, `gap: 11px`
+for the whole header). White/near-white (`rgba(255,255,255,0.85)`) since the card redesign — it
+used to be `var(--text-light)` on the neutral background. Rotates from −90° (▸, collapsed) to
+0° (▾, open) with a 0.18s ease transition, 11px.
+
+### Subsection — `.subsection-label` / `.city-tier-label`
+
+An inline sub-heading inside a merged section (e.g. "Elevation profile" inside Travel route,
+"City labels" inside Map style, or the "Big"/"Medium"/"Small" city tiers inside that). Light-
+on-colour (`rgba(255,255,255,0.75)` text, `rgba(255,255,255,0.22)` top border) since these sit
+directly on the card background like `.section-title`, not wrapped in a white `.field` pill.
+Not independently collapsible — always visible when their parent section is open.
 
 ---
 

@@ -109,6 +109,54 @@ a deliberate follow-up, not an oversight.
 - Toggle button: `<button className="section-title">` with `<span className="section-chevron">` before the label text
 - Body: `.section-body` + `.section-body-inner`; collapse uses `max-height: 0` / `overflow: hidden` (NOT CSS grid 0fr — that causes 1px border bleed in some browsers)
 
+## Sidebar visual redesign — colourful cards ("Option C", 2026-09-26)
+Each of the 6 sections above is now a bold, color-blocked rounded card instead of a plain
+header on the neutral sidebar background. User showed a reference screenshot (a finance app's
+stacked-card UI) and asked to redesign the sidebar to match; three directions were mocked up
+first as a Design-canvas artifact (full peek-stack deck / soft scrollable list / colourful
+accordion) — user picked the accordion ("C"): keeps today's expand/collapse behaviour exactly,
+nothing hidden behind swipes, just reskinned.
+
+- **Palette** (`webapp/src/styles.css`, one `--card-color` per `.form-section--<id>` modifier
+  class): Presets `#8FA69C` (dusty teal), Travel route `#DD6B3B` (burnt orange), Labels
+  `#6E7F52` (olive green), Track line `#B69A5C` (tan), Map style `#D4A24C` (mustard), Export
+  `#6B7280` (slate) — matches the picked mockup, distinct from the sidebar's own neutral
+  "Claude" theme tokens (which are otherwise untouched — this redesign only touches the section
+  cards, not the preview panel or other chrome).
+- **Why this was a smaller change than it looked**: almost every control (`RangeField`,
+  `ColorField`, text inputs, `ls-picker` dropdowns, `radio-group`s nested in `.field`) already
+  renders as a **white pill** via the existing `.field` class — that was already isolated from
+  whatever sits behind it, so none of those needed any changes at all. Only things that sit
+  **directly** on the card background (not wrapped in `.field`) needed light-on-colour styling:
+  the new `.section-title` header (icon + title + summary + chevron, all white/near-white),
+  `.subsection-label` and `.city-tier-label` (Elevation profile / City labels sub-headings),
+  `.upload-area` (GPX upload), and `.upload-status`/`presetError` (now solid dark
+  `rgba(0,0,0,0.22)` pills with white text — chosen specifically because their old colour-tint
+  approach (`var(--success)`/`var(--danger)` text) isn't guaranteed readable against every one
+  of the 6 card colours, whereas white-on-dark-pill always is, regardless of the surrounding
+  card).
+- **Section icons**: Material Symbols (same font/pattern as the travel-mode icons — see
+  `CarIcon` etc.), added to the existing font subset request in `webapp/index.html`'s
+  `icon_names` query param (was `directions_bike,directions_car,directions_walk`, now also
+  `bookmark,route,sell,timeline,map,download`) — expanding this list is required, the font is
+  a curated subset, not the full Material Symbols set. One `<span className="section-icon">`
+  wrapper per header gives it the translucent white circle backing seen in the mockup.
+- **Header summary line** (e.g. "Car · Ghent → Lauris", "Animated", "Dotted · 10px"): computed
+  inline in `PropsForm` right before the `return`, one `const ...Summary` per section, reusing
+  existing option-label lookups (`MAP_STYLE_OPTIONS.find(...)`, `LINE_STYLE_OPTIONS.find(...)`,
+  `LABEL_MODE_OPTIONS.find(...)`) plus two new small local maps (`TRAVEL_MODE_LABEL`,
+  `OUTPUT_FORMAT_LABEL`) for the two prop sets that didn't already have an options array. Shown
+  both collapsed and expanded, matching the mockup's "see the current value without opening
+  the card" pattern. Not a live "does this match a saved preset" check — `presetsSummary` just
+  shows the last-applied preset's name via the existing `selectedPresetId`, same simplification
+  as the `PresetPicker` trigger label above.
+- **Verified locally before shipping**: spun up the real server (`node server/index.cjs`) with
+  a throwaway `.env` (fake `MAPBOX_TOKEN`, default `admin`/`changeme` credentials — deleted
+  after, never committed), logged in, and screenshotted every card open/closed in the actual
+  running app rather than a static mockup — worth doing again for any layout change this size,
+  since contrast/spacing issues in a real flex layout with live data (long preset names, actual
+  field values) don't always show up in a hand-written HTML mockup.
+
 ## Props defaults (key values)
 - `lineWidth`: default **10**, min 1, max **30** (in schema.ts, types.ts, PropsForm slider)
 - `routeMarker`: default **'none'** — set to 'car'|'camper'|'plane'|'bike'|'walk' to show animated badge
