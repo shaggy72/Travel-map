@@ -150,7 +150,7 @@ pill's own contrast against a neutral background) plus larger `padding`/`font-si
   Helvetica/Inter/Georgia/Oswald/Merriweather) are a separate per-render user choice and
   untouched by this.
 - **Base size**: 11px on `html/body` — everything else is relative to this
-- **Scale in use**: 8px (tiny labels) / 9px (picker internals) / 10px (field labels and values) / 11px (font preview) / 13px (login form) / 14px (section titles, bumped from 12px 2026-09-27) / 18px (sidebar heading "Travel Map", bumped from 12px 2026-09-27 — see CLAUDE.md's "Sidebar visual redesign" entry)
+- **Scale in use**: 8px (tiny labels) / 9px (picker internals) / 10.5px (field labels and values, matches `.section-summary`) / 11px (font preview) / 13px (login form) / 14px (section titles, bumped from 12px 2026-09-27) / 18px (sidebar heading "Travel Map", bumped from 12px 2026-09-27 — see CLAUDE.md's "Sidebar visual redesign" entry)
 - **Section titles**: 9px, 600 weight, uppercase, `letter-spacing: 0.09em`, `--text-muted` colour
 
 ---
@@ -167,7 +167,7 @@ The fundamental unit of the form. A label floating on the card's own colour (no 
                     └──────────────────┘
 ```
 
-**Restructured 2026-09-27** (user feedback): `.field` used to be one shared white pill wrapping *both* the label and the control, which made the label read as if it sat inside a text box. Now `.field` itself has no background/border at all — just an unstyled flex row — and only the control half gets a box:
+**Restructured 2026-09-27** (user feedback, two passes): `.field` used to be one shared white pill wrapping *both* the label and the control, which made the label read as if it sat inside a text box. Now `.field` itself has no background/border at all — just an unstyled flex row — and only the control half gets a box:
 
 ```css
 /* Structure */
@@ -179,22 +179,34 @@ The fundamental unit of the form. A label floating on the card's own colour (no 
   margin-bottom: 6px;
 }
 .field > label {
-  width: 46%; /* bumped from 38% 2026-09-27 — even at the 320px sidebar,
-                 38% still ellipsised the longest label, "Transport marker" */
+  width: 36%; /* narrowed from 46% (third pass) — 46% starved the control
+                 box, badly enough that slider thumbs stuck out past their
+                 own box on the right */
   flex-shrink: 0;
+  font-size: 10.5px; /* matches .section-summary exactly, e.g.
+                         "Car · Ghent → Lauris" — third-pass user ask */
+  line-height: 1.25;
   color: rgba(255,255,255,0.75); /* light-on-colour, same as .section-summary — no box behind it */
+  white-space: normal;
+  overflow-wrap: break-word; /* long labels ("Transport marker") wrap onto
+                                 a 2nd line instead of ellipsising or
+                                 needing a wide column */
 }
 /* Each control type gets its own boxed pill instead (input, select,
-   .ls-picker, .range-row, .color-row, .city-slider-row, .radio-group) */
+   .ls-picker, .range-row, .color-row, .city-slider-row, .radio-group) —
+   borderless flat fill + 10px radius (third pass — reference: a flat
+   native-app settings panel; the reference's own grey colour scheme was
+   not part of the ask, only its shape/fill language). */
 .field > input[type="text"] {
   flex: 1;
   background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: 10px;
 }
 ```
 
 `.upload-area` needed no change — it already sits directly on the card's colour (dashed border, light text), the same pattern the label now uses, so it never relied on `.field`'s box.
+
+**Sliders (`.range-row`/`.city-slider-row`)** are a distinct case, also reworked third pass: the whole box is the value bar — a flat two-tone fill from the left edge up to the current value, clipped to the box's rounded corners by its own `overflow: hidden`, with a thin 3×16px vertical grip (`var(--accent)`) instead of a 13px round thumb sitting on a separate thin track. The fill percentage (`--range-fill`, computed in `RangeField`/`CitySlider` in `PropsForm.tsx`) is set as an inline custom property on the wrapping `.range-row`/`.city-slider-row` div rather than on the `<input>` itself, so both the box's own background gradient and the input's track/thumb pseudo-elements can read it (CSS custom properties inherit to descendants).
 
 **Two-column layout** — wrap two fields in `.field-row` (CSS grid, 2 equal columns):
 ```jsx

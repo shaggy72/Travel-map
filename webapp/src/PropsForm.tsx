@@ -88,14 +88,13 @@ function RangeField({ label, value, min, max, step = 1, unit: _unit = '', onChan
   return (
     <div className="field">
       <label>{label}</label>
-      <div className="range-row">
+      <div className="range-row" style={{ '--range-fill': `${pct}%` } as React.CSSProperties}>
         <input
           type="range"
           min={min}
           max={max}
           step={step}
           value={value}
-          style={{ '--range-fill': `${pct}%` } as React.CSSProperties}
           onChange={e => onChange(Number(e.target.value))}
         />
       </div>
@@ -142,14 +141,13 @@ function CitySlider({ value, onChange }: { value: number; onChange: (v: number) 
   const pct = Math.round((index / (CITY_STEPS.length - 1)) * 100);
 
   return (
-    <div className="city-slider-row">
+    <div className="city-slider-row" style={{ '--range-fill': `${pct}%` } as React.CSSProperties}>
       <input
         type="range"
         min={0}
         max={CITY_STEPS.length - 1}
         step={1}
         value={index}
-        style={{ '--range-fill': `${pct}%` } as React.CSSProperties}
         onChange={e => onChange(CITY_STEPS[Number(e.target.value)])}
       />
     </div>

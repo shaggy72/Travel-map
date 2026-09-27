@@ -277,22 +277,28 @@ html, body, #root {
 
 .field > label {
   flex-shrink: 0;
-  font-size: 10px;
+  /* Matches .section-summary exactly (e.g. "Car · Ghent → Lauris") —
+     2026-09-27, third pass: user asked for the same style/size for both,
+     since they're the same kind of light-on-colour caption text. */
+  font-size: 10.5px;
   font-weight: 400;
-  color: rgba(255,255,255,0.75); /* light-on-colour — no box behind it any more */
+  line-height: 1.25;
+  color: rgba(255,255,255,0.75);
   margin: 0;
-  /* 46% (was 38%): even at the 320px sidebar width, a fixed percentage
-     still ellipsised the longest labels ("Transport marker") because it
-     scales with the field, not with the text. */
-  width: 46%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Narrowed from 46% (2026-09-27 third pass): the wider label was starving
+     the control box of width, so sliders' thumbs stuck out past their own
+     box on the right. Long labels ("Transport marker") now wrap onto a
+     second line instead of ellipsising — no longer truncated either way. */
+  width: 36%;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 /* Controls that sit directly inside .field each get their own boxed white
    pill (nested inside the now-boxless .field row) so it's unambiguous
-   which part is the editable/interactive control. */
+   which part is the editable/interactive control. Style reworked 2026-09-27
+   (third pass, reference: a flat native-app settings panel) — borderless
+   flat fill instead of a thin stroked outline, and a rounder corner. */
 .field > input[type="text"],
 .field > input[type="number"],
 .field > select,
@@ -302,9 +308,11 @@ html, body, #root {
 .field > .city-slider-row {
   flex: 1;
   min-width: 0;
+  min-height: 30px;
+  box-sizing: border-box;
   background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: 10px;
+  overflow: hidden; /* clips the slider fill/thumb and focus ring to the rounded shape */
   transition: background .12s;
 }
 
@@ -312,19 +320,22 @@ html, body, #root {
 .field > input[type="number"],
 .field > select {
   text-align: right;
-  padding: 0 10px;
-  min-height: 26px;
+  padding: 0 12px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 10.5px;
 }
 
 .field > .ls-picker,
+.field > .color-row {
+  padding: 0 12px;
+}
+
+/* No padding for sliders — the fill bar (see "Range Slider" below) is meant
+   to run edge-to-edge inside the box, clipped to the rounded shape by the
+   box's own overflow:hidden above. */
 .field > .range-row,
-.field > .color-row,
 .field > .city-slider-row {
-  padding: 3px 10px;
-  min-height: 26px;
-  box-sizing: border-box;
+  padding: 0;
 }
 
 .field > input[type="text"]:hover,
@@ -341,9 +352,9 @@ html, body, #root {
 .field > input[type="number"]:focus,
 .field > select:focus {
   color: var(--text);
-  border-color: var(--accent);
-  background: var(--field-bg);
+  background: var(--field-hover);
   outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
 /* Directions/GPS track + travel-mode toggles: restore their own box now
@@ -351,7 +362,8 @@ html, body, #root {
    stripped its base border/background because .field's pill was enough). */
 .field > .radio-group {
   background: var(--field-bg);
-  border: 1px solid var(--border);
+  border: none;
+  border-radius: 10px;
 }
 
 /* Upload area sits in its own full-width field-like block — already
@@ -372,7 +384,6 @@ html, body, #root {
 .field-row .field > label {
   width: auto;
   flex-shrink: 0;
-  font-size: 10px;
 }
 
 /* ── Inputs (base — overridden inside .field) ─────────────────────────── */
@@ -419,17 +430,22 @@ select {
 }
 
 /* ── Range Slider ─────────────────────────────────────────────────────── */
+/* Redesigned 2026-09-27 (third pass — reference: a flat native-app settings
+   panel, e.g. a "Width"/"Radius" slider that IS the whole box). The box
+   itself is now the value bar: a flat fill from the left edge up to the
+   current value (via --range-fill, set inline on .range-row/.city-slider-
+   row in PropsForm.tsx so both the fill and the input's own track can read
+   it), with a thin vertical grip standing in for the old round thumb —
+   not a thin 3px track floating inside an otherwise-empty pill. */
 .range-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 0;
+  align-items: stretch;
 }
 
-/* Custom range input — overrides native OS thumb so overflow:hidden clips it */
 .range-row input[type="range"],
 .city-slider-row input[type="range"] {
   flex: 1;
+  height: 30px; /* matches the box's own min-height (no vertical padding) */
   padding: 0;
   border: none;
   outline: none;
@@ -438,7 +454,6 @@ select {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  height: 20px; /* tall hit target; track + thumb rendered via pseudo-elements */
 }
 
 .range-row input[type="range"]:focus,
@@ -446,56 +461,53 @@ select {
   outline: none;
 }
 
-/* ── Webkit track ── */
+/* ── Webkit track — the fill bar spans the full box height/width ── */
 .range-row input[type="range"]::-webkit-slider-runnable-track,
 .city-slider-row input[type="range"]::-webkit-slider-runnable-track {
-  height: 3px;
-  border-radius: 2px;
+  height: 30px;
   background: linear-gradient(
     to right,
-    var(--accent) var(--range-fill, 0%),
-    var(--border) var(--range-fill, 0%)
+    var(--field-hover) var(--range-fill, 0%),
+    transparent var(--range-fill, 0%)
   );
 }
 
-/* ── Webkit thumb ── */
+/* ── Webkit thumb — thin vertical grip instead of a round dot ── */
 .range-row input[type="range"]::-webkit-slider-thumb,
 .city-slider-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
   background: var(--accent);
   cursor: pointer;
-  margin-top: -5px; /* center on 3px track: -(13-3)/2 */
-  box-shadow: 0 1px 3px rgba(0,0,0,.28);
+  margin-top: 7px; /* (30 - 16) / 2 — centers the grip on the 30px track */
+  box-shadow: none;
 }
 
 /* ── Firefox track ── */
 .range-row input[type="range"]::-moz-range-track,
 .city-slider-row input[type="range"]::-moz-range-track {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--border);
+  height: 30px;
+  background: transparent;
 }
 
 .range-row input[type="range"]::-moz-range-progress,
 .city-slider-row input[type="range"]::-moz-range-progress {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent);
+  height: 30px;
+  background: var(--field-hover);
 }
 
 /* ── Firefox thumb ── */
 .range-row input[type="range"]::-moz-range-thumb,
 .city-slider-row input[type="range"]::-moz-range-thumb {
   border: none;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,.28);
+  box-shadow: none;
 }
 
 
@@ -737,7 +749,6 @@ select {
 
 .field > .radio-group label:last-child {
   border-right: none;
-  padding-right: 0;
 }
 
 /* ── Travel mode icon pills ─────────────────────────────────────────────── */
@@ -814,10 +825,8 @@ select {
 /* ── City Slider ──────────────────────────────────────────────────────── */
 .city-slider-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
   flex: 1;
-  padding: 2px 0;
 }
 /* range input styles for city-slider-row are merged with .range-row above */
 
