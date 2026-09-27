@@ -32,6 +32,8 @@ MAPBOX_STYLE=username/styleId            # Your personal Mapbox style slug
 
 # Optional
 PORT=3002                 # Upload/render server port
+START_PRESET_OWNER=you@example.com  # Whose preset seeds a new user's first session (default: the oldest verified account)
+START_PRESET_NAME=Start             # Name of that preset (default: Start)
 ```
 
 `.env` is gitignored and never committed. See `.env.example` for a copy-paste template.
@@ -102,14 +104,15 @@ User clicks "Export MP4"
    - ✈️ **Flight** — great-circle arc computed locally via d3-geo (no API call, always instant)
    - *Mapbox is not used for cycling/walking because it rejects routes longer than ~24 h travel time*
 3. **GPX mode** — upload a `.gpx` track file; select it from the dropdown
-4. Pick **Start/End country** (searchable dropdown, shows a flag) and **Start/End city** for each endpoint — these feed the two-row "Air France" style label box (flag + country on top, city below)
-6. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, font, background/text color — applied to both label rows)
+4. Pick **Start/End country** (searchable dropdown, shows a flag) and **Start/End city** for each endpoint — these feed the two-row "Air France" style label box (flag + country on top, city below). Editing **From/To** fills these in automatically (geocoded). Switch on **Same as route** (Labels band, under Show) to always take them from the route — for a GPS track, from the track's first and last point — and hide the four fields
+6. Adjust **Map style** (City labels has its own on/off switch; the population slider appears when it's on), **Line** (color, width 1–30 default 10, style), **Labels** (animation, font, background/text color — applied to both label rows)
 7. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
 8. Optionally add a **Marker** in the Line band: a dark navy circular badge ("Air France" style, independent of the route line's own colour) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line as it draws — the icon stays upright, it does not rotate to face the direction of travel
 9. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
 10. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1 / Instagram post 4:5) and **Duration** (seconds) — both sit next to the preview, since they change the preview frame
 11. Save frequently-used configurations as **Presets** (bookmark button + "+" at the top of the preview area) — stored on the server so they survive browser clears and are available on any device
 12. The live preview updates as you change settings and plays automatically in a loop — use the ruler timeline under it to pause, play and scrub
+13. Your settings are saved automatically: the next time you sign in you continue where you left off, even without saving a preset. A brand-new account starts from the owner's preset named **Start** (see `START_PRESET_OWNER` above)
 
 ---
 
@@ -156,6 +159,7 @@ Express server (port 3002) that:
 - Triggers Remotion renders (`POST /api/render`) and streams the MP4 back
 - Serves the list of available GPX files (`GET /api/gpx-files`)
 - Manages per-user presets (`GET/POST /api/presets`, `DELETE /api/presets/:id`) stored in `server/data/presets-<sanitized-email>.json` — one file per registered account
+- Remembers each user's last settings (`GET/POST /api/state` → `server/data/state-<sanitized-email>.json`); with no saved session yet, `GET` returns the "Start" preset instead
 - In production, serves the built webapp from `webapp/dist`
 
 ### `server/auth.cjs`

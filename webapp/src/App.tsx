@@ -23,7 +23,7 @@
  * PreviewPlayer is lazy-loaded (React.lazy) because the Remotion bundle is large
  * (~2 MB) and a load failure should not crash the whole app — hence the ErrorBoundary.
  */
-import React, { useState, useEffect, Suspense, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import type { PlayerRef } from '@remotion/player';
 import LoginPage from './LoginPage';
 import PropsForm from './PropsForm';
@@ -90,6 +90,12 @@ export default function App() {
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [updateErr,   setUpdateErr]   = useState('');
   const [userEmail,   setUserEmail]   = useState('');
+  // True once the user's last session (or the "Start" preset) has been
+  // applied — autosave waits for it so it never overwrites the stored session
+  // with DEFAULT_PROPS.
+  const [sessionReady, setSessionReady] = useState(false);
+  const propsRef = useRef(props);
+  propsRef.current = props;
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -102,6 +108,7 @@ export default function App() {
         if (r.ok) {
           const body = await r.json().catch(() => ({}));
           setUserEmail(body.email ?? '');
+          await loadSession();
           setAuth('logged-in'); fetchGpxFiles(); checkForUpdate();
         } else {
           setAuth('logged-out');
@@ -111,6 +118,46 @@ export default function App() {
 
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, []);
+
+  // ── Last session: restore on login, autosave while working ──────────────
+  // GET /api/state returns the user's last settings, or — on their first
+  // login — the owner's preset named "Start" (server/index.cjs).
+  async function loadSession() {
+    try {
+      const r = await fetch('/api/state');
+      if (r.ok) {
+        const { props: saved } = await r.json();
+        // Merge onto defaults: older saves may lack props added since.
+        if (saved) setProps({ ...DEFAULT_PROPS, ...saved });
+      }
+    } catch { /* fall back to DEFAULT_PROPS */ }
+    setSessionReady(true);
+  }
+
+  function saveSession(p: Props) {
+    return fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ props: p }),
+      keepalive: true,
+    }).catch(() => { /* next change retries */ });
+  }
+
+  useEffect(() => {
+    if (auth !== 'logged-in' || !sessionReady) return;
+    const t = setTimeout(() => saveSession(props), 1000);
+    return () => clearTimeout(t);
+  }, [props, auth, sessionReady]);
+
+  // Closing/reloading the tab within the debounce window would lose the last
+  // change — send it with a beacon on the way out.
+  useEffect(() => {
+    if (auth !== 'logged-in' || !sessionReady) return;
+    const onHide = () => navigator.sendBeacon('/api/state',
+      new Blob([JSON.stringify({ props: propsRef.current })], { type: 'application/json' }));
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
+  }, [auth, sessionReady]);
 
   async function fetchGpxFiles() {
     try {
@@ -172,13 +219,16 @@ export default function App() {
   }
 
   async function handleLogout() {
+    await saveSession(propsRef.current); // don't lose changes still inside the autosave debounce
     await fetch('/api/logout', { method: 'POST' });
     setUserEmail('');
+    setSessionReady(false);
     setAuth('logged-out');
   }
 
-  /** Called by LoginPage after a successful sign-in — fetches the email for the account menu. */
+  /** Called by LoginPage after a successful sign-in — restores the session, fetches the email. */
   async function handleLoginSuccess() {
+    await loadSession();
     setAuth('logged-in');
     fetchGpxFiles();
     checkForUpdate();

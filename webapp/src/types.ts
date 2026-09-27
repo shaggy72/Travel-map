@@ -32,6 +32,8 @@ export interface Props {
   /** Diameter of the circular marker badge in canvas pixels. */
   routeMarkerSize: number;
   labelMode:      'animated' | 'on' | 'off';
+  /** Fill start/end country + city from the route and hide their fields (webapp only). */
+  labelsFromRoute: boolean;
   labelAnimation: string;
   labelFont:      'Helvetica' | 'Inter' | 'Georgia' | 'Oswald' | 'Merriweather';
   labelBgColor:   string;
@@ -91,6 +93,7 @@ export const DEFAULT_PROPS: Props = {
   routeMarker:     'none',
   routeMarkerSize: 60,
   labelMode:      'animated',
+  labelsFromRoute: false,
   labelAnimation: 'left-to-right',
   labelFont:      'Helvetica',
   labelBgColor:   '#555555',

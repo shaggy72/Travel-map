@@ -103,6 +103,11 @@ export const schema = z.object({
    *  off      = no labels */
   labelMode: z.enum(["animated", "on", "off"]).default("animated"),
 
+  /** Webapp-only: when true, the start/end country + city are filled in from the
+   *  route (geocoded From/To, or the GPX track's end points) and their fields are
+   *  hidden. The video only ever reads startLabel/startCountry/… themselves. */
+  labelsFromRoute: z.boolean().default(false),
+
   /** Animation style for label reveal. Only used when labelMode === "animated".
    *  Options: appear (pops in instantly, no transition — still waits for its normal
    *  timing window, unlike labelMode "on"), left-to-right, right-to-left, fade, scale,

@@ -35,7 +35,9 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `webapp/src/PropsForm.tsx` | Settings bands 1–4 (Route, Labels, Line, Map), one open at a time; Row/Seg/Switch/Slider/Picker primitives |
 | `webapp/src/types.ts` | TypeScript mirror of schema + `DEFAULT_PROPS` |
 | `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper (built-in controls hidden); dynamic `compositionWidth/Height`; plays via `useEffect`; hands its `PlayerRef` to App via `onReady` |
-| `src/routeIcons.tsx` | `RouteMarkerIcon({ type })` — official Material Symbols glyphs (car/camper/plane/bike/walk) as white SVG silhouettes for the route tip badge |
+| `src/routeIcons.tsx` | `RouteMarkerIcon({ type, fill })` — official Material Symbols glyphs (car/camper/plane/bike/walk) for the route tip badge (white); the webapp reuses them via `VehicleIcon` with `fill="currentColor"` so sidebar icons match the map |
+| `src/labelPlacement.ts` | Pure `bestLabelPos()` / `segHitsBox()` — where a start/end label box goes so it misses the route (used by MapComposition) |
+| `webapp/src/routeLabels.ts` | Geocodes From/To (or a GPX track's end points) into label country + city |
 | `webapp/src/styles.css` | All CSS — "Color Stack" tokens, bands, controls, stage, timeline, login, responsive rules |
 | `webapp/src/ColorPicker.tsx` | Custom HSV color picker |
 | `deploy.sh` | One-command deploy to Debian/Ubuntu/Mint server |
@@ -47,6 +49,8 @@ MAPBOX_STYLE=shaggy72/cmpma5agg000101qr4tt68gad  # optional, falls back to mapbo
 RESEND_API_KEY=re_...                     # required — account-confirmation emails, see "Authentication" below
 APP_URL=https://travelmap.luyens.be       # required in production — confirmation-link base URL
 PORT=3002
+START_PRESET_OWNER=owner@example.com        # optional — whose "Start" preset seeds new users (default: oldest verified account)
+START_PRESET_NAME=Start                   # optional
 ```
 `APP_USERNAME`/`APP_PASSWORD` were removed 2026-09-26 — see "Authentication" below.
 
@@ -92,13 +96,16 @@ commit `1a8173c`.
     Arc curve (flight only), From, To. GPS track: Track (native select), Upload .gpx,
     Elevation profile switch (+ colours/position/size sliders when on).
   - Labels: Show (Off / Static / Animated — values `off`/`on`/`animated`; the old copy was
-    No/Yes/Animated), Animation (animated only), Start country/city, End country/city, Font,
-    Background, Text color.
+    No/Yes/Animated), **Same as route** switch (`labelsFromRoute`, see below), Animation
+    (animated only), Start country/city, End country/city (hidden when Same as route is on —
+    a read-only chip line shows the two labels instead), Font, Background, Text color.
   - Line: Style, Pencil strength (pencil only), Color, Width, Pin size, Marker (6 round icon
     toggles — replaces the old emoji dropdown), Marker size (when a marker is set).
   - Map: Style (dropdown with colour dots), Background (No map only), Zoom (Auto | Manual),
-    Zoom level (manual only), City labels (discrete population slider), City font, Case, and a
-    "City sizes & colors" disclosure revealing the Big/Medium/Small tier rows.
+    Zoom level (manual only), **City labels switch** (off = `minPopulation` 0; the last
+    threshold is remembered in a ref and restored when switched back on, default 100k) → when
+    on: Population (discrete slider 10k…2M), City font, Case, and a "City sizes & colors"
+    disclosure revealing the Big/Medium/Small tier rows.
 - **5 Export** band (lives in `App.tsx` because it owns `handleRender`): black "Export MP4"
   pill + note; rendering spinner/status and render errors show inside the band. It fills the
   remaining sidebar height (`flex: 1 0 auto`).
@@ -137,7 +144,18 @@ brand bar → stage (preview left, title + 2×2 format chips + duration right) �
 bands → Export. Done with `.sidebar { display: contents }` + `order` so the DOM stays the
 same. Inputs are 16px there (stops iOS zoom on focus).
 
-**Icons**: inline SVG components in `webapp/src/icons.tsx`. The Material Symbols web font and
+**Route → labels** (2026-09-27, `routeLabels.ts` + PropsForm): editing From/To geocodes that
+address (Mapbox v5, `language=en`, 700 ms debounce) and fills in that end's city + country
+(country name taken from our COUNTRIES list by ISO code). Only user edits trigger it — never
+loading a preset or session, so stored custom labels aren't overwritten. With **Same as
+route** on, switching source/track also re-syncs; for a GPS track the first/last track point
+is reverse-geocoded. `labelsFromRoute` is a real prop (schema + types, default false) so it
+saves with presets/sessions; the video ignores it. PropsForm's `onChange` is a state
+setter so async results merge onto the latest props, and results are dropped if the address
+changed again meanwhile.
+
+**Icons**: inline SVG components in `webapp/src/icons.tsx`. Vehicle icons (travel mode,
+marker) use `VehicleIcon`, which renders the video's own `RouteMarkerIcon` glyphs. The Material Symbols web font and
 all emoji UI glyphs are gone. (`src/routeIcons.tsx` — the icons drawn *inside the video* — is
 unrelated and unchanged.)
 
@@ -379,7 +397,17 @@ from frame 0, e.g. for thumbnails); `appear` still waits for the normal per-labe
 animate *how* it shows up once that window starts. Implemented in `getLabelAnim()` in
 `MapComposition.tsx` as `opacity: t > 0 ? 1 : 0` (hard on/off, no easing).
 
-## Label placement vs. the route line and marker badge (src/MapComposition.tsx, bestLabelPos)
+## Label placement vs. the route line and marker badge (src/labelPlacement.ts, bestLabelPos)
+**2026-09-27 rewrite** (user screenshot: New York → Brussels flight with both labels on the
+line). Root cause: candidates that stuck out of the canvas were discarded *before* the
+collision check; with a pin near the edge the only remaining slot was often the one the
+route ran through, and it won anyway. Now: 8 slots (4 sides + 4 diagonals), each **clamped
+into the canvas first**, then scored (direction preference − shift/400 − 3 per crossing
+segment − 50 if the clamp pushed the box onto the pin). Moved out of MapComposition into
+`src/labelPlacement.ts` (pure, no imports) so it can be run with plain Node; with the
+screenshot's geometry the old code crossed the line 43× / 14×, the new one 0× / 0×.
+Older history of this function:
+
 Labels were overlapping both the route line and the route marker badge (user report,
 2026-09-25, right after the label-timing fixes above). Two separate gaps, both in
 `bestLabelPos`'s collision logic:
@@ -511,6 +539,16 @@ Appears in the Labels band (Start country / End country), next to the Start city
 - `checkForUpdate()` called after login and session restore
 - Update pill (`.update-pill`) in the stage top bar; Install disabled while rendering
 - After restart: polls `GET /api/me` every 2 s; **any HTTP response** (200 or 401) triggers `window.location.reload()` — sessions are in-memory so the server returns 401 after restart, not 200
+
+## Last session + "Start" preset (added 2026-09-27)
+- The webapp autosaves the current props (1 s debounce, plus a `sendBeacon` on `pagehide`,
+  plus a flush before logout) to `POST /api/state` → `server/data/state-<sanitized-email>.json`.
+- On login/session restore, `GET /api/state` returns that; with no file yet (first login) it
+  returns the props of the preset named `START_PRESET_NAME` ("Start", case-insensitive) owned
+  by `START_PRESET_OWNER` (falls back to the oldest verified account). App merges onto
+  `DEFAULT_PROPS` and only then shows the UI; autosave waits for `sessionReady` so it never
+  overwrites a stored session with defaults.
+- The owner's email is deliberately not in the (public) repo — it lives in the VPS `.env`.
 
 ## npm scripts
 | Script | Description |

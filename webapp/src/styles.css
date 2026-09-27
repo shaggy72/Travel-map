@@ -189,10 +189,31 @@ button:disabled { cursor: not-allowed; }
   background: var(--soft);
   padding: 0 12px;
   font-size: 14px;
-  text-align: right;
+  text-align: left;   /* same alignment as the dropdowns' text */
   transition: background .12s;
 }
 .field-input:hover { background: var(--soft-hover); }
+
+/* "Same as route": read-only preview of the two labels */
+.route-labels-note {
+  margin: 0;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--soft);
+}
+.label-chip strong { font-weight: 700; }
 .field-input:focus { background: var(--paper); outline: 2px solid var(--ink); outline-offset: 0; }
 .field-input::placeholder { color: rgba(17,17,17,0.45); }
 

@@ -23,7 +23,7 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // ── Auth (email + password, self-registration, see server/auth.cjs) ───────
 // Replaced 2026-09-26's old single shared APP_USERNAME/APP_PASSWORD account.
-const { requireAuth, registerAuthRoutes } = require('./auth.cjs').initAuth(DATA_DIR);
+const { requireAuth, registerAuthRoutes, loadUsers } = require('./auth.cjs').initAuth(DATA_DIR);
 
 // ── Auto-update ───────────────────────────────────────────────────────────
 // Read the current git commit hash once on startup. The hash stays fixed until
@@ -147,6 +147,50 @@ app.post('/api/presets', requireAuth, (req, res) => {
 app.delete('/api/presets/:id', requireAuth, (req, res) => {
   const list = readPresets(req.user.email).filter(p => p.id !== req.params.id);
   writePresets(req.user.email, list);
+  res.json({ ok: true });
+});
+
+// ── Last session ("pick up where you left off", added 2026-09-27) ─────────
+// The webapp saves its current settings here (debounced, plus a beacon when the
+// tab closes) so the next login restores them even if they were never saved
+// as a preset. server/data/state-<sanitized-email>.json, one file per account.
+// A user with no saved session yet (first login) gets the owner's preset
+// named START_PRESET_NAME ("Start") instead of the built-in defaults. The
+// owner is START_PRESET_OWNER from .env; if unset, the oldest verified
+// account (the owner registered first).
+function stateFile(email) {
+  return path.join(DATA_DIR, `state-${sanitizeEmailForFilename(email)}.json`);
+}
+
+function startPresetProps() {
+  const name = (process.env.START_PRESET_NAME || 'Start').trim().toLowerCase();
+  let owner = process.env.START_PRESET_OWNER;
+  if (!owner) {
+    const users = loadUsers()
+      .filter(u => u.verified)
+      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    owner = users[0]?.email;
+  }
+  if (!owner) return null;
+  const preset = readPresets(owner).find(p => String(p.name).trim().toLowerCase() === name);
+  return preset ? preset.props : null;
+}
+
+app.get('/api/state', requireAuth, (req, res) => {
+  try {
+    const props = JSON.parse(fs.readFileSync(stateFile(req.user.email), 'utf8'));
+    return res.json({ props, source: 'session' });
+  } catch { /* no saved session yet */ }
+  const props = startPresetProps();
+  res.json({ props, source: props ? 'start-preset' : 'default' });
+});
+
+app.post('/api/state', requireAuth, (req, res) => {
+  const props = req.body?.props;
+  if (!props || typeof props !== 'object' || Array.isArray(props)) {
+    return res.status(400).json({ error: 'Invalid state' });
+  }
+  fs.writeFileSync(stateFile(req.user.email), JSON.stringify(props));
   res.json({ ok: true });
 });
 

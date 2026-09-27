@@ -23,13 +23,15 @@ import { Props } from './types';
 import { ColorPicker } from './ColorPicker';
 import { COUNTRIES, Country } from '../../src/countryData';
 import {
-  RouteIcon, TagIcon, LineIcon, MapIcon, CarIcon, BikeIcon, WalkIcon, PlaneIcon,
-  CamperIcon, NoneIcon, UpDownIcon, ChevronDownIcon, UploadIcon,
+  RouteIcon, TagIcon, LineIcon, MapIcon, VehicleIcon, NoneIcon, UpDownIcon, ChevronDownIcon, UploadIcon,
 } from './icons';
+import { Place, placeFromAddress, placesFromGpx } from './routeLabels';
 
 interface PropsFormProps {
   props:    Props;
-  onChange: (p: Props) => void;
+  // A state setter (not a plain callback) so async work — geocoding the route
+  // into label text — can merge onto the *latest* props when it resolves.
+  onChange: React.Dispatch<React.SetStateAction<Props>>;
   gpxFiles: string[];
   onUpload: () => void;  // called after a successful GPX upload
 }
@@ -338,40 +340,48 @@ const LABEL_MODE_OPTIONS: SegOption<Props['labelMode']>[] = [
   { value: 'animated', label: 'Animated' },
 ];
 
+// Same glyphs as the route-tip badge in the video (see VehicleIcon).
 const TRAVEL_MODE_OPTIONS: SegOption<Props['travelMode']>[] = [
-  { value: 'driving', label: 'Car',    icon: <CarIcon /> },
-  { value: 'cycling', label: 'Bike',   icon: <BikeIcon /> },
-  { value: 'walking', label: 'Walk',   icon: <WalkIcon /> },
-  { value: 'flight',  label: 'Flight', icon: <PlaneIcon /> },
+  { value: 'driving', label: 'Car',    icon: <VehicleIcon type="car" /> },
+  { value: 'cycling', label: 'Bike',   icon: <VehicleIcon type="bike" /> },
+  { value: 'walking', label: 'Walk',   icon: <VehicleIcon type="walk" /> },
+  { value: 'flight',  label: 'Flight', icon: <VehicleIcon type="plane" /> },
 ];
 
 const MARKER_OPTIONS: SegOption<Props['routeMarker']>[] = [
   { value: 'none',   label: 'No marker', icon: <NoneIcon size={16} /> },
-  { value: 'car',    label: 'Car',       icon: <CarIcon size={17} /> },
-  { value: 'camper', label: 'Camper',    icon: <CamperIcon size={17} /> },
-  { value: 'plane',  label: 'Plane',     icon: <PlaneIcon size={17} /> },
-  { value: 'bike',   label: 'Bike',      icon: <BikeIcon size={17} /> },
-  { value: 'walk',   label: 'Walk',      icon: <WalkIcon size={17} /> },
+  { value: 'car',    label: 'Car',       icon: <VehicleIcon type="car" size={19} /> },
+  { value: 'camper', label: 'Camper',    icon: <VehicleIcon type="camper" size={19} /> },
+  { value: 'plane',  label: 'Plane',     icon: <VehicleIcon type="plane" size={19} /> },
+  { value: 'bike',   label: 'Bike',      icon: <VehicleIcon type="bike" size={19} /> },
+  { value: 'walk',   label: 'Walk',      icon: <VehicleIcon type="walk" size={19} /> },
 ];
 
-// Discrete population thresholds. Value 0 = "no cities" sentinel.
-const CITY_STEPS = [10_000, 50_000, 100_000, 500_000, 1_000_000, 2_000_000, 0] as const;
+// Discrete population thresholds for city labels. Whether city labels show at
+// all is a separate switch (minPopulation 0 = off), like Zoom's Auto/Manual.
+const CITY_STEPS = [10_000, 50_000, 100_000, 500_000, 1_000_000, 2_000_000] as const;
+const DEFAULT_CITY_POP = 100_000;
 
 function popLabel(n: number): string {
-  if (n === 0) return 'Off';
   return n >= 1_000_000 ? `${n / 1_000_000}M+` : `${n / 1000}k+`;
 }
 
 function CitySlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const index = (() => {
-    const exact = CITY_STEPS.indexOf(value as typeof CITY_STEPS[number]);
-    if (exact !== -1) return exact;
-    const steps = CITY_STEPS.slice(0, -1);
-    return steps.reduce<number>((best, s, i) => Math.abs(s - value) < Math.abs(steps[best] - value) ? i : best, 0);
-  })();
+  const index = CITY_STEPS.reduce<number>(
+    (best, s, i) => Math.abs(s - value) < Math.abs(CITY_STEPS[best] - value) ? i : best, 0);
   return (
     <Slider value={index} min={0} max={CITY_STEPS.length - 1} label="Show cities with population over"
       display={popLabel(CITY_STEPS[index])} onChange={i => onChange(CITY_STEPS[i])} />
+  );
+}
+
+/** Read-only preview of one label's text, shown when "Same as route" is on. */
+function LabelChip({ code, country, city }: { code: string; country: string; city: string }) {
+  return (
+    <span className="label-chip">
+      {code && <img className="ls-flag" src={`https://flagcdn.com/24x18/${code}.png`} alt="" />}
+      <span><strong>{country || '—'}</strong> {city}</span>
+    </span>
   );
 }
 
@@ -413,6 +423,55 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
     onChange(set(props, key, value));
   }
 
+  // ── Route → label text (2026-09-27) ─────────────────────────────────────
+  // Editing From/To fills in that end's country + city (debounced, so it
+  // geocodes once typing pauses). "Same as route" additionally keeps them in
+  // sync on source/track changes and hides their fields. Results are merged
+  // onto the latest props, and dropped if the route changed again meanwhile.
+  const geoTimers = useRef<Partial<Record<'start' | 'end', number>>>({});
+
+  function applyPlace(which: 'start' | 'end', place: Place | null, stillValid: (p: Props) => boolean) {
+    if (!place) return;
+    onChange(prev => {
+      if (!stillValid(prev)) return prev;
+      const country = place.countryCode ? place.countryCode : null;
+      return which === 'start'
+        ? { ...prev, startLabel: place.city || prev.startLabel,
+            ...(country ? { startCountry: place.countryName, startCountryCode: country } : {}) }
+        : { ...prev, endLabel: place.city || prev.endLabel,
+            ...(country ? { endCountry: place.countryName, endCountryCode: country } : {}) };
+    });
+  }
+
+  function syncAddress(which: 'start' | 'end', address: string, delay = 700) {
+    window.clearTimeout(geoTimers.current[which]);
+    geoTimers.current[which] = window.setTimeout(async () => {
+      const place = await placeFromAddress(address);
+      applyPlace(which, place, p => (which === 'start' ? p.startAddress : p.endAddress) === address);
+    }, delay);
+  }
+
+  async function syncFromRoute(p: Props) {
+    if (p.mode === 'directions') {
+      syncAddress('start', p.startAddress, 0);
+      syncAddress('end', p.endAddress, 0);
+    } else if (p.gpxFile) {
+      const [a, b] = await placesFromGpx(p.gpxFile);
+      const same = (q: Props) => q.mode === 'gpx' && q.gpxFile === p.gpxFile;
+      applyPlace('start', a, same);
+      applyPlace('end', b, same);
+    }
+  }
+
+  /** Apply a route change; re-derive the labels when "Same as route" is on. */
+  function changeRoute(next: Props) {
+    onChange(next);
+    if (next.labelsFromRoute) syncFromRoute(next);
+  }
+
+  // Remembers the population threshold while city labels are switched off.
+  const lastCityPop = useRef(props.minPopulation > 0 ? props.minPopulation : DEFAULT_CITY_POP);
+
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -431,7 +490,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         setUploadStatus('ok');
         setUploadMsg(`${file.name} uploaded`);
         onUpload();
-        onChange({ ...props, mode: 'gpx', gpxFile: file.name });
+        changeRoute({ ...props, mode: 'gpx', gpxFile: file.name });
       } else {
         const text = await res.text();
         setUploadStatus('error');
@@ -470,9 +529,9 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
         <Row label="Source">
           <Seg ariaLabel="Route source" value={props.mode}
             options={[{ value: 'directions', label: 'Directions' }, { value: 'gpx', label: 'GPS track' }]}
-            onChange={m => m === 'gpx'
-              ? onChange({ ...props, mode: 'gpx', gpxFile: props.gpxFile || (gpxFiles[0] ?? '') })
-              : upd('mode', 'directions')} />
+            onChange={m => changeRoute(m === 'gpx'
+              ? { ...props, mode: 'gpx', gpxFile: props.gpxFile || (gpxFiles[0] ?? '') }
+              : { ...props, mode: 'directions' })} />
         </Row>
 
         {props.mode === 'directions' && (<>
@@ -486,11 +545,13 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
           )}
           <Row label="From" htmlFor="start-address">
             <input id="start-address" className="field-input" type="text" value={props.startAddress}
-              onChange={e => upd('startAddress', e.target.value)} placeholder="e.g. Ghent, Belgium" />
+              onChange={e => { upd('startAddress', e.target.value); syncAddress('start', e.target.value); }}
+              placeholder="e.g. Ghent, Belgium" />
           </Row>
           <Row label="To" htmlFor="end-address">
             <input id="end-address" className="field-input" type="text" value={props.endAddress}
-              onChange={e => upd('endAddress', e.target.value)} placeholder="e.g. Paris, France" />
+              onChange={e => { upd('endAddress', e.target.value); syncAddress('end', e.target.value); }}
+              placeholder="e.g. Paris, France" />
           </Row>
         </>)}
 
@@ -498,7 +559,7 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
           <Row label="Track" htmlFor="gpx-select">
             <span className="select-wrap">
               <select id="gpx-select" className="field-select" value={props.gpxFile}
-                onChange={e => upd('gpxFile', e.target.value)}>
+                onChange={e => changeRoute({ ...props, gpxFile: e.target.value })}>
                 <option value="">Choose a file…</option>
                 {gpxFiles.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
@@ -536,13 +597,30 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
           <Seg ariaLabel="Show labels" value={props.labelMode} options={LABEL_MODE_OPTIONS}
             onChange={v => upd('labelMode', v)} />
         </Row>
+        {props.labelMode !== 'off' && (
+          <Row label="Same as route">
+            <Switch label="Take the label text from the route" checked={props.labelsFromRoute}
+              onChange={on => {
+                const next = { ...props, labelsFromRoute: on };
+                onChange(next);
+                if (on) syncFromRoute(next);
+              }} />
+          </Row>
+        )}
+        {props.labelMode !== 'off' && props.labelsFromRoute && (
+          <p className="route-labels-note">
+            <LabelChip code={props.startCountryCode} country={props.startCountry} city={props.startLabel} />
+            <span aria-hidden="true">→</span>
+            <LabelChip code={props.endCountryCode} country={props.endCountry} city={props.endLabel} />
+          </p>
+        )}
         {props.labelMode === 'animated' && (
           <Row label="Animation">
             <Picker ariaLabel="Label animation" value={props.labelAnimation} options={LABEL_ANIM_OPTIONS}
               onChange={v => upd('labelAnimation', v)} />
           </Row>
         )}
-        {props.labelMode !== 'off' && (<>
+        {props.labelMode !== 'off' && !props.labelsFromRoute && (<>
           <Row label="Start country">
             <CountryPicker ariaLabel="Start country" value={props.startCountryCode}
               onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))} />
@@ -559,6 +637,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
             <input id="end-city" className="field-input" type="text" value={props.endLabel}
               onChange={e => upd('endLabel', e.target.value)} />
           </Row>
+        </>)}
+        {props.labelMode !== 'off' && (<>
           <Row label="Font">
             <Picker ariaLabel="Label font" value={props.labelFont} options={FONT_OPTIONS} render={renderFont}
               onChange={v => upd('labelFont', v as Props['labelFont'])} />
@@ -617,9 +697,16 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
           <RangeRow label="Zoom level" value={props.zoom} min={1} max={20} step={0.1} onChange={v => upd('zoom', v)} />
         )}
         <Row label="City labels">
-          <CitySlider value={props.minPopulation} onChange={v => upd('minPopulation', v)} />
+          <Switch label="Show city labels" checked={props.minPopulation > 0}
+            onChange={on => {
+              if (!on) lastCityPop.current = props.minPopulation;
+              upd('minPopulation', on ? lastCityPop.current : 0);
+            }} />
         </Row>
         {props.minPopulation > 0 && (<>
+          <Row label="Population">
+            <CitySlider value={props.minPopulation} onChange={v => upd('minPopulation', v)} />
+          </Row>
           <Row label="City font">
             <Picker ariaLabel="City font" value={props.cityFont} options={FONT_OPTIONS} render={renderFont}
               onChange={v => upd('cityFont', v)} />

@@ -8,6 +8,7 @@ import {
 import { easeInOutCubic, easeOutCubic, windowT } from "./easing";
 import { useMapboxImage, useGeocode, useGpxTrack, useRoute, useFlagImage } from "./useMapboxImages";
 import { RouteMarkerIcon } from "./routeIcons";
+import { bestLabelPos, PlacementOpts } from "./labelPlacement";
 import { MapSchema } from "./schema";
 
 // ── City font registry ────────────────────────────────────────────────────
@@ -459,93 +460,17 @@ const MapCompositionInner: React.FC<MapSchema> = ({
     return [dx / len, dy / len];
   })();
 
-  // True line-segment vs expanded-box intersection test.
-  // Returns true if the segment (x1,y1)→(x2,y2) crosses the AABB [bx,bx+bw]×[by,by+bh].
-  function segHitsBox(
-    x1: number, y1: number, x2: number, y2: number,
-    bx: number, by: number, bw: number, bh: number,
-  ): boolean {
-    if (Math.max(x1,x2) < bx || Math.min(x1,x2) > bx+bw) return false;
-    if (Math.max(y1,y2) < by || Math.min(y1,y2) > by+bh) return false;
-    if (x1>=bx&&x1<=bx+bw&&y1>=by&&y1<=by+bh) return true;
-    if (x2>=bx&&x2<=bx+bw&&y2>=by&&y2<=by+bh) return true;
-    const dx = x2-x1, dy = y2-y1;
-    const crossV = (xv: number) => {
-      if (Math.abs(dx)<1e-9) return false;
-      const t=(xv-x1)/dx; if(t<0||t>1) return false;
-      const yt=y1+t*dy; return yt>=by&&yt<=by+bh;
-    };
-    const crossH = (yh: number) => {
-      if (Math.abs(dy)<1e-9) return false;
-      const t=(yh-y1)/dy; if(t<0||t>1) return false;
-      const xt=x1+t*dx; return xt>=bx&&xt<=bx+bw;
-    };
-    return crossV(bx)||crossV(bx+bw)||crossH(by)||crossH(by+bh);
-  }
+  // Placement logic lives in src/labelPlacement.ts. The collision corridor is
+  // the line's half-width, or the marker badge's radius when a marker is shown
+  // (the badge travels along the route and is far wider than the line).
+  const placement: PlacementOpts = {
+    width, height, boxH: BOX_H, edge: LABEL_EDGE, dotR: DOT_R, gap: LABEL_GAP,
+    routePoints: routePoints ?? null,
+    expand: Math.max(lineWidth / 2 + 4, routeMarker !== 'none' ? markerR + 4 : 0),
+  };
 
-  function bestLabelPos(
-    px: number, py: number,
-    [ax, ay]: [number, number],
-    boxW: number,
-  ): { x: number; y: number } {
-    const candidates = [
-      { x: px - boxW / 2,                 y: py - DOT_R - LABEL_GAP - BOX_H, score: -ay }, // above
-      { x: px - boxW / 2,                 y: py + DOT_R + LABEL_GAP,          score:  ay }, // below
-      { x: px - DOT_R - LABEL_GAP - boxW, y: py - BOX_H / 2,                  score: -ax }, // left
-      { x: px + DOT_R + LABEL_GAP,        y: py - BOX_H / 2,                  score:  ax }, // right
-    ];
-
-    // Penalise any candidate whose expanded box is crossed by a route segment.
-    // Expand by half the line width so even the stroke edge is counted.
-    // Points very close to the pin are skipped to avoid penalising all candidates.
-    if (routePoints && routePoints.length >= 2) {
-      // Ignore only segments within the pin/badge's own footprint (DOT_R) —
-      // those are unavoidably close no matter which candidate is picked, so
-      // counting them would penalise every candidate equally and defeat the
-      // point of scoring. Must stay strictly less than the box's own near
-      // edge (DOT_R + LABEL_GAP): the previous `DOT_R + LABEL_GAP + 5` ignore
-      // radius reached *past* that edge, creating a blind spot the incoming
-      // line could cut through right at the box's corner without ever being
-      // tested — invisible when DOT_R was just `pinSize` (a few px), but
-      // obvious once DOT_R grew to match the much bigger marker badge. Fixed
-      // 2026-09-25 per user report (screenshot showed the line clipping the
-      // destination label's corner).
-      const PIN_IGNORE = DOT_R;
-      // Expand the collision corridor by the marker badge's radius (not just
-      // the line's stroke width) when a marker is shown — the badge travels
-      // along the route and is far wider than the line itself, so a label
-      // placed just clear of the thin line could still get clipped by the
-      // badge passing through later in the animation.
-      const EXP = Math.max(lineWidth / 2 + 4, routeMarker !== 'none' ? markerR + 4 : 0);
-      for (const c of candidates) {
-        let hits = 0;
-        for (let j = 1; j < routePoints.length; j++) {
-          const [x1, y1] = routePoints[j - 1];
-          const [x2, y2] = routePoints[j];
-          // Skip segments whose midpoint is too close to the pin
-          const mx = (x1+x2)/2, my = (y1+y2)/2;
-          if (Math.sqrt((mx-px)**2+(my-py)**2) <= PIN_IGNORE) continue;
-          if (segHitsBox(x1,y1,x2,y2, c.x-EXP, c.y-EXP, boxW+2*EXP, BOX_H+2*EXP)) hits++;
-        }
-        c.score -= hits * 3; // one crossing segment is enough to strongly disfavour this slot
-      }
-    }
-
-    const fits = candidates.filter(c =>
-      c.x >= LABEL_EDGE && c.x + boxW <= width  - LABEL_EDGE &&
-      c.y >= LABEL_EDGE && c.y + BOX_H <= height - LABEL_EDGE
-    );
-    const pool = fits.length > 0 ? fits : candidates;
-    pool.sort((a, b) => b.score - a.score);
-    const best = pool[0];
-    return {
-      x: Math.max(LABEL_EDGE, Math.min(best.x, width  - LABEL_EDGE - boxW)),
-      y: Math.max(LABEL_EDGE, Math.min(best.y, height - LABEL_EDGE - BOX_H)),
-    };
-  }
-
-  const { x: startLabelX, y: startLabelY } = bestLabelPos(startPx[0], startPx[1], startAway, startFullW);
-  const { x: endLabelX,   y: endLabelY   } = bestLabelPos(endPx[0],   endPx[1],   endAway,   endFullW);
+  const { x: startLabelX, y: startLabelY } = bestLabelPos(startPx[0], startPx[1], startAway, startFullW, placement);
+  const { x: endLabelX,   y: endLabelY   } = bestLabelPos(endPx[0],   endPx[1],   endAway,   endFullW, placement);
 
   // ── Label animation state ─────────────────────────────────────────────
   // 'on'  → t=1 (fully revealed immediately, no animation)
