@@ -1,4 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
+import { ArrowIcon } from './icons';
 
 interface Props {
   onLogin: () => void;
@@ -99,132 +100,104 @@ export default function LoginPage({ onLogin }: Props) {
     }
   }
 
+  const submitLabel = (text: string, busy: string) => loading
+    ? <><span className="spinner" /> {busy}</>
+    : <>{text}<span className="login-submit-arrow"><ArrowIcon size={18} /></span></>;
+
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h1>Travel Map</h1>
-        <p className="subtitle">
-          {mode === 'login'      && 'Sign in to configure and render your map animation.'}
-          {mode === 'register'   && 'Create an account — anyone can sign up.'}
-          {mode === 'registered' && 'Almost there!'}
-        </p>
+    <div className="login">
+      <div className="login-bands" aria-hidden="true">
+        {LOGIN_BANDS.map(([id, w1, w2], i) => (
+          <div key={id} className={`login-band band--${id}`}>
+            <span className="band-num">{i + 1}</span>
+            <span className="login-words">{w1}<br />{w2}</span>
+          </div>
+        ))}
+      </div>
 
-        {verifyBanner && (
-          <div className={`login-banner login-banner--${verifyBanner.kind}`}>{verifyBanner.text}</div>
-        )}
-        {error && <div className="login-error">{error}</div>}
-
-        {mode === 'registered' && (
-          <>
-            <p style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 20 }}>
-              We sent a confirmation link to <strong>{email}</strong>. Click it to activate your
-              account, then come back here and log in.
+      <div className="login-side">
+        <span className="wordmark wordmark--ink">Travel Map</span>
+        <div className="login-center">
+          <div className="login-form-wrap">
+            <h1 className="login-title">
+              {mode === 'login' && 'Sign in'}
+              {mode === 'register' && 'Create account'}
+              {mode === 'registered' && 'Check your inbox'}
+            </h1>
+            <p className="login-sub">
+              {mode === 'login'      && 'Turn any route into a map animation — your presets are waiting.'}
+              {mode === 'register'   && 'Anyone can sign up. We’ll email you a link to confirm your address.'}
+              {mode === 'registered' && <>We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back here and sign in.</>}
             </p>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => switchMode('login')}>
-              Back to sign in
-            </button>
-          </>
-        )}
 
-        {mode === 'login' && (
-          <form onSubmit={handleLogin}>
-            <div className="login-field">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoFocus
-                autoComplete="email"
-                required
-              />
-            </div>
-            <div className="login-field">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: 8 }}
-              disabled={loading}
-            >
-              {loading ? <><span className="spinner" /> Signing in…</> : 'Sign in'}
-            </button>
-            <button
-              type="button"
-              className="login-switch"
-              onClick={() => switchMode('register')}
-            >
-              No account yet? Create one
-            </button>
-          </form>
-        )}
+            {verifyBanner && (
+              <div className={`login-banner login-banner--${verifyBanner.kind}`} role="status">{verifyBanner.text}</div>
+            )}
+            {error && <div className="form-error" role="alert">{error}</div>}
 
-        {mode === 'register' && (
-          <form onSubmit={handleRegister}>
-            <div className="login-field">
-              <label htmlFor="reg-email">Email</label>
-              <input
-                id="reg-email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoFocus
-                autoComplete="email"
-                required
-              />
-            </div>
-            <div className="login-field">
-              <label htmlFor="reg-password">Password</label>
-              <input
-                id="reg-password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={6}
-                required
-              />
-            </div>
-            <div className="login-field">
-              <label htmlFor="reg-confirm">Confirm password</label>
-              <input
-                id="reg-confirm"
-                type="password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                autoComplete="new-password"
-                minLength={6}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: 8 }}
-              disabled={loading}
-            >
-              {loading ? <><span className="spinner" /> Creating account…</> : 'Create account'}
-            </button>
-            <button
-              type="button"
-              className="login-switch"
-              onClick={() => switchMode('login')}
-            >
-              Already have an account? Sign in
-            </button>
-          </form>
-        )}
+            {mode === 'registered' && (
+              <button type="button" className="login-submit" onClick={() => switchMode('login')}>
+                Back to sign in<span className="login-submit-arrow"><ArrowIcon size={18} /></span>
+              </button>
+            )}
+
+            {mode === 'login' && (
+              <form className="login-form" onSubmit={handleLogin}>
+                <label className="stack-field">
+                  <span>Email</span>
+                  <input className="login-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    autoFocus autoComplete="email" required />
+                </label>
+                <label className="stack-field">
+                  <span>Password</span>
+                  <input className="login-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    autoComplete="current-password" required />
+                </label>
+                <button type="submit" className="login-submit" disabled={loading}>
+                  {submitLabel('Sign in', 'Signing in…')}
+                </button>
+                <p className="login-switch">
+                  No account yet? <button type="button" onClick={() => switchMode('register')}>Create one</button>
+                </p>
+              </form>
+            )}
+
+            {mode === 'register' && (
+              <form className="login-form" onSubmit={handleRegister}>
+                <label className="stack-field">
+                  <span>Email</span>
+                  <input className="login-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    autoFocus autoComplete="email" required />
+                </label>
+                <label className="stack-field">
+                  <span>Password</span>
+                  <input className="login-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    autoComplete="new-password" minLength={6} required />
+                </label>
+                <label className="stack-field">
+                  <span>Confirm password</span>
+                  <input className="login-input" type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
+                    autoComplete="new-password" minLength={6} required />
+                </label>
+                <button type="submit" className="login-submit" disabled={loading}>
+                  {submitLabel('Create account', 'Creating account…')}
+                </button>
+                <p className="login-switch">
+                  Already have an account? <button type="button" onClick={() => switchMode('login')}>Sign in</button>
+                </p>
+              </form>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+const LOGIN_BANDS: [string, string, string][] = [
+  ['route',  'Route',  'Plan it'],
+  ['labels', 'Labels', 'Name it'],
+  ['line',   'Line',   'Draw it'],
+  ['map',    'Map',    'Style it'],
+  ['export', 'Export', 'Share it'],
+];

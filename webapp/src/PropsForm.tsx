@@ -1,326 +1,211 @@
 /**
- * PropsForm.tsx — sidebar form that exposes all animation props for editing.
- *
- * Key patterns used throughout this file:
+ * PropsForm.tsx — the settings bands in the sidebar (2026-09-27 "Color Stack"
+ * redesign, see CLAUDE.md). Four full-width colour bands — 1 Route, 2 Labels,
+ * 3 Line, 4 Map — only one open at a time; the collapsed ones show a two-line
+ * summary of their current settings. Band 5 (Export) lives in App.tsx because
+ * it owns the render request. Presets moved to the stage's top bar
+ * (PresetBar.tsx); output format and duration moved next to the preview
+ * (App.tsx), since they change the preview frame itself.
  *
  *  upd(key, value)
- *    Shorthand for onChange({ ...props, [key]: value }). Every control calls
- *    this to produce a new Props object and bubble it up to App.tsx.
+ *    Shorthand for onChange({ ...props, [key]: value }).
  *
- *  Custom ls-picker dropdowns (not native <select>)
- *    Native selects can't be styled consistently across browsers. All dropdowns
- *    use the ls-picker pattern: a button trigger + absolutely positioned panel
- *    with keyboard/click-outside dismiss. See MapStylePicker for a reference impl.
+ *  Picker / CountryPicker
+ *    Custom dropdowns (button trigger + position:fixed panel so the sidebar's
+ *    overflow can't clip it), dismissed by outside click or Escape.
  *
  *  CITY_STEPS discrete slider
- *    City label density uses a fixed set of population thresholds
- *    (10k / 50k / 100k / 500k / 1M / 2M / off) rather than a continuous range,
- *    because intermediate values produce the same visual result and the steps map
- *    to meaningful city tiers (town / large town / city / major city / etc.).
- *
- *  Collapsible sections
- *    Each .form-section has a <button className="section-title"> toggle. A Set of
- *    closed section IDs is stored in state. The section body uses a CSS grid-rows
- *    transition (0fr ↔ 1fr) for a smooth open/close animation without needing to
- *    know the content height. Default open: Travel route, Track line.
- *    Default closed: Presets, Labels, Map style, Export.
- *
- *  Section layout (reorganized 2026-09-26, user request)
- *    Presets → Travel route (old Mode + Route + GPX file + Elevation profile,
- *    merged — Directions vs GPS track is a radio toggle at the top, each
- *    revealing its own fields; Elevation profile is a GPS-track-only inline
- *    sub-group under a ".subsection-label") → Labels (old Route labels +
- *    start/end country+city, which used to be duplicated across Route/GPX
- *    file — now a single shared set regardless of mode) → Track line
- *    (unchanged) → Map style (old Map + City labels, merged — City labels is
- *    an inline sub-group) → Export (renamed from Animation). Elevation
- *    profile and City labels are no longer independently collapsible
- *    sections; they're always-visible sub-groups within their new parent.
+ *    City label density uses fixed population thresholds (10k … 2M, or off)
+ *    rather than a continuous range — intermediate values render identically.
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Props, DEFAULT_PROPS } from './types';
+import { Props } from './types';
 import { ColorPicker } from './ColorPicker';
 import { COUNTRIES, Country } from '../../src/countryData';
+import {
+  RouteIcon, TagIcon, LineIcon, MapIcon, CarIcon, BikeIcon, WalkIcon, PlaneIcon,
+  CamperIcon, NoneIcon, UpDownIcon, ChevronDownIcon, UploadIcon,
+} from './icons';
 
 interface PropsFormProps {
-  props:      Props;
-  onChange:   (p: Props) => void;
-  gpxFiles:   string[];
-  onUpload:   () => void;  // called after a successful GPX upload
+  props:    Props;
+  onChange: (p: Props) => void;
+  gpxFiles: string[];
+  onUpload: () => void;  // called after a successful GPX upload
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────
 
 function set<K extends keyof Props>(props: Props, key: K, value: Props[K]): Props {
   return { ...props, [key]: value };
 }
 
-interface ColorFieldProps {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
+function useDismiss(open: boolean, close: () => void, refs: React.RefObject<HTMLElement | null>[]) {
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!refs.some(r => r.current?.contains(t))) close();
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') close(); }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
 }
 
-function ColorField({ label, value, onChange }: ColorFieldProps) {
+// ── Layout primitives ─────────────────────────────────────────────────────
+
+function Row({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
-    <div className="field">
-      <label>{label}</label>
-      <div className="color-row">
-        <ColorPicker value={value} onChange={onChange} />
-        <span className="color-hex">{value.toUpperCase()}</span>
-      </div>
+    <div className="row">
+      {htmlFor
+        ? <label className="row-label" htmlFor={htmlFor}>{label}</label>
+        : <span className="row-label">{label}</span>}
+      <div className="row-control">{children}</div>
     </div>
   );
 }
 
-interface RangeFieldProps {
-  label:    string;
-  value:    number;
-  min:      number;
-  max:      number;
-  step?:    number;
-  unit?:    string;
-  onChange: (v: number) => void;
-}
+interface SegOption<T> { value: T; label: string; icon?: React.ReactNode }
 
-function RangeField({ label, value, min, max, step = 1, unit: _unit = '', onChange }: RangeFieldProps) {
-  const pct = Math.round(((value - min) / (max - min)) * 100);
+/** Black-outlined pill toggle (text options) or a row of round icon buttons. */
+function Seg<T extends string | boolean>({
+  options, value, onChange, ariaLabel, variant = 'pill',
+}: {
+  options: SegOption<T>[];
+  value: T;
+  onChange: (v: T) => void;
+  ariaLabel: string;
+  variant?: 'pill' | 'icons';
+}) {
   return (
-    <div className="field">
-      <label>{label}</label>
-      <div className="range-row" style={{ '--range-fill': `${pct}%` } as React.CSSProperties}>
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={e => onChange(Number(e.target.value))}
-        />
-      </div>
+    <div role="group" aria-label={ariaLabel} className={variant === 'icons' ? 'icon-group' : 'seg'}>
+      {options.map(o => (
+        <button
+          key={String(o.value)}
+          type="button"
+          aria-pressed={o.value === value}
+          aria-label={o.icon ? o.label : undefined}
+          title={o.icon ? o.label : undefined}
+          className={variant === 'icons' ? 'icon-toggle' : 'seg-btn'}
+          onClick={() => onChange(o.value)}
+        >
+          {o.icon ?? o.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-// ── City Slider ───────────────────────────────────────────────────────────
-
-// Discrete population thresholds. Value 0 = "no cities" sentinel.
-const CITY_STEPS = [10_000, 50_000, 100_000, 500_000, 1_000_000, 2_000_000, 0] as const;
-
-function SmallCityIcon() {
+function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <svg viewBox="0 0 10 12" width="10" height="12" fill="currentColor" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
-      <rect x="3" y="3" width="4" height="9" />
-      <rect x="0" y="6" width="3" height="6" />
-      <rect x="7" y="6" width="3" height="6" />
-    </svg>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className="switch"
+      onClick={() => onChange(!checked)}
+    >
+      <span className="switch-knob" />
+    </button>
   );
 }
 
-function LargeCityIcon() {
+/** Value-bar slider: the whole pill is the track, filled up to the value,
+ *  with a thin grip, tick dots and the number on the right. */
+function Slider({
+  value, min, max, step = 1, onChange, label, display,
+}: {
+  value: number; min: number; max: number; step?: number;
+  onChange: (v: number) => void; label: string; display?: string;
+}) {
+  const pct = ((value - min) / (max - min)) * 100;
   return (
-    <svg viewBox="0 0 14 16" width="14" height="16" fill="currentColor" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
-      <rect x="5" y="0" width="4" height="16" />
-      <rect x="0" y="5" width="5" height="11" />
-      <rect x="9" y="5" width="5" height="11" />
-    </svg>
-  );
-}
-
-function CitySlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  // Map stored value → slider index (find exact match, else closest)
-  const index = (() => {
-    const exact = CITY_STEPS.indexOf(value as typeof CITY_STEPS[number]);
-    if (exact !== -1) return exact;
-    // Fallback: pick closest non-zero step
-    const steps = CITY_STEPS.slice(0, -1);
-    return steps.reduce((best, s, i) =>
-      Math.abs(s - value) < Math.abs(steps[best] - value) ? i : best, 0);
-  })();
-
-  const pct = Math.round((index / (CITY_STEPS.length - 1)) * 100);
-
-  return (
-    <div className="city-slider-row" style={{ '--range-fill': `${pct}%` } as React.CSSProperties}>
+    <div className="slider" style={{ '--fill': `${pct}%` } as React.CSSProperties}>
+      <span className="slider-fill" />
+      <span className="slider-grip" />
+      <span className="slider-dots" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+      <span className="slider-value">{display ?? value}</span>
       <input
-        type="range"
-        min={0}
-        max={CITY_STEPS.length - 1}
-        step={1}
-        value={index}
-        onChange={e => onChange(CITY_STEPS[Number(e.target.value)])}
+        type="range" min={min} max={max} step={step} value={value}
+        aria-label={label}
+        onChange={e => onChange(Number(e.target.value))}
       />
     </div>
   );
 }
 
-// ── Travel Mode Icons (Material Symbols) ─────────────────────────────────
-
-function CarIcon()    { return <span className="material-symbols-outlined">directions_car</span>;  }
-function BikeIcon()   { return <span className="material-symbols-outlined">directions_bike</span>; }
-function WalkIcon()   { return <span className="material-symbols-outlined">directions_walk</span>; }
-function FlightIcon() {
+function RangeRow({ label, value, min, max, step, unit = '', onChange }: {
+  label: string; value: number; min: number; max: number; step?: number; unit?: string;
+  onChange: (v: number) => void;
+}) {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
-      <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-    </svg>
+    <Row label={label}>
+      <Slider value={value} min={min} max={max} step={step} onChange={onChange} label={label}
+        display={`${value}${unit}`} />
+    </Row>
   );
 }
 
-// ── Section Header Icons (Material Symbols) — one per colorful card,
-// added for the 2026-09-26 "Option C" redesign (see CLAUDE.md) ────────────
-function PresetsIcon()   { return <span className="material-symbols-outlined">bookmark</span>; }
-function RouteIcon()     { return <span className="material-symbols-outlined">route</span>; }
-function LabelsIcon()    { return <span className="material-symbols-outlined">sell</span>; }
-function TrackLineIcon() { return <span className="material-symbols-outlined">timeline</span>; }
-function MapStyleIcon()  { return <span className="material-symbols-outlined">map</span>; }
-function ExportIcon()    { return <span className="material-symbols-outlined">download</span>; }
-
-// ── Map Style Picker ──────────────────────────────────────────────────────
-
-const MAP_STYLE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'shaggy72/cmpma5agg000101qr4tt68gad', label: 'Gray' },
-  { value: 'shaggy72/cmqf8b53y001g01sc9lsh67db', label: 'Topographic' },
-  { value: 'shaggy72/cmqf94fhu003q01qw4m5e4fpk', label: 'Topo v2' },
-  { value: 'shaggy72/cmugrbhnu000801s01q212pyn', label: 'Air France' },
-  { value: 'mapbox/streets-v12',                 label: 'Streets' },
-  { value: 'mapbox/outdoors-v12',                label: 'Outdoors' },
-  { value: 'mapbox/light-v11',                   label: 'Light' },
-  { value: 'mapbox/dark-v11',                    label: 'Dark' },
-  { value: 'mapbox/satellite-streets-v12',        label: 'Satellite' },
-  { value: 'none',                               label: 'No map' },
-];
-
-function MapStylePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open,     setOpen]     = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
-
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 160 });
-    }
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
-
-  const current = MAP_STYLE_OPTIONS.find(o => o.value === value) ?? MAP_STYLE_OPTIONS[0];
-
+function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="ls-picker">
-      <button
-        ref={triggerRef}
-        className="ls-trigger"
-        onClick={() => open ? setOpen(false) : openPanel()}
-      >
-        <span className="ls-label">{current.label}</span>
-        <span className="ls-arrow">▾</span>
-      </button>
-
-      {open && (
-        <div
-          ref={panelRef}
-          className="ls-panel"
-          style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
-        >
-          {MAP_STYLE_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              className={`ls-option${opt.value === value ? ' selected' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <Row label={label}>
+      <span className="color-control">
+        <span className="color-hex">{value.toUpperCase()}</span>
+        <ColorPicker value={value} onChange={onChange} label={label} />
+      </span>
+    </Row>
   );
 }
 
-// ── Country Picker (searchable — powers the "Air France" style label flags) ──
+// ── Generic dropdown ──────────────────────────────────────────────────────
 
-function CountryPicker({ value, onChange }: { value: string; onChange: (c: Country) => void }) {
-  const [open,     setOpen]     = useState(false);
-  const [query,    setQuery]    = useState('');
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
+interface PickerOption<T> { value: T; label: string }
+
+function Picker<T extends string>({
+  value, options, onChange, ariaLabel, render, panelWidth = 200,
+}: {
+  value: T;
+  options: PickerOption<T>[];
+  onChange: (v: T) => void;
+  ariaLabel: string;
+  render?: (o: PickerOption<T>, inTrigger: boolean) => React.ReactNode;
+  panelWidth?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos,  setPos]  = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef   = useRef<HTMLDivElement>(null);
-  const searchRef  = useRef<HTMLInputElement>(null);
+  useDismiss(open, () => setOpen(false), [triggerRef, panelRef]);
 
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 220 });
-    }
-    setQuery('');
+  function toggle() {
+    if (open) { setOpen(false); return; }
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: Math.min(r.right - panelWidth, window.innerWidth - panelWidth - 12) });
     setOpen(true);
-    setTimeout(() => searchRef.current?.focus(), 0);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-
-  const current = COUNTRIES.find(c => c.code === value) ?? COUNTRIES.find(c => c.code === 'be')!;
-  const filtered = query
-    ? COUNTRIES.filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
-    : COUNTRIES;
+  const current = options.find(o => o.value === value) ?? { value, label: 'Custom' };
+  const show = (o: PickerOption<T>, t: boolean) => render ? render(o, t) : <span>{o.label}</span>;
 
   return (
     <div className="ls-picker">
-      <button ref={triggerRef} className="ls-trigger" onClick={() => open ? setOpen(false) : openPanel()}>
-        <img className="ls-flag" src={`https://flagcdn.com/24x18/${current.code}.png`} alt="" />
-        <span className="ls-label">{current.name}</span>
-        <span className="ls-arrow">▾</span>
+      <button ref={triggerRef} type="button" className="ls-trigger" aria-label={`${ariaLabel}: ${current.label}`}
+        aria-haspopup="listbox" aria-expanded={open} onClick={toggle}>
+        <span className="ls-label">{show(current, true)}</span>
+        <span className="ls-arrow"><UpDownIcon size={14} /></span>
       </button>
       {open && (
-        <div
-          ref={panelRef}
-          className="ls-panel"
-          style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
-        >
-          <input
-            ref={searchRef}
-            className="ls-search"
-            type="text"
-            placeholder="Search country…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
+        <div ref={panelRef} className="ls-panel" role="listbox" aria-label={ariaLabel}
+          style={{ top: pos.top, left: Math.max(12, pos.left), width: panelWidth }}>
           <div className="ls-options-scroll">
-            {filtered.map(c => (
-              <button
-                key={c.code}
-                className={`ls-option${c.code === value ? ' selected' : ''}`}
-                onClick={() => { onChange(c); setOpen(false); }}
-              >
-                <img className="ls-flag" src={`https://flagcdn.com/24x18/${c.code}.png`} alt="" />
-                <span>{c.name}</span>
+            {options.map(o => (
+              <button key={o.value} type="button" role="option" aria-selected={o.value === value}
+                className={`ls-option${o.value === value ? ' selected' : ''}`}
+                onClick={() => { onChange(o.value); setOpen(false); }}>
+                {show(o, false)}
               </button>
             ))}
-            {filtered.length === 0 && (
-              <div className="ls-option" style={{ cursor: 'default' }}>No matches</div>
-            )}
           </div>
         </div>
       )}
@@ -328,11 +213,75 @@ function CountryPicker({ value, onChange }: { value: string; onChange: (c: Count
   );
 }
 
-// ── Line Style Picker ─────────────────────────────────────────────────────
+// ── Country picker (searchable — powers the "Air France" style label flags) ──
+
+function CountryPicker({ value, onChange, ariaLabel }: { value: string; onChange: (c: Country) => void; ariaLabel: string }) {
+  const [open,  setOpen]  = useState(false);
+  const [query, setQuery] = useState('');
+  const [pos,   setPos]   = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+  const searchRef  = useRef<HTMLInputElement>(null);
+  useDismiss(open, () => setOpen(false), [triggerRef, panelRef]);
+
+  const W = 240;
+  function toggle() {
+    if (open) { setOpen(false); return; }
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: Math.min(r.right - W, window.innerWidth - W - 12) });
+    setQuery('');
+    setOpen(true);
+    setTimeout(() => searchRef.current?.focus(), 0);
+  }
+
+  const current  = COUNTRIES.find(c => c.code === value) ?? COUNTRIES.find(c => c.code === 'be')!;
+  const filtered = query ? COUNTRIES.filter(c => c.name.toLowerCase().includes(query.toLowerCase())) : COUNTRIES;
+
+  return (
+    <div className="ls-picker">
+      <button ref={triggerRef} type="button" className="ls-trigger" aria-label={`${ariaLabel}: ${current.name}`}
+        aria-expanded={open} onClick={toggle}>
+        <img className="ls-flag" src={`https://flagcdn.com/24x18/${current.code}.png`} alt="" />
+        <span className="ls-label">{current.name}</span>
+        <span className="ls-arrow"><UpDownIcon size={14} /></span>
+      </button>
+      {open && (
+        <div ref={panelRef} className="ls-panel" style={{ top: pos.top, left: Math.max(12, pos.left), width: W }}>
+          <input ref={searchRef} className="ls-search" type="text" placeholder="Search country…"
+            aria-label="Search country" value={query} onChange={e => setQuery(e.target.value)} />
+          <div className="ls-options-scroll">
+            {filtered.map(c => (
+              <button key={c.code} type="button" className={`ls-option${c.code === value ? ' selected' : ''}`}
+                onClick={() => { onChange(c); setOpen(false); }}>
+                <img className="ls-flag" src={`https://flagcdn.com/24x18/${c.code}.png`} alt="" />
+                <span>{c.name}</span>
+              </button>
+            ))}
+            {filtered.length === 0 && <div className="ls-option ls-option--empty">No matches</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Option lists ──────────────────────────────────────────────────────────
+
+const MAP_STYLE_OPTIONS: (PickerOption<string> & { swatch: string })[] = [
+  { value: 'mapbox/light-v11',                   label: 'Light',       swatch: '#F2F1EE' },
+  { value: 'shaggy72/cmpma5agg000101qr4tt68gad', label: 'Gray',        swatch: '#D9D9D7' },
+  { value: 'mapbox/dark-v11',                    label: 'Dark',        swatch: '#2A2B2D' },
+  { value: 'shaggy72/cmugrbhnu000801s01q212pyn', label: 'Air France',  swatch: '#1F3A5C' },
+  { value: 'shaggy72/cmqf8b53y001g01sc9lsh67db', label: 'Topographic', swatch: '#E8E2CC' },
+  { value: 'shaggy72/cmqf94fhu003q01qw4m5e4fpk', label: 'Topo v2',     swatch: '#EDE7D3' },
+  { value: 'mapbox/streets-v12',                 label: 'Streets',     swatch: '#AAD3DF' },
+  { value: 'mapbox/outdoors-v12',                label: 'Outdoors',    swatch: '#C9D7A7' },
+  { value: 'mapbox/satellite-streets-v12',       label: 'Satellite',   swatch: '#4A5738' },
+  { value: 'none',                               label: 'No map',      swatch: 'transparent' },
+];
 
 type LineStyleValue = Props['lineStyle'];
-
-const LINE_STYLE_OPTIONS: { value: LineStyleValue; label: string }[] = [
+const LINE_STYLE_OPTIONS: PickerOption<LineStyleValue>[] = [
   { value: 'solid',     label: 'Solid' },
   { value: 'dashed',    label: 'Dashed' },
   { value: 'dotted',    label: 'Dotted' },
@@ -340,234 +289,28 @@ const LINE_STYLE_OPTIONS: { value: LineStyleValue; label: string }[] = [
   { value: 'dash-dot',  label: 'Dash-dot' },
   { value: 'pencil',    label: 'Pencil' },
 ];
-
 const DASH_ARRAYS: Partial<Record<LineStyleValue, string>> = {
-  dashed:      '8 4',
-  dotted:      '2 5',
-  'long-dash': '16 5',
-  'dash-dot':  '10 4 2 4',
+  dashed: '8 4', dotted: '2 5', 'long-dash': '16 5', 'dash-dot': '10 4 2 4',
 };
 
 function LinePreview({ value, color }: { value: LineStyleValue; color: string }) {
   if (value === 'pencil') {
     return (
-      <svg width="44" height="10" viewBox="0 0 44 10" style={{ flexShrink: 0 }}>
-        <path d="M2,5 C6,3 11,7 16,5 C21,3 26,7 31,5 C36,3 40,7 42,5"
-          stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <svg width="34" height="10" viewBox="0 0 44 10" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <path d="M2,5 C6,3 11,7 16,5 C21,3 26,7 31,5 C36,3 40,7 42,5" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" />
       </svg>
     );
   }
   const da = DASH_ARRAYS[value];
   return (
-    <svg width="44" height="10" viewBox="0 0 44 10" style={{ flexShrink: 0 }}>
-      <line x1="2" y1="5" x2="42" y2="5"
-        stroke={color} strokeWidth="2"
-        strokeLinecap={value === 'dotted' ? 'round' : 'butt'}
-        {...(da ? { strokeDasharray: da } : {})} />
+    <svg width="34" height="10" viewBox="0 0 44 10" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <line x1="2" y1="5" x2="42" y2="5" stroke={color} strokeWidth="3"
+        strokeLinecap={value === 'dotted' ? 'round' : 'butt'} {...(da ? { strokeDasharray: da } : {})} />
     </svg>
   );
 }
 
-interface LineStylePickerProps {
-  value: LineStyleValue;
-  lineColor: string;
-  onChange: (v: LineStyleValue) => void;
-}
-
-function LineStylePicker({ value, lineColor, onChange }: LineStylePickerProps) {
-  const [open, setOpen] = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
-
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 160 });
-    }
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
-
-  const current = LINE_STYLE_OPTIONS.find(o => o.value === value) ?? LINE_STYLE_OPTIONS[0];
-
-  return (
-    <div className="ls-picker">
-      <button
-        ref={triggerRef}
-        className="ls-trigger"
-        onClick={() => open ? setOpen(false) : openPanel()}
-      >
-        <LinePreview value={current.value} color={lineColor} />
-        <span className="ls-label">{current.label}</span>
-        <span className="ls-arrow">▾</span>
-      </button>
-
-      {open && (
-        <div
-          ref={panelRef}
-          className="ls-panel"
-          style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
-        >
-          {LINE_STYLE_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              className={`ls-option${opt.value === value ? ' selected' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              <LinePreview value={opt.value} color={opt.value === value ? lineColor : '#8c7e6e'} />
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Route Marker Picker ───────────────────────────────────────────────────
-
-type MarkerValue = Props['routeMarker'];
-
-const MARKER_OPTIONS: { value: MarkerValue; label: string }[] = [
-  { value: 'none',   label: 'None' },
-  { value: 'car',    label: '🚗 Car' },
-  { value: 'camper', label: '🚐 Camper' },
-  { value: 'plane',  label: '✈ Plane' },
-  { value: 'bike',   label: '🚲 Bike' },
-  { value: 'walk',   label: '🚶 Walk' },
-];
-
-function MarkerPicker({ value, onChange }: { value: MarkerValue; onChange: (v: MarkerValue) => void }) {
-  const [open,     setOpen]     = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
-
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 170 });
-    }
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-
-  const current = MARKER_OPTIONS.find(o => o.value === value) ?? MARKER_OPTIONS[0];
-
-  return (
-    <div className="ls-picker">
-      <button ref={triggerRef} className="ls-trigger" onClick={() => open ? setOpen(false) : openPanel()}>
-        <span className="ls-label">{current.label}</span>
-        <span className="ls-arrow">▾</span>
-      </button>
-      {open && (
-        <div
-          ref={panelRef}
-          className="ls-panel"
-          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, width: panelPos.width, zIndex: 9999 }}
-        >
-          {MARKER_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              className={`ls-option${opt.value === value ? ' selected' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Label Mode Picker ─────────────────────────────────────────────────────
-
-const LABEL_MODE_OPTIONS: { value: Props['labelMode']; label: string }[] = [
-  { value: 'on',       label: 'Yes' },
-  { value: 'off',      label: 'No' },
-  { value: 'animated', label: 'Animated' },
-];
-
-function LabelModePicker({ value, onChange }: { value: Props['labelMode']; onChange: (v: Props['labelMode']) => void }) {
-  const [open,     setOpen]     = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
-
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 160 });
-    }
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
-
-  const current = LABEL_MODE_OPTIONS.find(o => o.value === value) ?? LABEL_MODE_OPTIONS[0];
-
-  return (
-    <div className="ls-picker">
-      <button
-        ref={triggerRef}
-        className="ls-trigger"
-        onClick={() => open ? setOpen(false) : openPanel()}
-      >
-        <span className="ls-label">{current.label}</span>
-        <span className="ls-arrow">▾</span>
-      </button>
-      {open && (
-        <div ref={panelRef} className="ls-panel" style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}>
-          {LABEL_MODE_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              className={`ls-option${opt.value === value ? ' selected' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Label Animation Picker ────────────────────────────────────────────────
-
-const LABEL_ANIM_OPTIONS: { value: string; label: string }[] = [
+const LABEL_ANIM_OPTIONS: PickerOption<string>[] = [
   { value: 'appear',        label: 'Appear (no animation)' },
   { value: 'left-to-right', label: 'Left → right' },
   { value: 'right-to-left', label: 'Right → left' },
@@ -578,312 +321,93 @@ const LABEL_ANIM_OPTIONS: { value: string; label: string }[] = [
   { value: 'wipe-from-dot', label: 'Wipe from dot' },
 ];
 
-function LabelAnimationPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open,     setOpen]     = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
-
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: 160 });
-    }
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
-
-  const current = LABEL_ANIM_OPTIONS.find(o => o.value === value) ?? LABEL_ANIM_OPTIONS[0];
-
-  return (
-    <div className="ls-picker">
-      <button
-        ref={triggerRef}
-        className="ls-trigger"
-        onClick={() => open ? setOpen(false) : openPanel()}
-      >
-        <span className="ls-label">{current.label}</span>
-        <span className="ls-arrow">▾</span>
-      </button>
-      {open && (
-        <div ref={panelRef} className="ls-panel" style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}>
-          {LABEL_ANIM_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              className={`ls-option${opt.value === value ? ' selected' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Font Picker ───────────────────────────────────────────────────────────
-
-const FONT_OPTIONS: { value: string; label: string; family: string }[] = [
+const FONT_OPTIONS: (PickerOption<string> & { family: string })[] = [
   { value: 'Helvetica',    label: 'Helvetica',    family: "'Helvetica Neue', Arial, sans-serif" },
   { value: 'Inter',        label: 'Inter',        family: "Inter, 'Segoe UI', sans-serif" },
-  { value: 'Georgia',      label: 'Georgia',      family: "Georgia, serif" },
-  { value: 'Oswald',       label: 'Oswald',       family: "Oswald, sans-serif" },
+  { value: 'Georgia',      label: 'Georgia',      family: 'Georgia, serif' },
+  { value: 'Oswald',       label: 'Oswald',       family: 'Oswald, sans-serif' },
   { value: 'Merriweather', label: 'Merriweather', family: "'Merriweather', Georgia, serif" },
 ];
+const renderFont = (o: PickerOption<string>) => (
+  <span style={{ fontFamily: FONT_OPTIONS.find(f => f.value === o.value)?.family }}>{o.label}</span>
+);
 
-function FontPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open,     setOpen]     = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
+const LABEL_MODE_OPTIONS: SegOption<Props['labelMode']>[] = [
+  { value: 'off',      label: 'Off' },
+  { value: 'on',       label: 'Static' },
+  { value: 'animated', label: 'Animated' },
+];
 
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8 });
-    }
-    setOpen(true);
-  }
+const TRAVEL_MODE_OPTIONS: SegOption<Props['travelMode']>[] = [
+  { value: 'driving', label: 'Car',    icon: <CarIcon /> },
+  { value: 'cycling', label: 'Bike',   icon: <BikeIcon /> },
+  { value: 'walking', label: 'Walk',   icon: <WalkIcon /> },
+  { value: 'flight',  label: 'Flight', icon: <PlaneIcon /> },
+];
 
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
+const MARKER_OPTIONS: SegOption<Props['routeMarker']>[] = [
+  { value: 'none',   label: 'No marker', icon: <NoneIcon size={16} /> },
+  { value: 'car',    label: 'Car',       icon: <CarIcon size={17} /> },
+  { value: 'camper', label: 'Camper',    icon: <CamperIcon size={17} /> },
+  { value: 'plane',  label: 'Plane',     icon: <PlaneIcon size={17} /> },
+  { value: 'bike',   label: 'Bike',      icon: <BikeIcon size={17} /> },
+  { value: 'walk',   label: 'Walk',      icon: <WalkIcon size={17} /> },
+];
 
-  const current = FONT_OPTIONS.find(o => o.value === value) ?? FONT_OPTIONS[0];
+// Discrete population thresholds. Value 0 = "no cities" sentinel.
+const CITY_STEPS = [10_000, 50_000, 100_000, 500_000, 1_000_000, 2_000_000, 0] as const;
 
+function popLabel(n: number): string {
+  if (n === 0) return 'Off';
+  return n >= 1_000_000 ? `${n / 1_000_000}M+` : `${n / 1000}k+`;
+}
+
+function CitySlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const index = (() => {
+    const exact = CITY_STEPS.indexOf(value as typeof CITY_STEPS[number]);
+    if (exact !== -1) return exact;
+    const steps = CITY_STEPS.slice(0, -1);
+    return steps.reduce<number>((best, s, i) => Math.abs(s - value) < Math.abs(steps[best] - value) ? i : best, 0);
+  })();
   return (
-    <div className="ls-picker">
-      <button
-        ref={triggerRef}
-        className="ls-trigger"
-        onClick={() => open ? setOpen(false) : openPanel()}
-      >
-        <span className="ls-font-preview" style={{ fontFamily: current.family }}>{current.label}</span>
-        <span className="ls-arrow">▾</span>
-      </button>
-
-      {open && (
-        <div
-          ref={panelRef}
-          className="ls-panel"
-          style={{ top: panelPos.top, left: panelPos.left, width: 160 }}
-        >
-          {FONT_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              className={`ls-option${opt.value === value ? ' selected' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              <span style={{ fontFamily: opt.family, fontSize: 12, lineHeight: 1 }}>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <Slider value={index} min={0} max={CITY_STEPS.length - 1} label="Show cities with population over"
+      display={popLabel(CITY_STEPS[index])} onChange={i => onChange(CITY_STEPS[i])} />
   );
 }
 
-// ── Presets (server-side, /api/presets) ────────────────────────────────────
+// ── Band ──────────────────────────────────────────────────────────────────
 
-interface Preset {
-  id:        string;
-  name:      string;
-  props:     Props;
-  createdAt: string;
-}
-
-// ── Preset Picker ─────────────────────────────────────────────────────────
-// Same ls-picker combobox pattern as MapStylePicker/CountryPicker/etc, chosen
-// 2026-09-25 over the old always-expanded list of stacked buttons — one row
-// per preset now lives inside a dropdown panel instead of pushing the rest of
-// the sidebar down. Each row is its own flex container (not a single <button>
-// like the simpler pickers) so it can hold two independent click targets:
-// the name (apply) and a "×" (delete) — the delete button was kept inline in
-// the dropdown per user preference, rather than moved to a separate control.
-function PresetPicker({
-  presets, selectedId, onApply, onDelete,
+function Band({
+  id, num, title, cap1, cap2, icon, open, onToggle, children,
 }: {
-  presets:    Preset[];
-  selectedId: string | null;
-  onApply:    (p: Preset) => void;
-  onDelete:   (id: string, name: string) => void;
+  id: string; num: number; title: string; cap1: string; cap2?: string;
+  icon: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode;
 }) {
-  const [open,     setOpen]     = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
-
-  function openPanel() {
-    if (triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: r.bottom + 4, left: r.left - 8, width: Math.max(220, r.width + 16) });
-    }
-    setOpen(true);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!triggerRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-
-  const current = presets.find(p => p.id === selectedId);
-
   return (
-    <div className="ls-picker">
-      <button ref={triggerRef} className="ls-trigger" onClick={() => open ? setOpen(false) : openPanel()}>
-        <span className="ls-label">{current ? current.name : 'Select preset…'}</span>
-        <span className="ls-arrow">▾</span>
+    <section className={`band band--${id}${open ? ' band--open' : ''}`}>
+      <button type="button" className="band-head" aria-expanded={open} aria-controls={`band-${id}`} onClick={onToggle}>
+        <span className="band-num">{num}</span>
+        <span className="band-title">{title}</span>
+        <span className="band-cap">
+          <strong>{cap1}</strong>
+          {cap2 && <span>{cap2}</span>}
+        </span>
+        <span className="band-icon">{icon}</span>
       </button>
-      {open && (
-        <div
-          ref={panelRef}
-          className="ls-panel"
-          style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
-        >
-          <div className="ls-options-scroll">
-            {presets.map(p => (
-              <div key={p.id} className={`ls-option ls-option-row${p.id === selectedId ? ' selected' : ''}`}>
-                <button
-                  className="ls-option-apply"
-                  title={`Apply "${p.name}"`}
-                  onClick={() => { onApply(p); setOpen(false); }}
-                >
-                  {p.name}
-                </button>
-                <button
-                  className="ls-option-delete"
-                  title="Delete preset"
-                  onClick={(e) => { e.stopPropagation(); onDelete(p.id, p.name); }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            {presets.length === 0 && (
-              <div className="ls-option" style={{ cursor: 'default' }}>No presets saved yet.</div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+      {open && <div className="band-body" id={`band-${id}`}>{children}</div>}
+    </section>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────
 
 export default function PropsForm({ props, onChange, gpxFiles, onUpload }: PropsFormProps) {
+  const [open,         setOpen]         = useState<string>('route');
+  const [showTiers,    setShowTiers]    = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'ok' | 'error'>('idle');
   const [uploadMsg,    setUploadMsg]    = useState('');
 
-  // ── Presets state ────────────────────────────────────────────────────────
-  const [presets,     setPresets]     = useState<Preset[]>([]);
-  const [savingName,  setSavingName]  = useState('');
-  const [showSaveBox, setShowSaveBox] = useState(false);
-  // Tracks the last-applied preset so PresetPicker can show its name as the
-  // trigger label. Purely a "last choice" indicator, not a "props still
-  // match this preset exactly" check — same simplification the other
-  // ls-pickers make (they show the last selected option, not re-derive it
-  // from the underlying value on every render).
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-  // Surfaces failures that would otherwise fail silently (e.g. a stale session
-  // after the server restarted — sessions are in-memory, see CLAUDE.md) —
-  // previously a 401 here just did nothing with no feedback to the user.
-  const [presetError, setPresetError] = useState('');
-
-  // Load presets from server on mount
-  useEffect(() => {
-    fetch('/api/presets')
-      .then(r => r.ok ? r.json() : [])
-      .then(setPresets)
-      .catch(() => {});
-  }, []);
-
-  function presetErrorMessage(status: number): string {
-    if (status === 401) return 'Your session expired (the server restarted). Refresh the page and log in again, then try saving.';
-    return `Save failed (server responded ${status}). Try again in a moment.`;
-  }
-
-  async function handleSavePreset() {
-    const name = savingName.trim();
-    if (!name) return;
-    setPresetError('');
-    const preset: Preset = { id: Date.now().toString(), name, props, createdAt: new Date().toISOString() };
-    try {
-      const r = await fetch('/api/presets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preset),
-      });
-      if (r.ok) {
-        setPresets(prev => [...prev, preset]);
-        setSelectedPresetId(preset.id);
-        setSavingName('');
-        setShowSaveBox(false);
-      } else {
-        setPresetError(presetErrorMessage(r.status));
-      }
-    } catch {
-      setPresetError('Could not reach the server. Check your connection and try again.');
-    }
-  }
-
-  async function handleDeletePreset(id: string) {
-    setPresetError('');
-    try {
-      const r = await fetch(`/api/presets/${id}`, { method: 'DELETE' });
-      if (r.ok) {
-        setPresets(prev => prev.filter(p => p.id !== id));
-        setSelectedPresetId(prev => prev === id ? null : prev);
-      } else {
-        setPresetError(presetErrorMessage(r.status));
-      }
-    } catch {
-      setPresetError('Could not reach the server. Check your connection and try again.');
-    }
-  }
-
-  // ── Collapsible sections ─────────────────────────────────────────────────
-  // Sections NOT in this set are open. Travel route / Track line start open.
-  // Presets, Labels, Map style, Export start collapsed. Reorganized 2026-09-26
-  // (user request) from the old Mode/Route/GPX file/Map/Route labels/Elevation
-  // profile/Animation/City labels into: Presets, Travel route (Mode + Route +
-  // GPX file + Elevation profile merged), Labels (Route labels + the start/end
-  // country+city fields, now shared between Directions and GPX mode instead of
-  // duplicated), Track line (unchanged), Map style (Map + City labels merged),
-  // Export (renamed from Animation). Elevation profile and City labels are no
-  // longer independently collapsible — they're inline sub-groups within their
-  // new parent section (see the "ELEVATION PROFILE"/"CITY LABELS" sub-headers).
-  const [closed, setClosed] = useState<Set<string>>(
-    () => new Set(['presets', 'labels', 'map', 'export'])
-  );
-  /** Toggle a section open/closed by its ID. */
-  const toggle = (id: string) =>
-    setClosed(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  /** Returns true when the section with the given ID is expanded. */
-  const isOpen = (id: string) => !closed.has(id);
+  const toggle = (id: string) => setOpen(o => o === id ? '' : id);
 
   function upd<K extends keyof Props>(key: K, value: Props[K]) {
     onChange(set(props, key, value));
@@ -905,9 +429,8 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       const res = await fetch('/api/upload-gpx', { method: 'POST', body: form });
       if (res.ok) {
         setUploadStatus('ok');
-        setUploadMsg(`✓ ${file.name} uploaded`);
+        setUploadMsg(`${file.name} uploaded`);
         onUpload();
-        // Auto-select the uploaded file and switch to GPX mode
         onChange({ ...props, mode: 'gpx', gpxFile: file.name });
       } else {
         const text = await res.text();
@@ -918,585 +441,219 @@ export default function PropsForm({ props, onChange, gpxFiles, onUpload }: Props
       setUploadStatus('error');
       setUploadMsg('Network error during upload.');
     }
-    // Reset file input
     e.target.value = '';
   }
 
-  // ── Section header summaries (2026-09-26 "Option C" redesign) ───────────
-  // One short line shown next to each card's title, both collapsed and open —
-  // just enough to see the current setting at a glance, matching the
-  // reference design's amount-on-the-right pattern.
+  // ── Band summaries ──────────────────────────────────────────────────────
   const TRAVEL_MODE_LABEL: Record<Props['travelMode'], string> = {
-    driving: 'Car', cycling: 'Bike', walking: 'Walk', flight: 'Fly',
+    driving: 'Car', cycling: 'Bike', walking: 'Walk', flight: 'Flight',
   };
-  const OUTPUT_FORMAT_LABEL: Record<Props['outputFormat'], string> = {
-    portrait: '9:16', landscape: '16:9', square: '1:1', 'instagram-post': '4:5',
-  };
-  const selectedPreset = presets.find(p => p.id === selectedPresetId);
-  const presetsSummary = selectedPreset ? selectedPreset.name : 'None selected';
-  const travelRouteSummary = props.mode === 'directions'
-    ? `${TRAVEL_MODE_LABEL[props.travelMode]} · ${props.startLabel || '?'} → ${props.endLabel || '?'}`
+  const routeCap1 = props.mode === 'directions' ? TRAVEL_MODE_LABEL[props.travelMode] : 'GPS track';
+  const routeCap2 = props.mode === 'directions'
+    ? `${props.startLabel || '?'} → ${props.endLabel || '?'}`
     : (props.gpxFile || 'No track selected');
-  const labelsSummary = LABEL_MODE_OPTIONS.find(o => o.value === props.labelMode)?.label ?? '';
-  const trackLineSummary = `${LINE_STYLE_OPTIONS.find(o => o.value === props.lineStyle)?.label ?? ''} · ${props.lineWidth}px`;
-  const mapStyleSummary = MAP_STYLE_OPTIONS.find(o => o.value === props.mapStyle)?.label ?? '';
-  const exportSummary = `${OUTPUT_FORMAT_LABEL[props.outputFormat]} · ${props.duration}s`;
+  const labelsCap1 = LABEL_MODE_OPTIONS.find(o => o.value === props.labelMode)?.label ?? '';
+  const labelsCap2 = props.labelMode === 'animated'
+    ? LABEL_ANIM_OPTIONS.find(o => o.value === props.labelAnimation)?.label
+    : props.labelMode === 'on' ? props.labelFont : undefined;
+  const lineCap1 = LINE_STYLE_OPTIONS.find(o => o.value === props.lineStyle)?.label ?? '';
+  const lineCap2 = `${props.lineWidth} px`;
+  const mapCap1  = MAP_STYLE_OPTIONS.find(o => o.value === props.mapStyle)?.label ?? 'Custom';
+  const mapCap2  = `${props.zoomMode === 'auto' ? 'Auto zoom' : `Zoom ${props.zoom}`} · ${props.minPopulation === 0 ? 'no cities' : `cities ${popLabel(props.minPopulation)}`}`;
 
   return (
-    <div>
+    <div className="bands">
 
-      {/* ── Presets ──────────────────────────────────────────────── */}
-      <div className="form-section form-section--presets">
-        <button className="section-title" onClick={() => toggle('presets')} aria-expanded={isOpen('presets')}>
-          <span className="section-icon"><PresetsIcon /></span>
-          <span className="section-title-text">
-            <span className="section-title-main">Presets</span>
-            <span className="section-summary">{presetsSummary}</span>
-          </span>
-          <span className={`section-chevron${isOpen('presets') ? ' open' : ''}`} aria-hidden="true">▾</span>
-        </button>
-        <div className={`section-body${isOpen('presets') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
+      {/* ── 1 Route ─────────────────────────────────────────────────── */}
+      <Band id="route" num={1} title="Route" cap1={routeCap1} cap2={routeCap2}
+        icon={<RouteIcon size={28} strokeWidth={1.5} />} open={open === 'route'} onToggle={() => toggle('route')}>
+        <Row label="Source">
+          <Seg ariaLabel="Route source" value={props.mode}
+            options={[{ value: 'directions', label: 'Directions' }, { value: 'gpx', label: 'GPS track' }]}
+            onChange={m => m === 'gpx'
+              ? onChange({ ...props, mode: 'gpx', gpxFile: props.gpxFile || (gpxFiles[0] ?? '') })
+              : upd('mode', 'directions')} />
+        </Row>
 
-            {presetError && (
-              <p style={{ fontSize: 11, color: '#fff', background: 'rgba(0,0,0,0.22)', borderRadius: 8, padding: '6px 10px', margin: '0 0 8px' }}>{presetError}</p>
-            )}
+        {props.mode === 'directions' && (<>
+          <Row label="Travel by">
+            <Seg variant="icons" ariaLabel="Travel mode" value={props.travelMode}
+              options={TRAVEL_MODE_OPTIONS} onChange={v => upd('travelMode', v)} />
+          </Row>
+          {props.travelMode === 'flight' && (
+            <RangeRow label="Arc curve" value={props.flightCurve} min={0} max={100} step={5}
+              onChange={v => upd('flightCurve', v)} />
+          )}
+          <Row label="From" htmlFor="start-address">
+            <input id="start-address" className="field-input" type="text" value={props.startAddress}
+              onChange={e => upd('startAddress', e.target.value)} placeholder="e.g. Ghent, Belgium" />
+          </Row>
+          <Row label="To" htmlFor="end-address">
+            <input id="end-address" className="field-input" type="text" value={props.endAddress}
+              onChange={e => upd('endAddress', e.target.value)} placeholder="e.g. Paris, France" />
+          </Row>
+        </>)}
 
-            {/* Load a saved preset */}
-            <div className="field">
-              <label>Load preset</label>
-              <PresetPicker
-                presets={presets}
-                selectedId={selectedPresetId}
-                onApply={p => { onChange({ ...DEFAULT_PROPS, ...p.props }); setSelectedPresetId(p.id); }}
-                onDelete={(id, name) => { if (window.confirm(`Delete preset "${name}"? This cannot be undone.`)) handleDeletePreset(id); }}
-              />
-            </div>
+        {props.mode === 'gpx' && (<>
+          <Row label="Track" htmlFor="gpx-select">
+            <span className="select-wrap">
+              <select id="gpx-select" className="field-select" value={props.gpxFile}
+                onChange={e => upd('gpxFile', e.target.value)}>
+                <option value="">Choose a file…</option>
+                {gpxFiles.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+              <span className="select-arrow"><UpDownIcon size={14} /></span>
+            </span>
+          </Row>
+          <Row label="Upload">
+            <label className="upload-btn">
+              <UploadIcon size={16} />
+              <span>Upload .gpx</span>
+              <input type="file" accept=".gpx" onChange={handleFileUpload} />
+            </label>
+          </Row>
+          {uploadMsg && <div className={`status-note status-note--${uploadStatus}`} role="status">{uploadMsg}</div>}
 
-            {/* Save current settings */}
-            {showSaveBox ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                <div className="field">
-                  <input
-                    type="text"
-                    placeholder="Preset name…"
-                    value={savingName}
-                    onChange={e => setSavingName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveBox(false); }}
-                    autoFocus
-                  />
+          <Row label="Elevation profile">
+            <Switch label="Show elevation profile" checked={props.showElevationProfile}
+              onChange={v => upd('showElevationProfile', v)} />
+          </Row>
+          {props.showElevationProfile && (<>
+            <ColorRow label="Profile line" value={props.elevationColor} onChange={v => upd('elevationColor', v)} />
+            <ColorRow label="Profile background" value={props.elevationBgColor} onChange={v => upd('elevationBgColor', v)} />
+            <RangeRow label="Left" unit="%" value={props.elevationLeft} min={0} max={90} onChange={v => upd('elevationLeft', v)} />
+            <RangeRow label="Top" unit="%" value={props.elevationTop} min={0} max={95} onChange={v => upd('elevationTop', v)} />
+            <RangeRow label="Width" unit="%" value={props.elevationWidth} min={10} max={100} onChange={v => upd('elevationWidth', v)} />
+            <RangeRow label="Height" unit="%" value={props.elevationHeight} min={3} max={50} onChange={v => upd('elevationHeight', v)} />
+          </>)}
+        </>)}
+      </Band>
+
+      {/* ── 2 Labels ────────────────────────────────────────────────── */}
+      <Band id="labels" num={2} title="Labels" cap1={labelsCap1} cap2={labelsCap2}
+        icon={<TagIcon size={28} strokeWidth={1.5} />} open={open === 'labels'} onToggle={() => toggle('labels')}>
+        <Row label="Show">
+          <Seg ariaLabel="Show labels" value={props.labelMode} options={LABEL_MODE_OPTIONS}
+            onChange={v => upd('labelMode', v)} />
+        </Row>
+        {props.labelMode === 'animated' && (
+          <Row label="Animation">
+            <Picker ariaLabel="Label animation" value={props.labelAnimation} options={LABEL_ANIM_OPTIONS}
+              onChange={v => upd('labelAnimation', v)} />
+          </Row>
+        )}
+        {props.labelMode !== 'off' && (<>
+          <Row label="Start country">
+            <CountryPicker ariaLabel="Start country" value={props.startCountryCode}
+              onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))} />
+          </Row>
+          <Row label="Start city" htmlFor="start-city">
+            <input id="start-city" className="field-input" type="text" value={props.startLabel}
+              onChange={e => upd('startLabel', e.target.value)} />
+          </Row>
+          <Row label="End country">
+            <CountryPicker ariaLabel="End country" value={props.endCountryCode}
+              onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))} />
+          </Row>
+          <Row label="End city" htmlFor="end-city">
+            <input id="end-city" className="field-input" type="text" value={props.endLabel}
+              onChange={e => upd('endLabel', e.target.value)} />
+          </Row>
+          <Row label="Font">
+            <Picker ariaLabel="Label font" value={props.labelFont} options={FONT_OPTIONS} render={renderFont}
+              onChange={v => upd('labelFont', v as Props['labelFont'])} />
+          </Row>
+          <ColorRow label="Background" value={props.labelBgColor} onChange={v => upd('labelBgColor', v)} />
+          <ColorRow label="Text color" value={props.labelTextColor} onChange={v => upd('labelTextColor', v)} />
+        </>)}
+      </Band>
+
+      {/* ── 3 Line ──────────────────────────────────────────────────── */}
+      <Band id="line" num={3} title="Line" cap1={lineCap1} cap2={lineCap2}
+        icon={<LineIcon size={28} strokeWidth={1.5} />} open={open === 'line'} onToggle={() => toggle('line')}>
+        <Row label="Style">
+          <Picker ariaLabel="Line style" value={props.lineStyle} options={LINE_STYLE_OPTIONS}
+            onChange={v => upd('lineStyle', v)}
+            render={o => (<><LinePreview value={o.value} color={props.lineColor} /><span>{o.label}</span></>)} />
+        </Row>
+        {props.lineStyle === 'pencil' && (
+          <RangeRow label="Pencil strength" value={props.pencilStrength} min={1} max={10}
+            onChange={v => upd('pencilStrength', v)} />
+        )}
+        <ColorRow label="Color" value={props.lineColor} onChange={v => upd('lineColor', v)} />
+        <RangeRow label="Width" unit=" px" value={props.lineWidth} min={1} max={30} onChange={v => upd('lineWidth', v)} />
+        <RangeRow label="Pin size" unit=" px" value={props.pinSize} min={2} max={24} onChange={v => upd('pinSize', v)} />
+        <Row label="Marker">
+          <Seg variant="icons" ariaLabel="Transport marker" value={props.routeMarker} options={MARKER_OPTIONS}
+            onChange={v => upd('routeMarker', v)} />
+        </Row>
+        {props.routeMarker !== 'none' && (
+          <RangeRow label="Marker size" unit=" px" value={props.routeMarkerSize} min={20} max={120}
+            onChange={v => upd('routeMarkerSize', v)} />
+        )}
+      </Band>
+
+      {/* ── 4 Map ───────────────────────────────────────────────────── */}
+      <Band id="map" num={4} title="Map" cap1={mapCap1} cap2={mapCap2}
+        icon={<MapIcon size={28} strokeWidth={1.5} />} open={open === 'map'} onToggle={() => toggle('map')}>
+        <Row label="Style">
+          <Picker ariaLabel="Map style" value={props.mapStyle} options={MAP_STYLE_OPTIONS}
+            onChange={v => upd('mapStyle', v)}
+            render={o => (<>
+              <span className={`style-dot${o.value === 'none' ? ' style-dot--none' : ''}`}
+                style={{ background: MAP_STYLE_OPTIONS.find(m => m.value === o.value)?.swatch }} />
+              <span>{o.label}</span>
+            </>)} />
+        </Row>
+        {props.mapStyle === 'none' && (
+          <ColorRow label="Background" value={props.mapBgColor} onChange={v => upd('mapBgColor', v)} />
+        )}
+        <Row label="Zoom">
+          <Seg ariaLabel="Zoom mode" value={props.zoomMode}
+            options={[{ value: 'auto', label: 'Auto' }, { value: 'manual', label: 'Manual' }]}
+            onChange={v => upd('zoomMode', v)} />
+        </Row>
+        {props.zoomMode === 'manual' && (
+          <RangeRow label="Zoom level" value={props.zoom} min={1} max={20} step={0.1} onChange={v => upd('zoom', v)} />
+        )}
+        <Row label="City labels">
+          <CitySlider value={props.minPopulation} onChange={v => upd('minPopulation', v)} />
+        </Row>
+        {props.minPopulation > 0 && (<>
+          <Row label="City font">
+            <Picker ariaLabel="City font" value={props.cityFont} options={FONT_OPTIONS} render={renderFont}
+              onChange={v => upd('cityFont', v)} />
+          </Row>
+          <Row label="Case">
+            <Seg ariaLabel="City label case" value={props.cityUppercase}
+              options={[{ value: false, label: 'Normal' }, { value: true, label: 'ALL CAPS' }]}
+              onChange={v => upd('cityUppercase', v)} />
+          </Row>
+          <button type="button" className="disclosure" aria-expanded={showTiers} onClick={() => setShowTiers(s => !s)}>
+            <span>City sizes &amp; colors</span>
+            <span className="disclosure-meta">{props.citySizeBig} · {props.citySizeMedium} · {props.citySizeSmall}</span>
+            <span className="disclosure-chev"><ChevronDownIcon size={16} /></span>
+          </button>
+          {showTiers && (
+            <div className="tiers">
+              {([
+                ['Big', 'over 1M', 'cityColorBig', 'citySizeBig', 10, 80],
+                ['Medium', '200k – 1M', 'cityColorMedium', 'citySizeMedium', 8, 60],
+                ['Small', 'under 200k', 'cityColorSmall', 'citySizeSmall', 6, 44],
+              ] as const).map(([name, range, colorKey, sizeKey, min, max]) => (
+                <div className="row" key={name}>
+                  <span className="row-label tier-label">{name}<small>{range}</small></span>
+                  <div className="row-control tier-control">
+                    <ColorPicker value={props[colorKey]} onChange={v => upd(colorKey, v)} label={`${name} city color`} />
+                    <Slider value={props[sizeKey]} min={min} max={max} label={`${name} city label size`}
+                      onChange={v => upd(sizeKey, v)} />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSavePreset}>Save</button>
-                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setShowSaveBox(false); setSavingName(''); }}>Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8 }} onClick={() => setShowSaveBox(true)}>
-                Save current settings…
-              </button>
-            )}
-
-          </div>
-        </div>
-      </div>
-
-      {/* ── Travel route (Mode + Route + GPX file + Elevation profile merged, ──
-             2026-09-26 reorg) ───────────────────────────────────────── */}
-      <div className="form-section form-section--travelRoute">
-        <button className="section-title" onClick={() => toggle('travelRoute')} aria-expanded={isOpen('travelRoute')}>
-          <span className="section-icon"><RouteIcon /></span>
-          <span className="section-title-text">
-            <span className="section-title-main">Travel route</span>
-            <span className="section-summary">{travelRouteSummary}</span>
-          </span>
-          <span className={`section-chevron${isOpen('travelRoute') ? ' open' : ''}`} aria-hidden="true">▾</span>
-        </button>
-        <div className={`section-body${isOpen('travelRoute') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            <div className="field">
-              <div className="radio-group">
-                <input
-                  type="radio" id="mode-dir" name="mode"
-                  checked={props.mode === 'directions'}
-                  onChange={() => upd('mode', 'directions')}
-                />
-                <label htmlFor="mode-dir">Directions</label>
-                <input
-                  type="radio" id="mode-gpx" name="mode"
-                  checked={props.mode === 'gpx'}
-                  onChange={() => {
-                    // Auto-select first available GPX file if none chosen yet
-                    const gpxFile = props.gpxFile || (gpxFiles[0] ?? '');
-                    onChange({ ...props, mode: 'gpx', gpxFile });
-                  }}
-                />
-                <label htmlFor="mode-gpx">GPS track</label>
-              </div>
+              ))}
             </div>
-
-            {/* ── Directions ────────────────────────────────────────── */}
-            {props.mode === 'directions' && (<>
-              <div className="field">
-                <label>Travel mode</label>
-                <div className="radio-group travel-mode-group">
-                  <input type="radio" id="travel-driving" name="travelMode"
-                    checked={props.travelMode === 'driving'}
-                    onChange={() => upd('travelMode', 'driving')}
-                  />
-                  <label htmlFor="travel-driving" title="Car"><CarIcon /></label>
-
-                  <input type="radio" id="travel-cycling" name="travelMode"
-                    checked={props.travelMode === 'cycling'}
-                    onChange={() => upd('travelMode', 'cycling')}
-                  />
-                  <label htmlFor="travel-cycling" title="Bike"><BikeIcon /></label>
-
-                  <input type="radio" id="travel-walking" name="travelMode"
-                    checked={props.travelMode === 'walking'}
-                    onChange={() => upd('travelMode', 'walking')}
-                  />
-                  <label htmlFor="travel-walking" title="Walk"><WalkIcon /></label>
-
-                  <input type="radio" id="travel-flight" name="travelMode"
-                    checked={props.travelMode === 'flight'}
-                    onChange={() => upd('travelMode', 'flight')}
-                  />
-                  <label htmlFor="travel-flight" title="Fly"><FlightIcon /></label>
-                </div>
-              </div>
-
-              {/* Arc curve slider — only visible in flight mode */}
-              {props.travelMode === 'flight' && (
-                <RangeField
-                  label="Arc curve"
-                  value={props.flightCurve}
-                  min={0} max={100} step={5}
-                  onChange={v => upd('flightCurve', v)}
-                />
-              )}
-
-              <div className="field">
-                <label>Start address</label>
-                <input
-                  type="text"
-                  value={props.startAddress}
-                  onChange={e => upd('startAddress', e.target.value)}
-                  placeholder="e.g. Ghent, Belgium"
-                />
-              </div>
-              <div className="field">
-                <label>End address</label>
-                <input
-                  type="text"
-                  value={props.endAddress}
-                  onChange={e => upd('endAddress', e.target.value)}
-                  placeholder="e.g. Paris, France"
-                />
-              </div>
-            </>)}
-
-            {/* ── GPS track ─────────────────────────────────────────── */}
-            {props.mode === 'gpx' && (<>
-              <div className="field">
-                <label>Select track</label>
-                <select
-                  value={props.gpxFile}
-                  onChange={e => upd('gpxFile', e.target.value)}
-                >
-                  <option value="">— choose a file —</option>
-                  {gpxFiles.map(f => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>Upload new GPX</label>
-                <div className="upload-area">
-                  <input
-                    type="file"
-                    accept=".gpx"
-                    onChange={handleFileUpload}
-                  />
-                  Click to upload a .gpx file
-                </div>
-              </div>
-              {uploadMsg && (
-                <div className={`upload-status ${uploadStatus}`}>{uploadMsg}</div>
-              )}
-
-              <div className="subsection-label">Elevation profile</div>
-              <div className="field">
-                <label>Show profile</label>
-                <div className="radio-group">
-                  <input type="radio" id="elev-on" name="showElevationProfile"
-                    checked={props.showElevationProfile}
-                    onChange={() => upd('showElevationProfile', true)} />
-                  <label htmlFor="elev-on">On</label>
-                  <input type="radio" id="elev-off" name="showElevationProfile"
-                    checked={!props.showElevationProfile}
-                    onChange={() => upd('showElevationProfile', false)} />
-                  <label htmlFor="elev-off">Off</label>
-                </div>
-              </div>
-              {props.showElevationProfile && (<>
-                <ColorField label="Line colour"
-                  value={props.elevationColor}
-                  onChange={v => upd('elevationColor', v)} />
-                <ColorField label="Background"
-                  value={props.elevationBgColor}
-                  onChange={v => upd('elevationBgColor', v)} />
-                <RangeField label={`Left — ${props.elevationLeft}%`}
-                  value={props.elevationLeft} min={0} max={90}
-                  onChange={v => upd('elevationLeft', v)} />
-                <RangeField label={`Top — ${props.elevationTop}%`}
-                  value={props.elevationTop} min={0} max={95}
-                  onChange={v => upd('elevationTop', v)} />
-                <RangeField label={`Width — ${props.elevationWidth}%`}
-                  value={props.elevationWidth} min={10} max={100}
-                  onChange={v => upd('elevationWidth', v)} />
-                <RangeField label={`Height — ${props.elevationHeight}%`}
-                  value={props.elevationHeight} min={3} max={50}
-                  onChange={v => upd('elevationHeight', v)} />
-              </>)}
-            </>)}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Labels (Route labels + start/end country+city merged, shared ──
-             between Directions and GPS track instead of duplicated,
-             2026-09-26 reorg) ───────────────────────────────────────── */}
-      <div className="form-section form-section--labels">
-        <button className="section-title" onClick={() => toggle('labels')} aria-expanded={isOpen('labels')}>
-          <span className="section-icon"><LabelsIcon /></span>
-          <span className="section-title-text">
-            <span className="section-title-main">Labels</span>
-            <span className="section-summary">{labelsSummary}</span>
-          </span>
-          <span className={`section-chevron${isOpen('labels') ? ' open' : ''}`} aria-hidden="true">▾</span>
-        </button>
-        <div className={`section-body${isOpen('labels') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            <div className="field">
-              <label>Show</label>
-              <LabelModePicker
-                value={props.labelMode}
-                onChange={v => upd('labelMode', v)}
-              />
-            </div>
-
-            {props.labelMode === 'animated' && (
-              <div className="field">
-                <label>Animation</label>
-                <LabelAnimationPicker
-                  value={props.labelAnimation}
-                  onChange={v => upd('labelAnimation', v)}
-                />
-              </div>
-            )}
-
-            {props.labelMode !== 'off' && (<>
-              <div className="field">
-                <label>Start country</label>
-                <CountryPicker
-                  value={props.startCountryCode}
-                  onChange={c => onChange(set(set(props, 'startCountryCode', c.code), 'startCountry', c.name))}
-                />
-              </div>
-              <div className="field">
-                <label>Start city</label>
-                <input
-                  type="text"
-                  value={props.startLabel}
-                  onChange={e => upd('startLabel', e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>End country</label>
-                <CountryPicker
-                  value={props.endCountryCode}
-                  onChange={c => onChange(set(set(props, 'endCountryCode', c.code), 'endCountry', c.name))}
-                />
-              </div>
-              <div className="field">
-                <label>End city</label>
-                <input
-                  type="text"
-                  value={props.endLabel}
-                  onChange={e => upd('endLabel', e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>Font</label>
-                <FontPicker
-                  value={props.labelFont}
-                  onChange={v => upd('labelFont', v as Props['labelFont'])}
-                />
-              </div>
-              <ColorField
-                label="Background"
-                value={props.labelBgColor}
-                onChange={v => upd('labelBgColor', v)}
-              />
-              <ColorField
-                label="Text color"
-                value={props.labelTextColor}
-                onChange={v => upd('labelTextColor', v)}
-              />
-            </>)}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Track line ───────────────────────────────────────────── */}
-      <div className="form-section form-section--trackLine">
-        <button className="section-title" onClick={() => toggle('trackLine')} aria-expanded={isOpen('trackLine')}>
-          <span className="section-icon"><TrackLineIcon /></span>
-          <span className="section-title-text">
-            <span className="section-title-main">Track line</span>
-            <span className="section-summary">{trackLineSummary}</span>
-          </span>
-          <span className={`section-chevron${isOpen('trackLine') ? ' open' : ''}`} aria-hidden="true">▾</span>
-        </button>
-        <div className={`section-body${isOpen('trackLine') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            <div className="field">
-              <label>Style</label>
-              <LineStylePicker
-                value={props.lineStyle}
-                lineColor={props.lineColor}
-                onChange={v => upd('lineStyle', v)}
-              />
-            </div>
-            {props.lineStyle === 'pencil' && (
-              <RangeField
-                label="Pencil strength"
-                value={props.pencilStrength}
-                min={1} max={10}
-                onChange={v => upd('pencilStrength', v)}
-              />
-            )}
-            <ColorField
-              label="Line color"
-              value={props.lineColor}
-              onChange={v => upd('lineColor', v)}
-            />
-            <RangeField
-              label="Line width"
-              value={props.lineWidth}
-              min={1} max={30}
-              onChange={v => upd('lineWidth', v)}
-            />
-            <RangeField
-              label="Pin size"
-              value={props.pinSize}
-              min={2} max={24}
-              onChange={v => upd('pinSize', v)}
-            />
-            {/* Route tip marker — icon that travels along the line */}
-            <div className="field">
-              <label>Transport marker</label>
-              <MarkerPicker value={props.routeMarker} onChange={v => upd('routeMarker', v)} />
-            </div>
-            {props.routeMarker !== 'none' && (
-              <RangeField
-                label="Transport marker size"
-                value={props.routeMarkerSize}
-                min={20} max={120}
-                onChange={v => upd('routeMarkerSize', v)}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Map style (Map + City labels merged, 2026-09-26 reorg) ────── */}
-      <div className="form-section form-section--map">
-        <button className="section-title" onClick={() => toggle('map')} aria-expanded={isOpen('map')}>
-          <span className="section-icon"><MapStyleIcon /></span>
-          <span className="section-title-text">
-            <span className="section-title-main">Map style</span>
-            <span className="section-summary">{mapStyleSummary}</span>
-          </span>
-          <span className={`section-chevron${isOpen('map') ? ' open' : ''}`} aria-hidden="true">▾</span>
-        </button>
-        <div className={`section-body${isOpen('map') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            <div className="field">
-              <label>Map type</label>
-              <MapStylePicker
-                value={props.mapStyle}
-                onChange={v => upd('mapStyle', v)}
-              />
-            </div>
-
-            {props.mapStyle === 'none' && (
-              <ColorField
-                label="Background"
-                value={props.mapBgColor}
-                onChange={v => upd('mapBgColor', v)}
-              />
-            )}
-
-            <div className="field">
-              <label>Zoom mode</label>
-              <div className="radio-group">
-                <input
-                  type="radio" id="zoom-auto" name="zoomMode"
-                  checked={props.zoomMode === 'auto'}
-                  onChange={() => upd('zoomMode', 'auto')}
-                />
-                <label htmlFor="zoom-auto">Auto</label>
-                <input
-                  type="radio" id="zoom-manual" name="zoomMode"
-                  checked={props.zoomMode === 'manual'}
-                  onChange={() => upd('zoomMode', 'manual')}
-                />
-                <label htmlFor="zoom-manual">Manual</label>
-              </div>
-            </div>
-            {props.zoomMode === 'manual' && (
-              <RangeField
-                label="Zoom level"
-                value={props.zoom}
-                min={1} max={20} step={0.1}
-                onChange={v => upd('zoom', v)}
-              />
-            )}
-
-            <div className="subsection-label">City labels</div>
-            <div className="field">
-              <label>Show</label>
-              <CitySlider
-                value={props.minPopulation}
-                onChange={v => upd('minPopulation', v)}
-              />
-            </div>
-
-            {props.minPopulation > 0 && (<>
-              <div className="field">
-                <label>Font</label>
-                <FontPicker
-                  value={props.cityFont}
-                  onChange={v => upd('cityFont', v as Props['cityFont'])}
-                />
-              </div>
-
-              <div className="field">
-                <label>Case</label>
-                <div className="radio-group">
-                  <input
-                    type="radio" id="city-case-normal" name="cityUppercase"
-                    checked={!props.cityUppercase}
-                    onChange={() => upd('cityUppercase', false)}
-                  />
-                  <label htmlFor="city-case-normal">Normal</label>
-                  <input
-                    type="radio" id="city-case-upper" name="cityUppercase"
-                    checked={props.cityUppercase}
-                    onChange={() => upd('cityUppercase', true)}
-                  />
-                  <label htmlFor="city-case-upper">ALL CAPS</label>
-                </div>
-              </div>
-
-              <div className="city-tier-label">Big <span>(pop &gt; 1M)</span></div>
-              <ColorField
-                label="Color"
-                value={props.cityColorBig}
-                onChange={v => upd('cityColorBig', v)}
-              />
-              <RangeField
-                label="Size"
-                value={props.citySizeBig}
-                min={10} max={80}
-                onChange={v => upd('citySizeBig', v)}
-              />
-
-              <div className="city-tier-label">Medium <span>(200k – 1M)</span></div>
-              <ColorField
-                label="Color"
-                value={props.cityColorMedium}
-                onChange={v => upd('cityColorMedium', v)}
-              />
-              <RangeField
-                label="Size"
-                value={props.citySizeMedium}
-                min={8} max={60}
-                onChange={v => upd('citySizeMedium', v)}
-              />
-
-              <div className="city-tier-label">Small <span>(&lt; 200k)</span></div>
-              <ColorField
-                label="Color"
-                value={props.cityColorSmall}
-                onChange={v => upd('cityColorSmall', v)}
-              />
-              <RangeField
-                label="Size"
-                value={props.citySizeSmall}
-                min={6} max={44}
-                onChange={v => upd('citySizeSmall', v)}
-              />
-            </>)}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Export (renamed from Animation, 2026-09-26 reorg) ─────────── */}
-      <div className="form-section form-section--export">
-        <button className="section-title" onClick={() => toggle('export')} aria-expanded={isOpen('export')}>
-          <span className="section-icon"><ExportIcon /></span>
-          <span className="section-title-text">
-            <span className="section-title-main">Export</span>
-            <span className="section-summary">{exportSummary}</span>
-          </span>
-          <span className={`section-chevron${isOpen('export') ? ' open' : ''}`} aria-hidden="true">▾</span>
-        </button>
-        <div className={`section-body${isOpen('export') ? ' section-body--open' : ''}`}>
-          <div className="section-body-inner">
-            {/* Output format — controls canvas dimensions (width × height) of the render */}
-            <div className="field">
-              <label>Format</label>
-              <div className="radio-group">
-                <input
-                  type="radio" id="fmt-portrait" name="outputFormat"
-                  checked={props.outputFormat === 'portrait'}
-                  onChange={() => upd('outputFormat', 'portrait')}
-                />
-                <label htmlFor="fmt-portrait"  title="Portrait (1080×1920)">9:16</label>
-                <input
-                  type="radio" id="fmt-landscape" name="outputFormat"
-                  checked={props.outputFormat === 'landscape'}
-                  onChange={() => upd('outputFormat', 'landscape')}
-                />
-                <label htmlFor="fmt-landscape" title="Landscape (1920×1080)">16:9</label>
-                <input
-                  type="radio" id="fmt-square" name="outputFormat"
-                  checked={props.outputFormat === 'square'}
-                  onChange={() => upd('outputFormat', 'square')}
-                />
-                <label htmlFor="fmt-square"    title="Square (1080×1080)">1:1</label>
-                <input
-                  type="radio" id="fmt-ig" name="outputFormat"
-                  checked={props.outputFormat === 'instagram-post'}
-                  onChange={() => upd('outputFormat', 'instagram-post')}
-                />
-                <label htmlFor="fmt-ig" title="Instagram post (1080×1350)">4:5</label>
-              </div>
-            </div>
-
-            <RangeField
-              label="Duration"
-              value={props.duration}
-              min={1} max={60} unit="s"
-              onChange={v => upd('duration', v)}
-            />
-          </div>
-        </div>
-      </div>
-
+          )}
+        </>)}
+      </Band>
     </div>
   );
 }

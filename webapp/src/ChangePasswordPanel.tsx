@@ -1,9 +1,8 @@
 import React, { useState, FormEvent } from 'react';
 
 /**
- * Inline "Change password" panel — toggled open from a link in the sidebar
- * header next to "Sign out" (App.tsx). Added 2026-09-26 alongside the move
- * to email+password self-registration (server/auth.cjs's POST /api/change-password).
+ * "Change password" form — shown inside the account menu (AccountMenu.tsx).
+ * Posts to server/auth.cjs's POST /api/change-password.
  */
 export default function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -43,56 +42,39 @@ export default function ChangePasswordPanel({ onClose }: { onClose: () => void }
     }
   }
 
+  if (success) {
+    return (
+      <div className="change-password">
+        <p className="change-password-ok">Password changed.</p>
+        <button type="button" className="btn-dark" onClick={onClose}>Done</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="change-password-panel">
-      {success ? (
-        <>
-          <p style={{ margin: '0 0 8px' }}>✓ Password changed.</p>
-          <button className="btn btn-ghost" style={{ width: '100%' }} onClick={onClose}>Close</button>
-        </>
-      ) : (
-        <form onSubmit={handleSubmit}>
-          {error && <div className="login-error" style={{ marginBottom: 8 }}>{error}</div>}
-          <div className="field">
-            <label>Current password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={e => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <div className="field">
-            <label>New password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
-          </div>
-          <div className="field">
-            <label>Confirm new</label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>
-              {loading ? <><span className="spinner" /> Saving…</> : 'Save'}
-            </button>
-            <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-          </div>
-        </form>
-      )}
-    </div>
+    <form className="change-password" onSubmit={handleSubmit}>
+      {error && <div className="form-error" role="alert">{error}</div>}
+      <label className="stack-field">
+        <span>Current password</span>
+        <input className="text-input" type="password" value={currentPassword}
+          onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password" required />
+      </label>
+      <label className="stack-field">
+        <span>New password</span>
+        <input className="text-input" type="password" value={newPassword}
+          onChange={e => setNewPassword(e.target.value)} autoComplete="new-password" minLength={6} required />
+      </label>
+      <label className="stack-field">
+        <span>Confirm new password</span>
+        <input className="text-input" type="password" value={confirm}
+          onChange={e => setConfirm(e.target.value)} autoComplete="new-password" minLength={6} required />
+      </label>
+      <div className="popover-actions">
+        <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn-dark" disabled={loading}>
+          {loading ? <><span className="spinner" /> Saving…</> : 'Save'}
+        </button>
+      </div>
+    </form>
   );
 }

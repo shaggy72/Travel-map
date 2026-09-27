@@ -1,13 +1,22 @@
 /**
  * App.tsx — root component for the Travel Map config webapp.
  *
+ * Layout (2026-09-27 "Color Stack" redesign, see CLAUDE.md / DESIGN.md):
+ *   Sidebar — black brand bar + the settings bands (PropsForm.tsx: 1 Route,
+ *   2 Labels, 3 Line, 4 Map) + band 5 Export (here, since it owns the render).
+ *   Stage — top bar (PresetBar, update pill, AccountMenu), the big route title
+ *   with the format list + duration next to the preview frame, and a ruler
+ *   timeline (Timeline.tsx) that drives the Remotion Player's API.
+ *   On narrow screens everything becomes one scrolling column
+ *   (brand → preview → timeline → bands).
+ *
  * Auth flow:
  *   On mount, GET /api/me to verify the session cookie.
  *   A 5-second AbortController timeout guards against a hung server.
  *   Result: 'loading' → 'logged-in' (show main UI) or 'logged-out' (show LoginPage).
  *
  * Render pipeline:
- *   "Render & Download" POSTs the current props to /api/render (server/index.cjs).
+ *   "Export MP4" POSTs the current props to /api/render (server/index.cjs).
  *   The server runs `remotion render` as a child process and streams the MP4 back
  *   as a blob. The browser triggers a file download via a temporary object URL.
  *
@@ -15,13 +24,19 @@
  * (~2 MB) and a load failure should not crash the whole app — hence the ErrorBoundary.
  */
 import React, { useState, useEffect, Suspense, Component, ErrorInfo, ReactNode } from 'react';
+import type { PlayerRef } from '@remotion/player';
 import LoginPage from './LoginPage';
-import ChangePasswordPanel from './ChangePasswordPanel';
 import PropsForm from './PropsForm';
+import PresetBar from './PresetBar';
+import AccountMenu from './AccountMenu';
+import Timeline from './Timeline';
+import { ArrowIcon, MinusIcon, PlusIcon, RefreshIcon } from './icons';
 import { Props, DEFAULT_PROPS } from './types';
 
 // Lazy-load PreviewPlayer so a Remotion import failure can't kill the whole app
 const PreviewPlayer = React.lazy(() => import('./PreviewPlayer'));
+
+const FPS = 30; // mirrors src/mapData.ts — kept local so the main bundle doesn't pull in Remotion code
 
 // ── Error boundary for the player ─────────────────────────────────────────
 interface EBState { error: Error | null }
@@ -39,11 +54,7 @@ class PlayerErrorBoundary extends Component<{ children: ReactNode }, EBState> {
   render() {
     if (this.state.error) {
       return (
-        <div style={{
-          padding: 16, borderRadius: 8, background: '#fef2f2',
-          border: '1px solid #fecaca', color: '#dc2626', fontSize: 12,
-          fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: 300,
-        }}>
+        <div className="preview-error">
           Preview unavailable:{'\n'}
           {this.state.error.message}
         </div>
@@ -52,6 +63,17 @@ class PlayerErrorBoundary extends Component<{ children: ReactNode }, EBState> {
     return this.props.children;
   }
 }
+
+const FORMATS: { value: Props['outputFormat']; ratio: string; desc: string; ar: number }[] = [
+  { value: 'portrait',       ratio: '9:16', desc: 'Portrait · 1080×1920',       ar: 9 / 16 },
+  { value: 'landscape',      ratio: '16:9', desc: 'Landscape · 1920×1080',      ar: 16 / 9 },
+  { value: 'square',         ratio: '1:1',  desc: 'Square · 1080×1080',         ar: 1 },
+  { value: 'instagram-post', ratio: '4:5',  desc: 'Instagram post · 1080×1350', ar: 4 / 5 },
+];
+
+const MODE_NOTE: Record<Props['travelMode'], string> = {
+  driving: 'By car', cycling: 'By bike', walking: 'On foot', flight: 'By plane',
+};
 
 // ── Auth state ────────────────────────────────────────────────────────────
 type AuthState = 'loading' | 'logged-out' | 'logged-in';
@@ -62,17 +84,12 @@ export default function App() {
   const [gpxFiles,  setGpxFiles]  = useState<string[]>([]);
   const [rendering, setRendering] = useState(false);
   const [renderErr, setRenderErr] = useState('');
-  // Mobile tab switcher — only visible on screens ≤ 640px (controlled via CSS)
-  const [mobileTab, setMobileTab] = useState<'settings' | 'preview'>('settings');
+  const [player,    setPlayer]    = useState<PlayerRef | null>(null);
   // Update banner — tracks the lifecycle of a server-side update
   type UpdateState = 'idle' | 'available' | 'updating' | 'restart-needed' | 'restarting';
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [updateErr,   setUpdateErr]   = useState('');
-  // Signed-in user's email (from /api/me) — shown in the header, and the
-  // "Change password" panel toggle, added alongside 2026-09-26's move to
-  // email+password self-registration.
-  const [userEmail,          setUserEmail]          = useState('');
-  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [userEmail,   setUserEmail]   = useState('');
 
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -147,23 +164,20 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       try {
         await fetch('/api/me');
-        // Any HTTP response (200 or 401) means the server is back — reload.
         window.location.reload();
         return;
       } catch { /* network error = server still starting, keep polling */ }
     }
-    // Fallback: reload after 60 s regardless
     window.location.reload();
   }
 
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
     setUserEmail('');
-    setShowChangePassword(false);
     setAuth('logged-out');
   }
 
-  /** Called by LoginPage after a successful sign-in — fetches the email for the header. */
+  /** Called by LoginPage after a successful sign-in — fetches the email for the account menu. */
   async function handleLoginSuccess() {
     setAuth('logged-in');
     fetchGpxFiles();
@@ -171,7 +185,7 @@ export default function App() {
     try {
       const r = await fetch('/api/me');
       if (r.ok) setUserEmail((await r.json()).email ?? '');
-    } catch { /* header just shows nothing — not worth failing the login over */ }
+    } catch { /* menu just shows nothing — not worth failing the login over */ }
   }
 
   async function handleRender() {
@@ -204,10 +218,8 @@ export default function App() {
   // ── Auth states ─────────────────────────────────────────────────────────
   if (auth === 'loading') {
     return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center',
-                    height:'100vh', gap: 10, color: '#64748b', fontSize: 14 }}>
-        <span className="spinner"
-          style={{ borderTopColor:'#2563eb', borderColor:'#e2e8f0', width:20, height:20 }} />
+      <div className="app-loading">
+        <span className="spinner spinner--dark" />
         Connecting…
       </div>
     );
@@ -218,141 +230,132 @@ export default function App() {
   }
 
   // ── Main app ─────────────────────────────────────────────────────────────
+  const format   = FORMATS.find(f => f.value === props.outputFormat) ?? FORMATS[0];
+  const start    = props.startLabel || '…';
+  const end      = props.endLabel   || '…';
+  const longest  = Math.max(start.length, end.length + 2);
+  const titleCls = longest <= 8 ? '' : longest <= 12 ? ' route-title--md' : ' route-title--sm';
+  const modeNote = props.mode === 'gpx' ? 'GPS track' : MODE_NOTE[props.travelMode];
+  const durationInFrames = Math.max(1, Math.round(props.duration * FPS));
+  const setDuration = (v: number) => setProps(p => ({ ...p, duration: Math.max(1, Math.min(60, Math.round(v) || 1)) }));
+
   return (
-    <div className={`layout${mobileTab === 'preview' ? ' layout--preview' : ''}`}>
+    <div className="app">
       {/* ── Sidebar ──────────────────────────────────────────────────── */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="header-row">
-            <h1>Travel Map</h1>
-            <button className="logout-btn" onClick={handleLogout}>Sign out</button>
-          </div>
-          <p>
-            {userEmail || 'Configure and preview your animation'}
-            {userEmail && (
-              <>
-                {' · '}
-                <button className="logout-btn" onClick={() => setShowChangePassword(s => !s)}>
-                  Change password
-                </button>
-              </>
-            )}
-          </p>
-          {showChangePassword && (
-            <ChangePasswordPanel onClose={() => setShowChangePassword(false)} />
-          )}
-
-          {/* ── Update banner — hidden when idle ────────────────────── */}
-          {updateState !== 'idle' && (
-            <div className={`update-banner update-banner--${updateState}`}>
-              {updateState === 'available' && (
-                <>🔄 Update available&nbsp;
-                  <button onClick={handleUpdate} disabled={rendering}>Install</button>
-                </>
-              )}
-              {updateState === 'updating' && (
-                <><span className="spinner spinner--dark" />&nbsp;Installing update…</>
-              )}
-              {updateState === 'restart-needed' && (
-                <>✅ Updated.&nbsp;
-                  <button onClick={handleRestart}>Restart now</button>
-                </>
-              )}
-              {updateState === 'restarting' && (
-                <><span className="spinner spinner--dark" />&nbsp;Restarting…</>
-              )}
-              {updateErr && <span className="update-err">{updateErr}</span>}
-            </div>
-          )}
+      <aside className="sidebar" aria-label="Settings">
+        <div className="brand-bar">
+          <span className="wordmark">Travel Map</span>
+          <span className="brand-sub">Map animation studio</span>
         </div>
 
-        <div className="sidebar-body">
-          <PropsForm
-            props={props}
-            onChange={setProps}
-            gpxFiles={gpxFiles}
-            onUpload={fetchGpxFiles}
-          />
-        </div>
+        <div className="sidebar-scroll">
+          <PropsForm props={props} onChange={setProps} gpxFiles={gpxFiles} onUpload={fetchGpxFiles} />
 
-        <div className="sidebar-footer">
-          <button
-            className="btn btn-primary"
-            onClick={handleRender}
-            disabled={rendering}
-          >
-            {rendering
-              ? <><span className="spinner" /> Rendering… (this takes a few minutes)</>
-              : '⬇ Render & Download MP4'
-            }
-          </button>
-          {renderErr && <div className="render-error">{renderErr}</div>}
-          {!rendering && !renderErr && (
-            <div className="render-info">
-              Render time: ~2–5 min for a {props.duration}s animation
+          <section className="band band--export">
+            <div className="band-head band-head--static">
+              <span className="band-num">5</span>
+              <span className="band-title">Export</span>
             </div>
-          )}
+            <div className="export-row">
+              <span className="export-note">Full-HD MP4, rendered<br />on the server · ~2–5 min</span>
+              <button type="button" className="export-btn" onClick={handleRender} disabled={rendering}>
+                {rendering
+                  ? <><span className="spinner" /> Rendering…</>
+                  : <>Export MP4<span className="export-btn-arrow"><ArrowIcon size={16} /></span></>}
+              </button>
+            </div>
+            {rendering && <p className="export-status" role="status">This takes a few minutes — keep this tab open.</p>}
+            {renderErr && <p className="export-status export-status--error" role="alert">{renderErr}</p>}
+          </section>
         </div>
       </aside>
 
-      {/* ── Preview panel ────────────────────────────────────────────── */}
-      <main className="preview-panel">
-        <div className="preview-label">Live Preview</div>
-        {/* aspect-ratio is set inline so switching format updates the wrapper immediately */}
-        <div className="preview-player-wrapper" style={{
-          aspectRatio: props.outputFormat === 'landscape'     ? '16/9'
-                     : props.outputFormat === 'square'         ? '1/1'
-                     : props.outputFormat === 'instagram-post' ? '4/5'
-                     : '9/16',
-        }}>
-          <PlayerErrorBoundary>
-            <Suspense fallback={
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center',
-                            width:270, height:480, color:'#94a3b8', fontSize:13 }}>
-                Loading preview…
-              </div>
-            }>
-              <PreviewPlayer props={props} />
-            </Suspense>
-          </PlayerErrorBoundary>
-        </div>
-        <div style={{ fontSize:11, color:'var(--text-light)', textAlign:'center' }}>
-          Preview uses your browser — no server needed
+      {/* ── Stage ────────────────────────────────────────────────────── */}
+      <main className="stage">
+        <div className="stage-top">
+          <PresetBar props={props} onChange={setProps} />
+
+          {updateState !== 'idle' && (
+            <div className="update-pill" role="status">
+              {updateState === 'available' && (<>
+                <RefreshIcon size={15} /> Update available
+                <button type="button" onClick={handleUpdate} disabled={rendering}>Install</button>
+              </>)}
+              {updateState === 'updating' && <><span className="spinner spinner--dark" /> Installing update…</>}
+              {updateState === 'restart-needed' && (<>
+                Updated
+                <button type="button" onClick={handleRestart}>Restart now</button>
+              </>)}
+              {updateState === 'restarting' && <><span className="spinner spinner--dark" /> Restarting…</>}
+              {updateErr && <span className="update-err">{updateErr}</span>}
+            </div>
+          )}
+
+          <AccountMenu email={userEmail} onLogout={handleLogout} />
         </div>
 
-        {/* ── Mobile-only render button — hidden on desktop via CSS ──────
-            Lets the user trigger a render from the Preview tab without
-            switching back to Settings.                                    */}
-        <div className="mobile-render-area">
-          <button
-            className="btn btn-primary"
-            onClick={handleRender}
-            disabled={rendering}
-          >
-            {rendering
-              ? <><span className="spinner" /> Rendering…</>
-              : '⬇ Render & Download MP4'
-            }
-          </button>
-          {renderErr && <div className="render-error">{renderErr}</div>}
+        <div className="stage-body">
+          <div className="stage-info">
+            <span className="tag">Live preview</span>
+            <h1 className={`route-title${titleCls}`}>{start}<br />→ {end}*</h1>
+            <p className="route-note">* {modeNote} · {format.ratio} · {props.duration} seconds</p>
+
+            <div className="format-list" role="group" aria-label="Video format">
+              {FORMATS.map(f => (
+                <button
+                  key={f.value}
+                  type="button"
+                  className="format-row"
+                  aria-pressed={f.value === props.outputFormat}
+                  onClick={() => setProps(p => ({ ...p, outputFormat: f.value }))}
+                >
+                  <span className="format-ratio">{f.ratio}</span>
+                  <span className="format-desc">{f.desc}</span>
+                  <span className="format-go"><ArrowIcon size={14} /></span>
+                </button>
+              ))}
+            </div>
+
+            <div className="duration">
+              <label htmlFor="duration-input" className="duration-label">Duration</label>
+              <div className="duration-control">
+                <button type="button" className="round-btn round-btn--outline" aria-label="Shorter"
+                  onClick={() => setDuration(props.duration - 1)} disabled={props.duration <= 1}>
+                  <MinusIcon size={14} />
+                </button>
+                <span className="duration-value">
+                  <input id="duration-input" type="number" min={1} max={60} value={props.duration}
+                    onChange={e => setDuration(Number(e.target.value))} />
+                  <span>s</span>
+                </span>
+                <button type="button" className="round-btn round-btn--dark" aria-label="Longer"
+                  onClick={() => setDuration(props.duration + 1)} disabled={props.duration >= 60}>
+                  <PlusIcon size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="stage-frame-area">
+            {/* .frame-fit is a size container: the frame takes the largest
+                size of the chosen aspect ratio that fits (see styles.css). */}
+            <div className="frame-fit">
+              <div className="preview-frame" style={{ '--ar': format.ar } as React.CSSProperties}>
+                <PlayerErrorBoundary>
+                  <Suspense fallback={<div className="preview-loading">Loading preview…</div>}>
+                    <PreviewPlayer props={props} onReady={setPlayer} />
+                  </Suspense>
+                </PlayerErrorBoundary>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="stage-bottom">
+          <Timeline player={player} durationInFrames={durationInFrames} fps={FPS} />
+          <p className="stage-hint">Preview runs in your browser<br />Export renders full HD on the server</p>
         </div>
       </main>
-
-      {/* ── Mobile tab bar — hidden on desktop via CSS ───────────────── */}
-      <nav className="mobile-tab-bar">
-        <button
-          className={`mobile-tab${mobileTab === 'settings' ? ' active' : ''}`}
-          onClick={() => setMobileTab('settings')}
-        >
-          ⚙ Settings
-        </button>
-        <button
-          className={`mobile-tab${mobileTab === 'preview' ? ' active' : ''}`}
-          onClick={() => setMobileTab('preview')}
-        >
-          ▶ Preview
-        </button>
-      </nav>
     </div>
   );
 }

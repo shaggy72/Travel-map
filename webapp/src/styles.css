@@ -1,48 +1,60 @@
-/* ── Reset & Base ─────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ═══════════════════════════════════════════════════════════════════════
+   Travel Map — "Color Stack" design (2026-09-27). See DESIGN.md.
+   Black sidebar with full-width colour bands (1 Route · 2 Labels · 3 Line ·
+   4 Map · 5 Export), a warm off-white stage with big light type, black pill
+   and round buttons, flat value-bar controls, and a ruler timeline.
+   ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Poppins (was Inter until 2026-09-26) — rounder/friendlier, closer to the
-     reference design the user showed for the sidebar/login redesign. Site-wide:
-     the whole webapp UI chrome, NOT the rendered video's own label fonts
-     (labelFont/cityFont props — Helvetica/Inter/Georgia/Oswald/Merriweather,
-     a separate per-render user choice, untouched by this). */
-  --font:        'Poppins', system-ui, -apple-system, sans-serif;
+  --ink:        #111111;
+  --ink-muted:  #5E5B55;               /* secondary text on the ground (≈6:1) */
+  --on-band-2:  rgba(17,17,17,0.72);   /* secondary text on a band colour     */
+  --ground:     #F0EFEA;
+  --paper:      #FFFFFF;
+  --line:       rgba(17,17,17,0.14);
+  --soft:       rgba(255,255,255,0.55); /* control fill on a band colour      */
+  --soft-hover: rgba(255,255,255,0.8);
+  --tag:        #EEF23A;
+  --danger-bg:  #FFE3DE;
+  --danger:     #8A1C0B;
 
-  /* ── tweakcn "Claude" theme tokens ───────────────────────────────────── */
-  /* Source: https://tweakcn.com/r/themes/claude.json                       */
-  --bg:          oklch(0.9818 0.0054 95.0986);  /* --background  warm near-white panel bg  */
-  --sidebar-bg:  oklch(0.9663 0.0080 98.8792);  /* --sidebar     sidebar bg                */
-  --field-bg:    oklch(1.0000 0 0);             /* --popover     pure-white field cards     */
-  --border:      oklch(0.8847 0.0069 97.3627);  /* --border      subtle warm border        */
-  --border-hover:oklch(0.7621 0.0156 98.3528);  /* --input       border on hover           */
-  --text:        oklch(0.3438 0.0269 95.7226);  /* --foreground  primary text              */
-  --text-muted:  oklch(0.6059 0.0075 97.4233);  /* --muted-fg    labels / secondary        */
-  --text-light:  oklch(0.7500 0.0100 97.0000);  /* interpolated  tertiary / arrows         */
-  --accent:      oklch(0.6171 0.1375 39.0427);  /* --primary     Claude orange             */
-  --accent-hover:oklch(0.5300 0.1375 39.0427);  /* --primary ↓   accent on hover           */
-  --accent-light:oklch(0.9245 0.0138 92.9892);  /* --secondary   selected option bg        */
-  --danger:      oklch(0.6368 0.2078 25.3313);  /* destructive   errors (dark-mode red)    */
-  --field-hover: oklch(0.9341 0.0153 90.2390);  /* --muted       field pill on hover       */
-  --radius:      0.5rem;                        /* --radius      ≈ 8 px (rounder than 6)   */
-  --radius-lg:   0.75rem;                       /* scaled        ≈ 12 px for larger panels */
+  --band-route:  #FFD45C;
+  --band-labels: #F4B6EA;
+  --band-line:   #CDBDB5;
+  --band-map:    #97ACE3;
+  --band-export: #FF6B2C;
 
-  --shadow:      0 1px 2px rgba(0,0,0,.05);
-  --shadow-md:   0 2px 16px rgba(0,0,0,.10);
-  --sidebar-w:   320px; /* was 280px — the main cause of cramped text/truncated labels ("Transport ma...") per the 2026-09-27 critique pass */
+  --font: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --sidebar-w: 440px;
+  --ctl-w: 216px;                        /* width of the control column in a row */
 }
 
-html, body, #root {
-  height: 100%;
+/* ── Base ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
   font-family: var(--font);
-  font-size: 11px;
-  color: var(--text);
-  background: var(--bg);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--ground);
   -webkit-font-smoothing: antialiased;
 }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-/* ── Layout ───────────────────────────────────────────────────────────── */
-.layout {
+.app-loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--ink-muted);
+}
+
+/* ── App layout ───────────────────────────────────────────────────────── */
+.app {
   display: flex;
   height: 100vh;
   overflow: hidden;
@@ -50,526 +62,1069 @@ html, body, #root {
 
 .sidebar {
   width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
+  flex: none;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 0;
+  background: var(--ink);
 }
 
-.sidebar-header {
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+.brand-bar {
+  height: 64px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--ink);
+  color: #fff;
 }
+.wordmark { font-weight: 800; font-size: 22px; letter-spacing: -0.03em; }
+.wordmark--ink { color: var(--ink); }
+.brand-sub { font-size: 12.5px; color: #B9B6AE; }
 
-/* Bumped from 12px/600 to 18px/800 (2026-09-27, image-to-code-skill critique
-   pass) — was a totally different, much weaker treatment of the same
-   "Travel Map" wordmark than the login card's 22px/800, no shared brand
-   identity between the two screens. Still can't literally match login's size
-   (this sits in a ~300px-wide header, not a big centred card) but now reads
-   as the same bold display treatment, just scaled down. */
-.sidebar-header h1 {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-
-.sidebar-header p {
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-top: 3px;
-}
-
-.sidebar-body {
+.sidebar-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  /* 12px sides (was 8px) — more breathing room around the colourful cards,
-     2026-09-27 critique pass ("spacing generosity" — cards felt packed
-     against the sidebar edge). scrollbar-gutter: stable reserves additional
-     space for classic scrollbars so this still never overlaps content. */
-  padding: 14px 12px 12px 12px;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-
-.sidebar-footer {
-  padding: 9px 11px;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.preview-panel {
-  flex: 1;
-  background: var(--bg);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  overflow: hidden;
-  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #444 transparent;
 }
+.bands { flex: none; }
 
-.preview-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
+/* ── Bands ────────────────────────────────────────────────────────────── */
+.band { color: var(--ink); }
+.band--route  { background: var(--band-route); }
+.band--labels { background: var(--band-labels); }
+.band--line   { background: var(--band-line); }
+.band--map    { background: var(--band-map); }
+.band--export { background: var(--band-export); }
 
-/* aspect-ratio is set inline in App.tsx based on props.outputFormat
-   so that portrait (9/16), landscape (16/9) and square (1/1) all work correctly. */
-.preview-player-wrapper {
-  height: calc(100vh - 180px);
-  max-height: 560px;
-  box-shadow: var(--shadow-md);
-  border-radius: var(--radius);
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--border); /* neutral tile placeholder while map loads */
-}
-
-/* ── Form Sections — colourful cards ──────────────────────────────────────
-   Redesigned 2026-09-26 ("Option C" from a design-canvas mockup the user
-   picked): each section is now a bold, color-blocked rounded card instead of
-   a plain header on the neutral sidebar background — but the expand/collapse
-   behaviour and every field underneath are unchanged, so nothing users could
-   already do got hidden behind a swipe/tap-through interaction. See
-   CLAUDE.md for the full rationale and the fields-vs-.field-pill contrast
-   reasoning (most controls already render as white pills via .field, so
-   they needed no changes at all — only the header and a few standalone
-   labels needed a light-on-colour treatment). ───────────────────────────── */
-.form-section {
-  border-radius: 20px;
-  overflow: hidden;
-  background: var(--card-color, var(--sidebar-bg));
-}
-.form-section + .form-section {
-  margin-top: 16px; /* was 10px — 2026-09-27 critique pass: cards nearly touched */
-}
-
-/* One accent colour per section — 2026-09-27 critique pass: the previous six
-   hex values were picked by eye (mustard and tan sat only a few degrees apart
-   on the wheel) and didn't read as one family. Now derived systematically:
-   every content section shares the same OKLCH lightness (64%) and chroma
-   (0.09) — equal visual weight and equal contrast against the white
-   title/summary text — and only the hue rotates, evenly spaced around the
-   wheel so each card is clearly distinguishable from its neighbours. Export
-   is the deliberate exception: it's a utility/output step, not a content
-   category, so it stays desaturated near-neutral to visually set it apart
-   from the five content cards above it. */
-.form-section--presets     { --card-color: oklch(64% 0.09 165); } /* teal   */
-.form-section--travelRoute { --card-color: oklch(64% 0.09 45);  } /* orange */
-.form-section--labels      { --card-color: oklch(64% 0.09 125); } /* green  */
-.form-section--trackLine   { --card-color: oklch(64% 0.09 85);  } /* olive  */
-.form-section--map         { --card-color: oklch(64% 0.09 235); } /* blue   */
-.form-section--export      { --card-color: oklch(55% 0.015 250); } /* slate (desaturated, intentional exception) */
-
-/* Section title doubles as a collapse toggle button — icon + title/summary
-   text block + chevron, all in white/near-white since it sits directly on
-   the card's saturated background (unlike the fields below it, which are
-   still white .field pills and needed no colour changes at all). */
-.section-title {
+.band-head {
+  width: 100%;
+  min-height: 78px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 16px 18px; /* was 13px 15px — 2026-09-27 critique pass */
-  cursor: pointer;
+  gap: 14px;
+  padding: 0 24px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
   text-align: left;
-  font-family: var(--font);
+  transition: background .15s;
 }
-.section-title:hover { opacity: 0.93; }
+.band:not(.band--open) > .band-head:hover { background: rgba(255,255,255,0.2); }
+.band-head:focus-visible { outline-offset: -4px; }
+.band-head--static { min-height: auto; padding: 18px 24px 8px; cursor: default; }
 
-.section-icon {
+.band-num {
   width: 30px;
   height: 30px;
+  flex: none;
   border-radius: 50%;
-  background: rgba(255,255,255,0.22);
-  color: #fff;
+  background: rgba(17,17,17,0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
 }
-.section-icon .material-symbols-outlined { font-size: 16px; }
-
-.section-title-text {
+.band-title {
   flex: 1;
-  min-width: 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+.band-cap {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  max-width: 150px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  text-align: right;
 }
-.section-title-main {
-  font-size: 14px; /* was 12px — 2026-09-27 critique pass: too little contrast against the 10px field text below it */
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.25;
-}
-.section-summary {
-  font-size: 10.5px; /* was 9.5px */
-  color: rgba(255,255,255,0.75);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.25;
-}
+.band-cap > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.band-cap strong { font-weight: 700; }
+.band-cap span { color: var(--on-band-2); }
+.band-icon { flex: none; display: flex; }
 
-/* Chevron indicator — rotated right (▸) when collapsed, down (▾) when open. */
-.section-chevron {
-  font-size: 11px;
-  color: rgba(255,255,255,0.85);
-  transition: transform 0.18s ease;
-  transform: rotate(-90deg);   /* ▸ points right = collapsed */
-  flex-shrink: 0;
-  line-height: 1;
-}
-.section-chevron.open {
-  transform: rotate(0deg);     /* ▾ points down = expanded */
-}
+.band-body { padding: 0 24px 18px; }
 
-/* Collapsible section body.
-   max-height: 0 + overflow: hidden is the battle-tested approach for this.
-   The CSS grid / 0fr technique causes the first child border to bleed past
-   the collapsed track in some browsers regardless of overflow settings.
-   1500px is safely above the tallest section (Travel route's GPS-track +
-   elevation-profile fields) so all content is revealed on open.            */
-.section-body {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 0.22s ease;
-}
-.section-body--open {
-  max-height: 1500px;
-}
-.section-body-inner {
-  /* side/bottom padding so fields don't sit flush against the card edge;
-     no top padding — the header above already has its own bottom padding.
-     Bumped from 14px 14px to 16px 18px, 2026-09-27 critique pass. */
-  padding: 0 18px 16px;
-}
-
-/* ── Field cards ──────────────────────────────────────────────────────── */
-/* 2026-09-27, second pass on user feedback: a .field used to be one shared
-   white pill wrapping BOTH the label and its control — which read as if the
-   label text itself sat inside a text box. Now .field is just an unstyled
-   flex row: the label floats directly on the card's own colour (like
-   .section-summary/.subsection-label already do), and only the control
-   half (input, dropdown, slider, etc. — see each ".field > <control>" rule
-   below) gets its own boxed white pill. */
-.field {
+/* ── Rows ─────────────────────────────────────────────────────────────── */
+.row {
   display: flex;
   align-items: center;
-  padding: 0 14px 0 10px;
-  min-height: 30px;
-  margin-bottom: 6px;
-  gap: 7px;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 50px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
 }
-
-.field > label {
-  flex-shrink: 0;
-  /* Matches .section-summary exactly (e.g. "Car · Ghent → Lauris") —
-     2026-09-27, third pass: user asked for the same style/size for both,
-     since they're the same kind of light-on-colour caption text. */
-  font-size: 10.5px;
-  font-weight: 400;
+.row-label {
+  flex: none;
+  max-width: 44%;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.25;
-  color: rgba(255,255,255,0.75);
-  margin: 0;
-  /* Narrowed from 46% (2026-09-27 third pass): the wider label was starving
-     the control box of width, so sliders' thumbs stuck out past their own
-     box on the right. Long labels ("Transport marker") now wrap onto a
-     second line instead of ellipsising — no longer truncated either way. */
-  width: 36%;
-  white-space: normal;
-  overflow-wrap: break-word;
 }
-
-/* Controls that sit directly inside .field each get their own boxed white
-   pill (nested inside the now-boxless .field row) so it's unambiguous
-   which part is the editable/interactive control. Style reworked 2026-09-27
-   (third pass, reference: a flat native-app settings panel) — borderless
-   flat fill instead of a thin stroked outline, and a rounder corner. */
-.field > input[type="text"],
-.field > input[type="number"],
-.field > select,
-.field > .ls-picker,
-.field > .range-row,
-.field > .color-row,
-.field > .city-slider-row {
+.row-control {
   flex: 1;
   min-width: 0;
-  min-height: 30px;
-  box-sizing: border-box;
-  background: var(--field-bg);
-  border-radius: 10px;
-  overflow: hidden; /* clips the slider fill/thumb and focus ring to the rounded shape */
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Text input */
+.field-input {
+  width: var(--ctl-w);
+  max-width: 100%;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--soft);
+  padding: 0 12px;
+  font-size: 14px;
+  text-align: right;
   transition: background .12s;
 }
+.field-input:hover { background: var(--soft-hover); }
+.field-input:focus { background: var(--paper); outline: 2px solid var(--ink); outline-offset: 0; }
+.field-input::placeholder { color: rgba(17,17,17,0.45); }
 
-.field > input[type="text"],
-.field > input[type="number"],
-.field > select {
-  text-align: right;
-  padding: 0 12px;
-  color: var(--text-muted);
-  font-size: 10.5px;
-}
-
-.field > .ls-picker,
-.field > .color-row {
-  padding: 0 12px;
-}
-
-/* No padding for sliders — the fill bar (see "Range Slider" below) is meant
-   to run edge-to-edge inside the box, clipped to the rounded shape by the
-   box's own overflow:hidden above. */
-.field > .range-row,
-.field > .city-slider-row {
-  padding: 0;
-}
-
-.field > input[type="text"]:hover,
-.field > input[type="number"]:hover,
-.field > select:hover,
-.field > .ls-picker:hover,
-.field > .range-row:hover,
-.field > .color-row:hover,
-.field > .city-slider-row:hover {
-  background: var(--field-hover);
-}
-
-.field > input[type="text"]:focus,
-.field > input[type="number"]:focus,
-.field > select:focus {
-  color: var(--text);
-  background: var(--field-hover);
-  outline: none;
-  box-shadow: inset 0 0 0 1.5px var(--accent);
-}
-
-/* Directions/GPS track + travel-mode toggles: restore their own box now
-   that .field no longer supplies one (previously .field > .radio-group
-   stripped its base border/background because .field's pill was enough). */
-.field > .radio-group {
-  background: var(--field-bg);
-  border: none;
-  border-radius: 10px;
-}
-
-/* Upload area sits in its own full-width field-like block — already
-   light-on-colour (dashed border, white text) since it's meant to sit
-   directly on the card background, so it needs no box of its own. */
-.field > .upload-area {
-  flex: 1;
-  margin: 4px 0;
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-}
-
-/* Narrower label in two-column grid so the control has room */
-.field-row .field > label {
-  width: auto;
-  flex-shrink: 0;
-}
-
-/* ── Inputs (base — overridden inside .field) ─────────────────────────── */
-input[type="text"],
-input[type="number"],
-select,
-input[type="email"],
-input[type="password"] {
+/* Native select (GPX track list) */
+.select-wrap { position: relative; width: var(--ctl-w); max-width: 100%; }
+.field-select {
   width: 100%;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: var(--font);
-  font-size: 10px;
-  color: var(--text);
-  background: var(--field-bg);
-  transition: border-color .15s, box-shadow .15s;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--soft);
+  padding: 0 32px 0 12px;
+  font-size: 14px;
   appearance: none;
   -webkit-appearance: none;
-  outline: none;
+  text-overflow: ellipsis;
 }
-
-input[type="text"]:focus,
-input[type="number"]:focus,
-select:focus,
-input[type="email"]:focus,
-input[type="password"]:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px oklch(0.6171 0.1375 39.0427 / 0.18);
-}
-
-select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238c7e6e' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 28px;
-  cursor: pointer;
-}
-
-/* Select inside a .field pill: no individual border */
-.field > select {
-  background-position: right 0 center;
-  padding-right: 18px;
-}
-
-/* ── Range Slider ─────────────────────────────────────────────────────── */
-/* Redesigned 2026-09-27 (third pass — reference: a flat native-app settings
-   panel, e.g. a "Width"/"Radius" slider that IS the whole box). The box
-   itself is now the value bar: a flat fill from the left edge up to the
-   current value (via --range-fill, set inline on .range-row/.city-slider-
-   row in PropsForm.tsx so both the fill and the input's own track can read
-   it), with a thin vertical grip standing in for the old round thumb —
-   not a thin 3px track floating inside an otherwise-empty pill. */
-.range-row {
+.field-select:focus { outline: 2px solid var(--ink); outline-offset: 0; }
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
-  align-items: stretch;
+  pointer-events: none;
+  opacity: .7;
 }
 
-.range-row input[type="range"],
-.city-slider-row input[type="range"] {
-  flex: 1;
-  height: 30px; /* matches the box's own min-height (no vertical padding) */
+/* Pill toggle (text options) */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  height: 36px;
+}
+.seg-btn {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background .12s;
+}
+.seg-btn:hover { background: rgba(17,17,17,0.08); }
+.seg-btn[aria-pressed="true"] { background: var(--ink); color: #fff; font-weight: 600; }
+
+/* Round icon toggles (travel mode, transport marker) */
+.icon-group { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.icon-toggle {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  border: none;
-  outline: none;
-  box-shadow: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
+  transition: background .12s;
+}
+.icon-toggle:hover { background: var(--soft-hover); }
+.icon-toggle[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* Switch */
+.switch {
+  width: 46px;
+  height: 28px;
+  flex: none;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(17,17,17,0.16);
+  padding: 3px;
+  display: flex;
+  transition: background .15s;
+}
+.switch-knob {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  transition: transform .15s;
+}
+.switch[aria-checked="true"] { background: var(--ink); }
+.switch[aria-checked="true"] .switch-knob { transform: translateX(18px); }
+
+/* Value-bar slider: the pill is the track, filled up to the value (--fill),
+   thin grip at the fill edge, tick dots, value on the right. The real
+   <input type=range> sits on top, invisible, so dragging/keys still work. */
+.slider {
+  position: relative;
+  width: var(--ctl-w);
+  max-width: 100%;
+  height: 36px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--soft);
+  overflow: hidden;
+}
+.slider:hover { background: var(--soft-hover); }
+.slider:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.slider-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: var(--fill);
+  border-radius: 12px;
+  background: rgba(17,17,17,0.12);
+}
+.slider-grip {
+  position: absolute;
+  top: 11px;
+  left: clamp(6px, calc(var(--fill) - 8px), calc(100% - 8px));
+  width: 2px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--ink);
+}
+.slider-dots {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: calc(var(--fill) + 8px);
+  right: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  overflow: hidden;
+}
+.slider-dots i { width: 3px; height: 3px; border-radius: 50%; background: rgba(17,17,17,0.4); flex: none; }
+.slider-value {
+  position: absolute;
+  right: 12px;
+  top: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.slider input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
 }
 
-.range-row input[type="range"]:focus,
-.city-slider-row input[type="range"]:focus {
-  outline: none;
+/* Colour: hex + round swatch (the swatch is ColorPicker's trigger) */
+.color-control { display: flex; align-items: center; gap: 10px; }
+.color-hex {
+  font-size: 12.5px;
+  color: var(--on-band-2);
+  font-variant-numeric: tabular-nums;
 }
-
-/* ── Webkit track — the fill bar spans the full box height/width ── */
-.range-row input[type="range"]::-webkit-slider-runnable-track,
-.city-slider-row input[type="range"]::-webkit-slider-runnable-track {
+.cp-swatch {
+  width: 30px;
   height: 30px;
-  background: linear-gradient(
-    to right,
-    var(--field-hover) var(--range-fill, 0%),
-    transparent var(--range-fill, 0%)
-  );
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  box-shadow: inset 0 0 0 1px rgba(17,17,17,0.22), 0 0 0 3px var(--soft);
+  transition: transform .12s;
 }
+.cp-swatch:hover { transform: scale(1.08); }
 
-/* ── Webkit thumb — thin vertical grip instead of a round dot ── */
-.range-row input[type="range"]::-webkit-slider-thumb,
-.city-slider-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  background: var(--accent);
-  cursor: pointer;
-  margin-top: 7px; /* (30 - 16) / 2 — centers the grip on the 30px track */
-  box-shadow: none;
-}
-
-/* ── Firefox track ── */
-.range-row input[type="range"]::-moz-range-track,
-.city-slider-row input[type="range"]::-moz-range-track {
-  height: 30px;
-  background: transparent;
-}
-
-.range-row input[type="range"]::-moz-range-progress,
-.city-slider-row input[type="range"]::-moz-range-progress {
-  height: 30px;
-  background: var(--field-hover);
-}
-
-/* ── Firefox thumb ── */
-.range-row input[type="range"]::-moz-range-thumb,
-.city-slider-row input[type="range"]::-moz-range-thumb {
-  border: none;
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  background: var(--accent);
-  cursor: pointer;
-  box-shadow: none;
-}
-
-
-/* ── Color row (field pill interior) ─────────────────────────────────── */
-.color-row {
+/* Dropdown trigger */
+.ls-picker { position: relative; width: var(--ctl-w); max-width: 100%; }
+.ls-trigger {
+  width: 100%;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--soft);
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 0;
+  padding: 0 10px 0 12px;
+  font-size: 14px;
+  text-align: left;
+  transition: background .12s;
+}
+.ls-trigger:hover, .ls-trigger[aria-expanded="true"] { background: var(--soft-hover); }
+.ls-label {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ls-label > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.ls-arrow { flex: none; display: flex; opacity: .7; }
+.ls-flag { width: 18px; height: 13px; border-radius: 2px; object-fit: cover; flex: none; }
+.style-dot {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(17,17,17,0.25);
+}
+.style-dot--none {
+  background: linear-gradient(135deg, transparent 44%, var(--ink) 44% 56%, transparent 56%) !important;
 }
 
-/* Swatch trigger — small coloured square inside the field pill */
-.cp-swatch {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  border: 1px solid rgba(0,0,0,.18);
+/* Dropdown panel (position: fixed so the sidebar can't clip it) */
+.ls-panel {
+  position: fixed;
+  z-index: 1000;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 16px 44px rgba(0,0,0,0.18);
+  padding: 6px;
+}
+.ls-options-scroll { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
+.ls-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 14px;
+  text-align: left;
+}
+.ls-option:hover { background: var(--ground); }
+.ls-option.selected { background: var(--ink); color: #fff; }
+.ls-option--empty { color: var(--ink-muted); cursor: default; }
+.ls-option--empty:hover { background: transparent; }
+.ls-search {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 10px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.ls-search:focus { outline: 2px solid var(--ink); outline-offset: -1px; }
+
+/* GPX upload */
+.upload-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px 0 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  flex-shrink: 0;
+}
+.upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.upload-btn:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.status-note {
+  margin: 2px 0 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(17,17,17,0.1);
+}
+.status-note--error { background: var(--danger-bg); color: var(--danger); }
+
+/* "City sizes & colors" disclosure */
+.disclosure {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+.disclosure-meta {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--on-band-2);
+  font-variant-numeric: tabular-nums;
+}
+.disclosure-chev { display: flex; transition: transform .15s; }
+.disclosure[aria-expanded="true"] .disclosure-chev { transform: rotate(180deg); }
+.tier-label { display: flex; flex-direction: column; gap: 1px; }
+.tier-label small { font-size: 11.5px; font-weight: 400; color: var(--on-band-2); }
+.tier-control { gap: 10px; }
+.tier-control .slider { width: 160px; }
+
+/* ── Export band ──────────────────────────────────────────────────────── */
+.band--export { flex: 1 0 auto; }
+.export-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 24px 22px;
+}
+.export-note { font-size: 13px; line-height: 1.35; color: rgba(17,17,17,0.78); }
+.export-btn {
+  height: 52px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 0 22px;
   transition: transform .12s;
 }
-.cp-swatch:hover { transform: scale(1.12); }
-
-/* Hex value displayed as plain text next to the swatch — matches other field values */
-.color-hex {
-  flex: 1;
-  font-family: var(--font);
-  font-size: 10px;
-  text-transform: uppercase;
-  text-align: right;
-  color: var(--text-muted);
-  pointer-events: none;
-  user-select: none;
+.export-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.export-btn:disabled { padding: 0 22px; gap: 10px; opacity: .85; cursor: progress; }
+.export-btn-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.export-status { margin: -8px 24px 18px; font-size: 13px; }
+.export-status--error {
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  white-space: pre-wrap;
 }
 
-/* ── Floating color picker panel ──────────────────────────────────────── */
+/* ── Stage ────────────────────────────────────────────────────────────── */
+.stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+}
+
+.stage-top {
+  height: 72px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 28px 0 48px;
+}
+
+.preset-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+.pill-btn {
+  height: 42px;
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 16px 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(17,17,17,0.08);
+}
+.pill-btn-text { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill-btn-chev { display: flex; color: var(--ink-muted); }
+
+.round-btn {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform .12s, opacity .12s;
+}
+.round-btn:hover:not(:disabled) { transform: scale(1.05); }
+.round-btn:disabled { opacity: .3; }
+.round-btn--dark { background: var(--ink); color: #fff; }
+.round-btn--outline { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+.avatar-btn { font-size: 15px; font-weight: 700; }
+
+/* Popovers (presets, save preset, account menu) */
+.popover-anchor { position: relative; display: flex; }
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 900;
+  min-width: 240px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.16);
+  padding: 6px;
+}
+.popover--right { left: auto; right: 0; }
+.popover-empty { padding: 12px; color: var(--ink-muted); }
+.popover-label { font-size: 13px; font-weight: 600; }
+.popover-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.preset-list { max-height: 340px; overflow-y: auto; min-width: 260px; }
+.preset-row { display: flex; align-items: center; border-radius: 10px; }
+.preset-row:hover { background: var(--ground); }
+.preset-row.selected { background: var(--ink); color: #fff; }
+.preset-apply {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.preset-delete {
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: .55;
+}
+.preset-delete:hover { opacity: 1; background: rgba(17,17,17,0.08); }
+.preset-row.selected .preset-delete:hover { background: rgba(255,255,255,0.15); }
+
+.save-preset { width: 290px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.text-input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ground);
+  padding: 0 12px;
+  font-size: 14px;
+}
+.text-input:focus { outline: 2px solid var(--ink); outline-offset: -1px; background: var(--paper); }
+
+.btn-ghost, .btn-dark {
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-ghost { background: transparent; }
+.btn-ghost:hover { background: var(--ground); }
+.btn-dark { background: var(--ink); color: #fff; }
+.btn-dark:disabled { opacity: .4; }
+
+.toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 950;
+  max-width: min(460px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 10px 11px 16px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.4;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+}
+.toast button { border: 0; background: transparent; color: #fff; display: flex; padding: 2px; }
+
+.account-menu { width: 290px; }
+.account-email {
+  padding: 10px 12px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-actions { display: flex; flex-direction: column; }
+.menu-item {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 14px;
+  text-align: left;
+}
+.menu-item:hover { background: var(--ground); }
+
+.change-password { padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 10px; }
+.change-password-ok { margin: 4px 0; font-size: 14px; }
+
+.stack-field { display: flex; flex-direction: column; gap: 6px; }
+.stack-field > span { font-size: 13px; font-weight: 600; }
+
+.form-error {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 13.5px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+.change-password .form-error { margin-bottom: 0; }
+
+.update-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 5px 0 14px;
+  border-radius: 999px;
+  background: var(--tag);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.update-pill button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.update-pill button:disabled { opacity: .5; }
+.update-err { color: var(--danger); font-weight: 500; }
+
+/* ── Stage body: route title + formats + duration | preview frame ────── */
+.stage-body { flex: 1; min-height: 0; display: flex; }
+
+.stage-info {
+  width: 400px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 0 0 48px;
+  overflow-y: auto;
+}
+.tag {
+  align-self: flex-start;
+  background: var(--tag);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.route-title {
+  margin: 18px 0 0;
+  font-weight: 300;
+  font-size: 66px;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+.route-title--md { font-size: 52px; }
+.route-title--sm { font-size: 40px; }
+.route-note { margin: 14px 0 0; font-size: 13.5px; color: var(--ink-muted); }
+
+.format-list {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.format-row {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+}
+.format-ratio {
+  width: 62px;
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.format-desc { flex: 1; font-size: 13px; color: var(--ink-muted); }
+.format-go {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid rgba(17,17,17,0.3);
+  color: rgba(17,17,17,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .12s;
+}
+.format-row:hover .format-go { border-color: var(--ink); color: var(--ink); }
+.format-row[aria-pressed="true"] .format-ratio { font-weight: 700; }
+.format-row[aria-pressed="true"] .format-go { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.duration {
+  margin-top: 22px;
+  padding-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.duration-label { font-size: 13px; color: var(--ink-muted); }
+.duration-control { display: flex; align-items: center; gap: 10px; }
+.duration-control .round-btn { width: 36px; height: 36px; }
+.duration-value { display: flex; align-items: baseline; gap: 3px; }
+.duration-value input {
+  width: 56px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.duration-value input::-webkit-outer-spin-button,
+.duration-value input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.duration-value input:focus { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+.duration-value span { font-size: 15px; font-weight: 500; }
+
+.stage-frame-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  padding: 8px 28px;
+}
+/* Size container: the frame is the largest box of ratio --ar that fits. */
+.frame-fit {
+  flex: 1;
+  min-width: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview-frame {
+  width: min(100cqw, calc(100cqh * var(--ar)));
+  aspect-ratio: var(--ar);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #E4E2DC;
+  box-shadow: 0 30px 70px rgba(40,30,20,0.18), 0 0 0 1px rgba(17,17,17,0.06);
+}
+.preview-loading, .preview-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+/* ── Timeline ─────────────────────────────────────────────────────────── */
+.stage-bottom { flex: none; position: relative; padding: 0 28px 20px 48px; }
+.stage-hint {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  text-align: right;
+}
+
+.ruler {
+  position: relative;
+  height: 34px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(to right, rgba(17,17,17,0.07) var(--played), transparent var(--played));
+}
+.ruler:focus-within { outline: 2px solid var(--ink); outline-offset: 4px; }
+.ruler-ticks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 1px;
+  pointer-events: none;
+}
+.tick { width: 1px; height: 7px; background: rgba(17,17,17,0.3); }
+.tick--mid { height: 13px; }
+.tick--major { height: 20px; background: rgba(17,17,17,0.55); }
+.ruler-head {
+  position: absolute;
+  left: var(--played);
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+  pointer-events: none;
+}
+.ruler-head::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.ruler-input {
+  position: absolute;
+  left: 0;
+  top: -8px;
+  width: 100%;
+  height: calc(100% + 16px);
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.timeline-controls { display: flex; align-items: center; gap: 18px; margin-top: 10px; }
+.play-btn {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background .12s;
+}
+.play-btn:hover:not(:disabled) { background: rgba(17,17,17,0.06); }
+.time-counter { display: flex; align-items: flex-start; gap: 4px; }
+.time-now {
+  font-size: 64px;
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+.time-total { font-size: 14px; color: var(--ink-muted); padding-top: 4px; }
+
+/* ── Spinner ──────────────────────────────────────────────────────────── */
+.spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+}
+.spinner--dark { border-color: rgba(17,17,17,0.2); border-top-color: var(--ink); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Login ────────────────────────────────────────────────────────────── */
+.login { display: flex; min-height: 100vh; background: var(--ground); }
+.login-bands {
+  width: 53%;
+  height: 100vh;       /* fixed, so each band is 1/5 and the second word line gets cropped */
+  position: sticky;
+  top: 0;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+.login-band {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  gap: 22px;
+  padding: 2.4vh 32px 0;
+}
+.login-band .band-num { width: 44px; height: 44px; margin-top: 2vh; font-size: 18px; }
+.login-words {
+  font-size: 12.4vh;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+}
+.login-side { flex: 1; display: flex; flex-direction: column; padding: 40px 72px 48px; }
+.login-center { flex: 1; display: flex; align-items: center; }
+.login-form-wrap { width: min(400px, 100%); }
+.login-title {
+  margin: 0 0 10px;
+  font-weight: 300;
+  font-size: 72px;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+.login-sub { margin: 0 0 24px; font-size: 15px; line-height: 1.5; color: var(--ink-muted); }
+.login-form { display: flex; flex-direction: column; gap: 14px; }
+.login-input {
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--paper);
+  padding: 0 16px;
+  font-size: 16px;
+  box-shadow: 0 1px 2px rgba(17,17,17,0.08);
+}
+.login-input:focus { outline: none; box-shadow: 0 0 0 2px var(--ink); }
+/* Browser autofill tints the field; keep it white (text stays ink). */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: var(--ink);
+  transition: background-color 9999s ease-in-out 0s;
+}
+.login-submit {
+  width: 100%;
+  height: 58px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 26px;
+}
+.login-submit:disabled { justify-content: center; gap: 10px; padding: 0 26px; opacity: .85; }
+.login-submit-arrow {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--band-route);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-switch { margin: 8px 0 0; font-size: 14px; color: var(--ink-muted); }
+.login-switch button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login-banner { margin-bottom: 16px; padding: 10px 12px; border-radius: 12px; font-size: 13.5px; }
+.login-banner--ok { background: var(--tag); }
+.login-banner--error { background: var(--danger-bg); color: var(--danger); }
+
+/* ── Colour picker panel (ColorPicker.tsx) ───────────────────────────── */
 .cp-panel {
   position: fixed;
   z-index: 1001;
   width: 224px;
-  background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 6px 24px rgba(0,0,0,.16);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 16px 44px rgba(0,0,0,0.18);
   padding: 10px;
   user-select: none;
 }
-
-/* Gradient square */
 .cp-sq {
   width: 100%;
   height: 156px;
-  border-radius: 5px;
+  border-radius: 8px;
   position: relative;
   cursor: crosshair;
   margin-bottom: 10px;
   touch-action: none;
   overflow: hidden;
 }
-
-/* Cursor circle on the gradient square */
 .cp-sq-cur {
   position: absolute;
   width: 13px;
@@ -580,8 +1135,6 @@ select {
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-
-/* Hue slider track */
 .cp-hue {
   width: 100%;
   height: 11px;
@@ -592,8 +1145,6 @@ select {
   margin-bottom: 8px;
   touch-action: none;
 }
-
-/* Alpha slider track — checkered then fades to current colour via inline style */
 .cp-alpha {
   width: 100%;
   height: 11px;
@@ -602,7 +1153,6 @@ select {
   cursor: pointer;
   margin-bottom: 10px;
   touch-action: none;
-  /* Checkered background to signal transparency */
   background-image:
     linear-gradient(45deg, #ccc 25%, transparent 25%),
     linear-gradient(-45deg, #ccc 25%, transparent 25%),
@@ -611,15 +1161,7 @@ select {
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0;
 }
-
-/* Coloured overlay for the alpha gradient (set via inline style) */
-.cp-alpha-fill {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-}
-
-/* Shared thumb style for hue + alpha bars */
+.cp-alpha-fill { position: absolute; inset: 0; border-radius: inherit; }
 .cp-bar-cur {
   position: absolute;
   top: 50%;
@@ -631,754 +1173,154 @@ select {
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-
-/* Bottom input row */
-.cp-inputs {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
+.cp-inputs { display: flex; gap: 6px; align-items: center; }
 .cp-hex-row {
   flex: 1;
   display: flex;
   align-items: center;
-  background: var(--sidebar-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 4px 7px;
+  background: var(--ground);
+  border-radius: 8px;
+  padding: 6px 8px;
   gap: 2px;
 }
-
-.cp-hash {
-  font-size: 9px;
-  color: var(--text-muted);
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  flex-shrink: 0;
-}
-
+.cp-hash { font-size: 12px; color: var(--ink-muted); flex-shrink: 0; }
 .cp-hex-in {
   flex: 1;
   min-width: 0;
   border: none;
   background: transparent;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 9px;
-  color: var(--text);
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: .04em;
   outline: none;
   padding: 0;
+  font-variant-numeric: tabular-nums;
 }
-
-/* Alpha % input */
 .cp-alpha-display {
   display: flex;
   align-items: center;
-  background: var(--sidebar-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 4px 6px;
+  background: var(--ground);
+  border-radius: 8px;
+  padding: 6px 7px;
   gap: 2px;
-  width: 52px;
+  width: 56px;
   flex-shrink: 0;
 }
-
 .cp-alpha-in {
   width: 0;
   flex: 1;
   border: none;
   background: transparent;
-  font-family: var(--font);
-  font-size: 9px;
-  color: var(--text);
+  font-size: 12px;
   outline: none;
   padding: 0;
-  /* Hide number spinner arrows */
   -moz-appearance: textfield;
 }
 .cp-alpha-in::-webkit-outer-spin-button,
 .cp-alpha-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cp-pct { font-size: 12px; color: var(--ink-muted); flex-shrink: 0; }
 
-.cp-pct {
-  font-size: 9px;
-  color: var(--text-muted);
-  flex-shrink: 0;
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+/* Short laptop screens: tighten the stage's vertical rhythm */
+@media (max-height: 820px) and (min-width: 761px) {
+  .route-title { font-size: 52px; }
+  .route-title--md { font-size: 42px; }
+  .route-title--sm { font-size: 34px; }
+  .format-list { margin-top: 20px; }
+  .format-row { height: 46px; }
+  .time-now { font-size: 48px; }
+  .band-head { min-height: 68px; }
+  .band-title { font-size: 30px; }
 }
 
-/* ── Radio Toggle ─────────────────────────────────────────────────────── */
-.radio-group {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--sidebar-bg);
+/* Narrower desktops: slimmer columns so the preview keeps its room */
+@media (max-width: 1200px) and (min-width: 761px) {
+  :root { --sidebar-w: 390px; --ctl-w: 190px; }
+  .stage-info { width: 300px; padding-left: 32px; }
+  .stage-top { padding-left: 32px; }
+  .stage-bottom { padding-left: 32px; }
+  .route-title { font-size: 48px; }
+  .route-title--md { font-size: 40px; }
+  .route-title--sm { font-size: 32px; }
+  .format-desc { font-size: 12px; }
+  .band-title { font-size: 30px; }
 }
 
-.radio-group input[type="radio"] { display: none; }
-
-.radio-group label {
-  flex: 1;
-  text-align: center;
-  padding: 4px 0;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background .15s, color .15s;
-  margin: 0;
-}
-
-.radio-group input[type="radio"]:checked + label {
-  background: var(--accent);
-  color: #fff;
-}
-
-.radio-group label:hover {
-  background: var(--border);
-  color: var(--text);
-}
-
-/* Radio group inside a field: box itself is set higher up (near .field),
-   here just the text-only toggle styling for the individual options. */
-.field > .radio-group label {
-  padding: 0 8px;
-  border-right: 1px solid var(--border);
-  font-weight: 400;
-}
-
-.field > .radio-group label:last-child {
-  border-right: none;
-}
-
-/* ── Travel mode icon pills ─────────────────────────────────────────────── */
-/* Reduced horizontal padding (7px) so all 4 icons fit within the pill */
-.field > .travel-mode-group label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 7px;
-}
-
-.field > .travel-mode-group label:last-child {
-  padding-right: 7px;
-}
-
-.field > .travel-mode-group .material-symbols-outlined {
-  font-size: 20px;
-  line-height: 1;
-}
-
-.field > .travel-mode-group label[for="travel-cycling"] .material-symbols-outlined,
-.field > .travel-mode-group label[for="travel-walking"] .material-symbols-outlined {
-  font-size: 15px;
-}
-
-.field > .radio-group input[type="radio"]:checked + label {
-  background: none;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.field > .radio-group label:hover {
-  background: none;
-  color: var(--text);
-}
-
-/* ── Subsection sub-headings (e.g. "Elevation profile" inside Travel route,
-   "City labels" inside Map style) — merged sections from the 2026-09-26
-   reorg use these to visually separate their inline sub-groups. Light-on-
-   colour (not var(--text-muted)) since 2026-09-26's card redesign: these
-   sit directly on the section's saturated background, not the old neutral
-   sidebar background. */
-.subsection-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.75);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin: 14px 0 6px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,0.22);
-}
-.subsection-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-
-/* ── City tier sub-headings (Big / Medium / Small inside City labels section) —
-   light-on-colour for the same reason as .subsection-label above. */
-.city-tier-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.75);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin: 6px 0 3px;
-}
-.city-tier-label:first-of-type { margin-top: 2px; }
-.city-tier-label span {
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  font-size: 8px;
-  opacity: 0.85;
-}
-
-/* ── City Slider ──────────────────────────────────────────────────────── */
-.city-slider-row {
-  display: flex;
-  align-items: stretch;
-  flex: 1;
-}
-/* range input styles for city-slider-row are merged with .range-row above */
-
-/* ── Line Style Picker ────────────────────────────────────────────────── */
-.ls-picker { position: relative; width: 100%; }
-
-.ls-trigger {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 0;
-  font-family: var(--font);
-  font-size: 10px;
-  color: var(--text-muted);
-  text-align: left;
-}
-
-.ls-label      { flex: 1; }
-.ls-font-preview { flex: 1; font-size: 11px; line-height: 1; }
-
-.ls-arrow {
-  font-size: 8px;
-  color: var(--text-light);
-  line-height: 1;
-}
-
-/* Panel rendered with position:fixed (set inline) to escape sidebar clipping */
-.ls-panel {
-  position: fixed;
-  background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgba(0,0,0,.13);
-  z-index: 1000;
-  overflow: hidden;
-}
-
-.ls-option {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  font-family: var(--font);
-  font-size: 10px;
-  color: var(--text-muted);
-  text-align: left;
-  transition: background .1s;
-}
-
-.ls-option:last-child { border-bottom: none; }
-.ls-option:hover      { background: var(--field-hover); }
-
-.ls-option.selected {
-  background: var(--accent-light);
-  color: var(--accent);
-}
-
-/* ── Country Picker (searchable, longer list than other ls-pickers) ─────── */
-.ls-search {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 7px 12px;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font);
-  font-size: 10px;
-  color: var(--text);
-  background: var(--field-bg);
-  outline: none;
-}
-
-.ls-options-scroll {
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.ls-flag {
-  width: 20px;
-  height: 14px;
-  object-fit: cover;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-/* ── Preset Picker (a row with two independent click targets: apply + delete,
-   unlike the single-button .ls-option other pickers use) ─────────────────── */
-.ls-option-row {
-  display: flex;
-  align-items: center;
-  padding: 0;
-}
-
-.ls-option-apply {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 7px 0 7px 12px;
-  font-family: var(--font);
-  font-size: 10px;
-  color: inherit;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ls-option-delete {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 7px 12px;
-  font-size: 12px;
-  color: var(--text-light);
-  transition: color .1s;
-}
-
-.ls-option-delete:hover {
-  color: var(--danger, #c0392b);
-}
-
-/* ── File Upload ──────────────────────────────────────────────────────── */
-/* Light-on-colour since 2026-09-26's card redesign — this sits directly on
-   the Travel route card's orange background, not the old neutral sidebar. */
-.upload-area {
-  border: 1.5px dashed rgba(255,255,255,0.4);
-  border-radius: var(--radius);
-  padding: 7px 10px;
-  text-align: center;
-  color: rgba(255,255,255,0.8);
-  font-size: 9px;
-  cursor: pointer;
-  transition: border-color .15s, background .15s;
-  position: relative;
-}
-
-.upload-area:hover {
-  border-color: #fff;
-  background: rgba(255,255,255,0.14);
-  color: #fff;
-}
-
-.upload-area input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  border: none;
-  padding: 0;
-}
-
-/* Solid dark pill (not just a coloured text tint) so it stays legible
-   regardless of which card colour it lands on, since 2026-09-26's redesign
-   put every field on a saturated background instead of the neutral sidebar. */
-.upload-status {
-  font-size: 9px;
-  margin-top: 5px;
-  padding: 5px 9px;
-  border-radius: 8px;
-  color: #fff;
-  background: rgba(0,0,0,0.22);
-}
-
-/* ── Buttons ──────────────────────────────────────────────────────────── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  font-family: var(--font);
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: background .15s, opacity .15s, transform .08s;
-  outline: none;
-  white-space: nowrap;
-}
-
-.btn:active { transform: scale(0.98); }
-
-/* The sidebar's "Render & Download" button sits directly under the
-   .form-section--travelRoute card, which is the same orange hue family as
-   --accent (39°) — 2026-09-27 critique pass flagged the two as visually
-   merging into one blob instead of reading as "content card" + "separate
-   action". Scoped to .sidebar-footer only, so the global .btn-primary
-   (used elsewhere, e.g. inside modals) is unaffected. */
-.sidebar-footer .btn-primary {
-  background: oklch(22% 0.01 250);
-}
-.sidebar-footer .btn-primary:hover {
-  background: oklch(30% 0.01 250);
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-  width: 100%;
-}
-
-.btn-primary:hover { background: var(--accent-hover); }
-.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-.btn-ghost {
-  background: var(--field-bg);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
-
-.btn-ghost:hover { background: var(--border); color: var(--text); }
-
-/* ── Spinner ──────────────────────────────────────────────────────────── */
-.spinner {
-  width: 10px;
-  height: 10px;
-  border: 2px solid rgba(255,255,255,.35);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Render status ────────────────────────────────────────────────────── */
-.render-error {
-  font-size: 9px;
-  color: var(--danger);
-  margin-top: 5px;
-  line-height: 1.4;
-}
-
-.render-info {
-  font-size: 9px;
-  color: var(--text-muted);
-  margin-top: 5px;
-}
-
-/* ── Login Page ───────────────────────────────────────────────────────────
-   Restyled 2026-09-26 to match the sidebar's colourful-card redesign: the
-   card itself is now the "Travel route" burnt-orange (the app's primary
-   flow), with white text/fields on it — same light-on-colour pattern as
-   the section cards, just applied to a single big card instead of six. ── */
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #F6F0E4; /* warm cream, matches the sidebar-body backdrop behind the cards */
-}
-
-.login-card {
-  background: #DD6B3B;
-  border-radius: 26px;
-  padding: 36px 32px;
-  /* fluid on mobile: fills viewport with a max cap on desktop */
-  width: 100%;
-  max-width: 360px;
-  box-shadow: 0 14px 32px -12px rgba(140,60,20,0.4);
-}
-
-.login-card h1 {
-  font-size: 22px;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 4px;
-}
-
-.login-card .subtitle {
-  font-size: 13px;
-  color: rgba(255,255,255,0.8);
-  margin-bottom: 28px;
-}
-
-.login-field {
-  margin-bottom: 14px;
-}
-
-.login-field label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 5px;
-  color: rgba(255,255,255,0.85);
-}
-
-.login-field input {
-  border: 2px solid #000;
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 15px;
-}
-
-/* Chrome fills an autofilled field with its own yellow/orange tint via this
-   pseudo-class, overriding our white background — without this override it
-   shows through as a muddy brownish box on the orange card. The absurdly
-   long transition-delay is the standard trick to stop Chrome re-asserting
-   its own background after the override "wins" once. */
-.login-field input:-webkit-autofill,
-.login-field input:-webkit-autofill:hover,
-.login-field input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #231F18;
-  -webkit-box-shadow: 0 0 0 1000px #fff inset;
-  box-shadow: 0 0 0 1000px #fff inset;
-  transition: background-color 9999s ease-in-out 0s;
-}
-
-/* Inverted from the app-wide .btn-primary (solid accent) — an orange button
-   on an already-orange card would have no contrast, so this one flips to a
-   white pill with orange text instead, same idea as a card's white .field
-   pills standing out against the card colour. */
-.login-card .btn-primary {
-  background: #fff;
-  color: #DD6B3B;
-}
-.login-card .btn-primary:hover { background: rgba(255,255,255,0.9); }
-
-.login-switch {
-  display: block;
-  width: 100%;
-  text-align: center;
-  margin-top: 14px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  color: rgba(255,255,255,0.85);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  font-family: var(--font);
-}
-.login-switch:hover { color: #fff; }
-
-/* Solid white pills with semantically-coloured text (not a colour-tinted
-   background) so error/success always read clearly against the orange card,
-   same reasoning as the .upload-status / presetError pills elsewhere. */
-.login-error,
-.login-banner {
-  font-size: 12px;
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 14px;
-  background: #fff;
-}
-.login-error           { color: #c0392b; }
-.login-banner--error   { color: #c0392b; }
-.login-banner--ok      { color: #2f6b34; }
-
-/* ── Misc ─────────────────────────────────────────────────────────────── */
-.logout-btn {
-  font-size: 12px;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.logout-btn:hover { color: var(--text); }
-
-.header-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-/* ── Change password panel ────────────────────────────────────────────────
-   Toggled open from the "Change password" link in .sidebar-header — sits on
-   the neutral sidebar background (not a colourful card), so its .field pills
-   use the standard white-on-cream + border look, same as every field did
-   before the 2026-09-26 card redesign. */
-.change-password-panel {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-
-/* ── Update banner ────────────────────────────────────────────────────────── */
-/* Appears in .sidebar-header when an update is available or in progress.
-   Uses OKLCH warm-yellow for available/updating and warm-green for done.    */
-.update-banner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  padding: 5px 8px;
-  border-radius: var(--radius);
-  margin-top: 6px;
-  flex-wrap: wrap;
-  line-height: 1.3;
-}
-
-/* Available / installing: warm amber */
-.update-banner--available,
-.update-banner--updating {
-  background: oklch(0.95 0.06 85);
-  color:      oklch(0.40 0.12 70);
-}
-
-/* Done — needs restart: warm green */
-.update-banner--restart-needed {
-  background: oklch(0.94 0.06 145);
-  color:      oklch(0.38 0.12 145);
-}
-
-/* Restarting: neutral muted */
-.update-banner--restarting {
-  background: var(--border);
-  color:      var(--text-muted);
-}
-
-/* Small inline action button inside the banner */
-.update-banner button {
-  font-size:     10px;
-  font-weight:   600;
-  padding:       2px 8px;
-  border-radius: var(--radius);
-  border:        none;
-  cursor:        pointer;
-  background:    var(--accent);
-  color:         #fff;
-  font-family:   var(--font);
-  transition:    background .15s;
-}
-.update-banner button:hover    { background: var(--accent-hover); }
-.update-banner button:disabled { opacity: .5; cursor: not-allowed; }
-
-/* Spinner variant for light (non-white) banner backgrounds */
-.spinner--dark {
-  border-color:     rgba(0,0,0,.15);
-  border-top-color: currentColor;
-}
-
-/* Inline error text inside the banner */
-.update-err {
-  color:     var(--danger);
-  font-size: 9px;
-  width:     100%; /* push to its own line when it appears */
-}
-
-/* ── Mobile layout (≤ 640px) ─────────────────────────────────────────────── */
-/* Tab bar and render area are hidden on desktop; media query re-shows them   */
-.mobile-tab-bar    { display: none; }
-.mobile-render-area { display: none; }
-
-@media (max-width: 640px) {
-  /* Stack sidebar and preview vertically */
-  .layout {
-    flex-direction: column;
-  }
-
-  /* Sidebar: full width */
-  .sidebar {
-    order: 1;
-    width: 100%;
-    min-width: unset;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    flex: 1;
-    overflow: hidden; /* sidebar-body already scrolls internally */
-  }
-
-  /* Preview panel: full width, reduced padding */
-  .preview-panel {
-    order: 2;
-    flex: 1;
-    padding: 16px;
-  }
-
-  /* Preview wrapper: let aspect-ratio drive the size */
-  .preview-player-wrapper {
-    height: auto;
-    /* 100svh = small viewport height — excludes iOS Safari chrome bar.
-       Falls back gracefully to 100vh on browsers that don't support svh. */
-    max-height: calc(100svh - 140px);
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* Bottom tab bar */
-  .mobile-tab-bar {
-    display: flex;
-    order: 3;
-    flex-shrink: 0;
-    border-top: 1px solid var(--border);
-    background: var(--sidebar-bg);
-  }
-  .mobile-tab {
-    flex: 1;
-    padding: 13px 8px;
-    background: none;
-    border: none;
-    font: 600 12px/1 var(--font);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: color 0.15s, background 0.15s;
-  }
-  .mobile-tab.active {
-    color: var(--accent);
-    background: var(--accent-light);
-  }
-  .mobile-tab:hover:not(.active) {
-    color: var(--text);
-  }
-
-  /* Show only the active panel — toggle via .layout--preview class set in App.tsx */
-  .layout:not(.layout--preview) .preview-panel { display: none; }
-  .layout.layout--preview .sidebar            { display: none; }
-
-  /* ── Mobile render button (preview tab) ──────────────────────────── */
-  .mobile-render-area {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+/* Phones: one scrolling column — brand, preview, timeline, bands */
+@media (max-width: 760px) {
+  :root { --ctl-w: 180px; }
+  .app { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
+  .sidebar { display: contents; }
+  .brand-bar { order: 0; height: 56px; padding: 0 18px; }
+  .brand-sub { display: none; }
+  .stage { order: 1; flex: none; }
+  .sidebar-scroll { order: 2; overflow: visible; flex: none; }
+
+  .stage-top { height: auto; padding: 12px 16px; flex-wrap: wrap; }
+  .pill-btn-text { max-width: 150px; }
+
+  .stage-body { flex-direction: row-reverse; gap: 16px; padding: 4px 16px 12px; }
+  .stage-frame-area { flex: 0 0 44%; height: 300px; padding: 0; }
+  .preview-frame { border-radius: 14px; }
+  .stage-info { width: auto; flex: 1; min-width: 0; padding: 0; overflow: visible; }
+  .tag { font-size: 12px; padding: 4px 10px; }
+  .route-title { margin-top: 12px; font-size: 36px; }
+  .route-title--md { font-size: 30px; }
+  .route-title--sm { font-size: 24px; }
+  .route-note { font-size: 12.5px; margin-top: 8px; }
+  .format-list {
+    margin-top: 14px;
+    border-top: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
-    width: 100%;
-    padding: 0 4px;
   }
+  .format-row {
+    height: 40px;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: var(--paper);
+  }
+  .format-desc, .format-go { display: none; }
+  .format-ratio { width: auto; font-size: 15px; font-weight: 500; }
+  .format-row[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .duration { margin-top: 12px; padding-bottom: 0; justify-content: flex-start; }
+  /* No room for the visible label next to the stepper; keep it for screen readers */
+  .duration-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .duration-control { gap: 6px; }
+  .duration-value input { width: 40px; font-size: 26px; }
 
-  /* ── Login page on mobile ───────────────────────────────────────────── */
-  /* Add horizontal gutter so the card never touches the screen edge */
-  .login-page {
-    padding: 0 16px;
-    min-height: 100svh; /* excludes iOS Safari chrome bar */
-  }
+  .stage-bottom { padding: 0 16px 14px; }
+  .stage-hint { display: none; }
+  .timeline-controls { margin-top: 6px; gap: 10px; }
+  .play-btn { width: 44px; height: 44px; }
+  .time-now { font-size: 40px; }
 
-  /* Tighten card padding and reduce corner radius on narrow screens */
-  .login-card {
-    padding: 28px 20px;
-  }
+  .band-head { min-height: 64px; padding: 0 18px; }
+  .band-title { font-size: 28px; }
+  .band-body { padding: 0 18px 16px; }
+  .band-head--static { padding: 16px 18px 6px; }
+  .export-row { padding: 4px 18px 22px; }
+  .export-status { margin-left: 18px; margin-right: 18px; }
 
-  /* iOS Safari zooms into any focused input with font-size < 16px.
-     Override the global 10px base only for login fields. */
-  .login-field input {
-    font-size: 16px;
-    padding: 8px 10px; /* slightly taller tap target to match the larger font */
-  }
+  /* ≥16px stops iOS Safari from zooming into focused inputs */
+  .field-input, .field-select, .ls-search, .text-input, .login-input { font-size: 16px; }
+  .toast { top: 12px; }
+
+  .login { flex-direction: column; }
+  .login-bands { width: 100%; height: 170px; position: static; }
+  .login-band { padding: 4px 18px 0; gap: 12px; }
+  .login-band .band-num { display: none; }
+  .login-words { font-size: 30px; }
+  .login-side { padding: 24px 20px 40px; }
+  .login-title { font-size: 52px; }
 }

@@ -76,7 +76,7 @@ User edits form (PropsForm.tsx)
         │
         ▼ SVG rendered frame-by-frame
 
-User clicks "Render & Download"
+User clicks "Export MP4"
         │
         ▼
   POST /api/render  (App.tsx → server/index.cjs)
@@ -105,17 +105,17 @@ User clicks "Render & Download"
 4. Pick **Start/End country** (searchable dropdown, shows a flag) and **Start/End city** for each endpoint — these feed the two-row "Air France" style label box (flag + country on top, city below)
 6. Adjust **Map style**, **Line** (color, width 1–30 default 10, style), **Labels** (animation, font, background/text color — applied to both label rows)
 7. In flight mode, adjust **Arc curve** (0–100) to control how much the flight path bows away from the straight line — 0 is a nearly flat great-circle arc, higher values give a clearly visible arc shape
-8. Optionally add an **End marker** in the Track line section: a dark navy circular badge ("Air France" style, independent of the route line's own colour) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line as it draws — the icon stays upright, it does not rotate to face the direction of travel
+8. Optionally add a **Marker** in the Line band: a dark navy circular badge ("Air France" style, independent of the route line's own colour) with a white vehicle icon (🚗 Car / 🚐 Camper / ✈ Plane / 🚲 Bike / 🚶 Walk) that moves along the tip of the line as it draws — the icon stays upright, it does not rotate to face the direction of travel
 9. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
-10. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1) and **Duration** (seconds)
-11. Save frequently-used configurations as **Presets** (top of the sidebar) — stored on the server so they survive browser clears and are available on any device
-12. The live preview updates as you change settings and plays automatically in a loop
+10. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1 / Instagram post 4:5) and **Duration** (seconds) — both sit next to the preview, since they change the preview frame
+11. Save frequently-used configurations as **Presets** (bookmark button + "+" at the top of the preview area) — stored on the server so they survive browser clears and are available on any device
+12. The live preview updates as you change settings and plays automatically in a loop — use the ruler timeline under it to pause, play and scrub
 
 ---
 
 ## Rendering to MP4
 
-**Via the webapp:** click **⬇ Render & Download MP4** in the sidebar footer. On mobile, the same button also appears in the **Preview tab** so you can render without switching back to Settings. Takes ~2–5 min for a 5-second animation.
+**Via the webapp:** click **Export MP4** in the orange Export band at the bottom of the settings (on phones: at the bottom of the page). Takes ~2–5 min for a 5-second animation.
 
 **Via CLI** (runs on the current `defaultProps` in `src/Root.tsx`):
 ```bash
@@ -162,10 +162,13 @@ Express server (port 3002) that:
 Email + password authentication: `initAuth(dataDir)` returns `{ requireAuth, registerAuthRoutes, loadUsers, saveUsers }`. Users live in `server/data/users.json` (bcrypt-hashed passwords). Registers `POST /api/login`, `POST /api/register`, `GET /api/verify-email`, `POST /api/change-password`, `POST /api/logout`, `GET /api/me`. Sessions are the same lightweight in-memory `Map` the old single-account version used (token → `{email, createdAt}`), just now looked up per-account instead of being one shared token. Rate-limited (`express-rate-limit`) on login and registration. Confirmation emails sent via [Resend](https://resend.com). See "Authentication" above for the user-facing flow.
 
 ### `webapp/src/LoginPage.tsx` / `webapp/src/ChangePasswordPanel.tsx`
-`LoginPage` handles both sign-in and registration (toggled via `mode` state), plus the post-registration "check your email" screen and the `?verify=ok/invalid/expired/missing` banner left by `GET /api/verify-email`'s redirect. `ChangePasswordPanel` is a small form toggled open from the sidebar header, calling `POST /api/change-password`.
+`LoginPage` handles both sign-in and registration (toggled via `mode` state), plus the post-registration "check your email" screen and the `?verify=ok/invalid/expired/missing` banner left by `GET /api/verify-email`'s redirect. `ChangePasswordPanel` is a small form shown inside the account menu (round avatar button, top right — `AccountMenu.tsx`), calling `POST /api/change-password`.
 
 ### `webapp/src/PropsForm.tsx`
-The sidebar form. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom `ls-picker` pattern (not native `<select>`) for consistent cross-browser styling. All sections are collapsible — click the section title to toggle; **Travel route** and **Track line** are open by default. Reorganized 2026-09-26 into 6 sections (Presets, Travel route, Labels, Track line, Map style, Export) — see CLAUDE.md's "Form section order + structure" for the full breakdown, including which fields moved where. The **Presets** section (top of form) saves/loads full configurations to/from the server.
+The settings bands in the sidebar: **1 Route**, **2 Labels**, **3 Line**, **4 Map** — full-width colour blocks, one open at a time, each showing a two-line summary of its settings when closed. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom picker (not native `<select>`) for consistent cross-browser styling. Band 5 (Export) lives in `App.tsx`; presets live in `PresetBar.tsx` (stage top bar); format and duration sit next to the preview. See CLAUDE.md's "UI layout — Color Stack redesign" for the full breakdown.
+
+### `webapp/src/Timeline.tsx`
+Ruler-style scrubber with play/pause and a big time counter under the preview. Remotion's built-in player controls are hidden; `PreviewPlayer` passes its `PlayerRef` up and `Timeline` drives it (`play`/`pause`/`seekTo`, `frameupdate` events).
 
 ### `src/routeIcons.tsx`
 Exports `RouteMarkerIcon({ type })`, a React component that renders the official Google Material Symbols glyph for each supported marker type (car, camper, plane, bike, walk) as a flat white silhouette, scaled into this project's ±10-unit icon design space. Replaced the original hand-drawn icons 2026-09-25 after user feedback that the plane icon "looked more like a fish."
@@ -184,7 +187,7 @@ bash <(curl -s https://raw.githubusercontent.com/shaggy72/Travel-map/main/deploy
 The script pauses and asks you to fill in `.env` if it's missing, then re-run.
 
 **Updating after a code change — option A (from the browser):**
-Once the app is running, an **"🔄 Update available"** banner appears automatically in the sidebar whenever a new commit is pushed to GitHub. Click **Install** to pull + rebuild, then **Restart now** to apply. The page reloads itself once the server is back up.
+Once the app is running, an **"Update available"** pill appears automatically at the top of the preview area whenever a new commit is pushed to GitHub. Click **Install** to pull + rebuild, then **Restart now** to apply. The page reloads itself once the server is back up.
 
 **Updating after a code change — option B (SSH):**
 ```bash
@@ -203,7 +206,7 @@ cp your-track.gpx public/
 npm run sync-gpx          # regenerates src/gpxFiles.ts
 
 # Option 2 — via the webapp
-# Use the "Upload GPX" button in the sidebar (calls POST /api/upload)
+# Route band → Source: GPS track → "Upload .gpx" (calls POST /api/upload-gpx)
 ```
 
 ---
@@ -258,7 +261,7 @@ Email + password, self-registration, anyone can sign up — replaced the old sin
 
 - **Register** → account is created immediately but `verified: false` until the confirmation email's link is clicked (sent via [Resend](https://resend.com), 48h expiry)
 - **Log in** → email + password; blocked until the account is verified
-- **Change password** → while logged in, via the "Change password" link next to "Sign out" in the sidebar header (requires the current password)
+- **Change password** → while logged in, via the account menu (round avatar button, top right) (requires the current password)
 - **Presets are per-account** — `server/data/presets-<sanitized-email>.json`, one file per registered user (was a single shared file tied to `APP_USERNAME` before)
 - No roles/admin distinction — every account can do everything. No "forgot password" flow yet (deliberately out of scope so far — if you lock yourself out, reset the hash directly in `users.json`, or add a `forgot-password` endpoint following the same pattern `costa-rica-trip`'s `server/auth.js` uses)
 
@@ -268,8 +271,8 @@ Email + password, self-registration, anyone can sign up — replaced the old sin
 
 The webapp UI uses a hand-crafted CSS design system (no component library). See **[DESIGN.md](./DESIGN.md)** for:
 - All CSS custom properties (colour tokens, spacing, shadows)
-- Layout structure (sidebar + preview panel)
-- Every component pattern: field pill, radio toggle, custom dropdown, range slider, color picker, buttons
+- Layout structure (sidebar with colour bands + preview stage + timeline)
+- Every component pattern: band, row, pill toggle, value-bar slider, switch, dropdown, colour swatch, buttons, popovers
 - How to add a new control following the existing patterns
 
 ---

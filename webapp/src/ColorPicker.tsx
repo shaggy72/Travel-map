@@ -134,12 +134,13 @@ function AlphaBar({ color, alpha, onChange }: { color: string; alpha: number; on
 export interface ColorPickerProps {
   value:    string;                  // hex like "#e53935" or "#e5393580"
   onChange: (v: string) => void;
+  label?:   string;                  // accessible name for the swatch button
 }
 
-export function ColorPicker({ value, onChange }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
   const [open,     setOpen]     = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef   = useRef<HTMLDivElement>(null);
 
   // Internal state: HSV + alpha (0–100)
@@ -230,12 +231,14 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   return (
     <>
       {/* ── Swatch trigger ── */}
-      <div
+      <button
+        type="button"
         ref={triggerRef}
         className="cp-swatch"
         style={{ background: value }} // show actual color including alpha
         onClick={() => open ? setOpen(false) : openPanel()}
         title={value}
+        aria-label={`${label ?? 'Color'}: ${value}`}
       />
 
       {/* ── Floating panel ── */}

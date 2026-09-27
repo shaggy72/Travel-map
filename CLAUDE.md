@@ -25,14 +25,18 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `src/Root.tsx` | Remotion composition root; `calculateMetadata` sets dynamic width/height |
 | `server/index.cjs` | Express: GPX upload, Remotion render, auto-update endpoints, serves `webapp/dist` in prod; wires in `server/auth.cjs` |
 | `server/auth.cjs` | Email+password auth: `initAuth(dataDir)` → login/register/verify-email/change-password/logout/me routes, bcrypt, Resend confirmation email, in-memory sessions |
-| `webapp/src/App.tsx` | Root React app; auth state (now tracks `userEmail`); mobile tab switcher; update banner (`updateState`); change-password panel toggle |
+| `webapp/src/App.tsx` | Root React app: auth state, sidebar (brand bar + PropsForm bands + Export band / render), stage (top bar, route title, format list, duration, preview frame, timeline), update pill (`updateState`) |
 | `webapp/src/LoginPage.tsx` | Sign-in + registration (toggled `mode` state) + `?verify=` banner from the confirmation-link redirect |
-| `webapp/src/ChangePasswordPanel.tsx` | Small form toggled from the sidebar header, `POST /api/change-password` |
-| `webapp/src/PropsForm.tsx` | Full sidebar form — all sections collapsible via `closed` Set state |
+| `webapp/src/ChangePasswordPanel.tsx` | Change-password form shown inside the account menu, `POST /api/change-password` |
+| `webapp/src/AccountMenu.tsx` | Round avatar button → email, Change password, Sign out |
+| `webapp/src/PresetBar.tsx` | Preset switcher + save-as-preset popover in the stage top bar (`/api/presets`) |
+| `webapp/src/Timeline.tsx` | Ruler scrubber + play/pause + time counter; drives the Remotion Player API |
+| `webapp/src/icons.tsx` | Inline SVG UI icons (replaced the Material Symbols font and emoji) |
+| `webapp/src/PropsForm.tsx` | Settings bands 1–4 (Route, Labels, Line, Map), one open at a time; Row/Seg/Switch/Slider/Picker primitives |
 | `webapp/src/types.ts` | TypeScript mirror of schema + `DEFAULT_PROPS` |
-| `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper; dynamic `compositionWidth/Height`; plays via `useEffect` |
+| `webapp/src/PreviewPlayer.tsx` | Remotion `<Player>` wrapper (built-in controls hidden); dynamic `compositionWidth/Height`; plays via `useEffect`; hands its `PlayerRef` to App via `onReady` |
 | `src/routeIcons.tsx` | `RouteMarkerIcon({ type })` — official Material Symbols glyphs (car/camper/plane/bike/walk) as white SVG silhouettes for the route tip badge |
-| `webapp/src/styles.css` | All CSS — design tokens (OKLCH) + mobile rules + update banner |
+| `webapp/src/styles.css` | All CSS — "Color Stack" tokens, bands, controls, stage, timeline, login, responsive rules |
 | `webapp/src/ColorPicker.tsx` | Custom HSV color picker |
 | `deploy.sh` | One-command deploy to Debian/Ubuntu/Mint server |
 
@@ -51,21 +55,7 @@ PORT=3002
 - **Canvas dimensions**: `getDimensions(outputFormat)` → `{w, h}` passed to `buildProjection`, `buildMapUrl`, `calcZoomAndCenter`; component reads `width`/`height` from `useVideoConfig()`
 - **Async Remotion data**: all hooks use `delayRender`/`continueRender`; `cancelled` flag pattern prevents stale results
 - **Route sources**: Mapbox Directions (driving) / routing.openstreetmap.de routed-bike/foot (cycling/walking) / `geoInterpolate` arc (flight — no API)
-- **Mobile layout**: `mobileTab` state in `App.tsx`, `layout--preview` CSS class, `@media (max-width: 640px)` tab switcher; mobile render button in `.mobile-render-area`
-
-## Design system — tweakcn "Claude" theme
-All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
-- `--accent`: `oklch(0.6171 0.1375 39.0427)` — Claude orange (active, slider, button)
-- `--bg`: `oklch(0.9818 0.0054 95.0986)` — preview panel background
-- `--sidebar-bg`: `oklch(0.9663 0.0080 98.8792)` — sidebar background
-- `--field-bg`: `oklch(1.0000 0 0)` — pure white field cards
-- `--radius`: `0.5rem` (~8 px)
-- Source: https://tweakcn.com/r/themes/claude.json
-- Never hardcode colours — always use CSS variables
-- `--font`: **Poppins** (was Inter until 2026-09-26 — user asked to switch site-wide, to look
-  more like the rounded/friendly reference design behind the card redesign). Loaded in
-  `webapp/index.html`'s Google Fonts link, weights 400–800. Only the webapp UI chrome — the
-  rendered video's `labelFont`/`cityFont` props are a separate, unrelated font choice.
+- **Mobile layout**: one scrolling column at `@media (max-width: 760px)` (`.sidebar { display: contents }` + `order`) — see "UI layout" below
 
 ## Travel modes (travelMode prop)
 | Value | Route source |
@@ -81,89 +71,89 @@ All tokens in `webapp/src/styles.css :root` (OKLCH colour space):
 | `portrait` | 1080 × 1920 | 9:16 |
 | `landscape` | 1920 × 1080 | 16:9 |
 | `square` | 1080 × 1080 | 1:1 |
+| `instagram-post` | 1080 × 1350 | 4:5 |
 
-Preview aspect ratio set inline in `App.tsx`; removed from CSS.
+Chosen in the stage's format list (`FORMATS` in `App.tsx`); the preview frame gets the ratio via the `--ar` custom property.
 
-## Form section order + structure (PropsForm.tsx)
-Reorganized 2026-09-26 (user request, from a pasted outline) — 6 sections, down from 10:
-1. **Presets** — save/load named configurations (server-side, `GET/POST/DELETE /api/presets`)
-2. **Travel route** — merges the old Mode + Route + GPX file + Elevation profile sections.
-   A `mode` radio toggle (Directions / GPS track) at the top reveals only the relevant
-   fields below it:
-   - *Directions*: Travel mode icons (Car/Bike/Walk/Fly) → Arc curve (Fly only) → Start
-     address → End address
-   - *GPS track*: Select track → Upload new GPX → an inline "Elevation profile" sub-group
-     (`.subsection-label`, GPS-track-only — show/hide, colours, position/size %) — this
-     used to be its own independently-collapsible top-level section
-3. **Labels** — merges the old Route labels section with the start/end country+city fields
-   that used to be **duplicated** between Route (Directions) and GPX file — now a single
-   shared set of fields regardless of `mode`: Show (labelMode, relabelled On/Off/Animated →
-   **Yes/No/Animated**) → Animation (Animated only) → Start country/city → End country/city
-   → Font → Background → Text color
-4. **Track line** — unchanged, except "End marker"/"Marker size" fields relabelled
-   **"Transport marker"/"Transport marker size"** to match the user's outline
-5. **Map style** (renamed from "Map") — merges the old Map section with City labels as an
-   inline "City labels" sub-group (`.subsection-label`) — also no longer independently
-   collapsible. Field relabelled Style → **Map type**.
-6. **Export** (renamed from "Animation") — Format + Duration, unchanged content
+## UI layout — "Color Stack" redesign (2026-09-27)
+Current UI. Chosen by the user as "Proposal B" from a design canvas with two directions (A
+"Studio": dark creative-tool layout; B "Color Stack": bold colour bands inspired by user-supplied
+editorial/app screenshots). Full visual spec in DESIGN.md. Rollback point before this redesign:
+commit `1a8173c`.
 
-**All sections are collapsible.** Default open: Travel route, Track line. Default closed:
-Presets, Labels, Map style, Export. Elevation profile and City labels don't have their own
-open/closed state any more — they're always-visible inline sub-groups (separated by a
-`.subsection-label` sub-heading with a top border) within their new parent section, not
-separate accordions. If either grows dense enough to warrant its own collapse again, that's
-a deliberate follow-up, not an oversight.
-- State: `const [closed, setClosed] = useState<Set<string>>(() => new Set([...]))` in `PropsForm`
-- Toggle button: `<button className="section-title">` with `<span className="section-chevron">` before the label text
-- Body: `.section-body` + `.section-body-inner`; collapse uses `max-height: 0` / `overflow: hidden` (NOT CSS grid 0fr — that causes 1px border bleed in some browsers)
+**Sidebar** (`App.tsx` + `PropsForm.tsx`) — black, 440px:
+- Brand bar ("Travel Map" wordmark + "Map animation studio").
+- Four settings **bands**, full-width colour blocks, each with a number circle, a big title,
+  a two-line summary on the right and a line icon: **1 Route** (yellow), **2 Labels** (pink),
+  **3 Line** (taupe), **4 Map** (blue). Only **one band is open at a time** (`open` state in
+  `PropsForm`, default `'route'`; clicking the open band closes it). Collapsed bands still show
+  their summary (e.g. "Car / Ghent → Lauris", "Solid / 10 px").
+  - Route: Source (Directions | GPS track) → Directions: Travel by (round icon toggles),
+    Arc curve (flight only), From, To. GPS track: Track (native select), Upload .gpx,
+    Elevation profile switch (+ colours/position/size sliders when on).
+  - Labels: Show (Off / Static / Animated — values `off`/`on`/`animated`; the old copy was
+    No/Yes/Animated), Animation (animated only), Start country/city, End country/city, Font,
+    Background, Text color.
+  - Line: Style, Pencil strength (pencil only), Color, Width, Pin size, Marker (6 round icon
+    toggles — replaces the old emoji dropdown), Marker size (when a marker is set).
+  - Map: Style (dropdown with colour dots), Background (No map only), Zoom (Auto | Manual),
+    Zoom level (manual only), City labels (discrete population slider), City font, Case, and a
+    "City sizes & colors" disclosure revealing the Big/Medium/Small tier rows.
+- **5 Export** band (lives in `App.tsx` because it owns `handleRender`): black "Export MP4"
+  pill + note; rendering spinner/status and render errors show inside the band. It fills the
+  remaining sidebar height (`flex: 1 0 auto`).
 
-## Sidebar visual redesign — colourful cards ("Option C", 2026-09-26)
-Each of the 6 sections above is now a bold, color-blocked rounded card instead of a plain
-header on the neutral sidebar background. User showed a reference screenshot (a finance app's
-stacked-card UI) and asked to redesign the sidebar to match; three directions were mocked up
-first as a Design-canvas artifact (full peek-stack deck / soft scrollable list / colourful
-accordion) — user picked the accordion ("C"): keeps today's expand/collapse behaviour exactly,
-nothing hidden behind swipes, just reskinned.
+**Controls** (all in `PropsForm.tsx`): `Row` (label left, no box; control right), `Seg`
+(black-outlined pill toggle, or `variant="icons"` round icon buttons), `Switch`
+(`role="switch"`), `Slider` (value-bar: the pill is the track, `--fill` custom property,
+thin grip, tick dots, value on the right; the real `<input type=range>` sits on top at
+opacity 0 so drag + keyboard still work), `ColorRow` (hex + round `ColorPicker` swatch — the
+swatch is now a real `<button>` with an `aria-label`), and one generic `Picker` for all simple
+dropdowns (label animation, fonts, line style, map style — replaced five near-identical picker
+components) plus the searchable `CountryPicker`. Panels are `position: fixed` so the sidebar's
+overflow can't clip them; they close on outside click or Escape. If the current value isn't in
+the options (e.g. a custom `MAPBOX_STYLE` from `.env`), the picker shows "Custom".
 
-- **Palette** (`webapp/src/styles.css`, one `--card-color` per `.form-section--<id>` modifier
-  class): Presets `#8FA69C` (dusty teal), Travel route `#DD6B3B` (burnt orange), Labels
-  `#6E7F52` (olive green), Track line `#B69A5C` (tan), Map style `#D4A24C` (mustard), Export
-  `#6B7280` (slate) — matches the picked mockup, distinct from the sidebar's own neutral
-  "Claude" theme tokens (which are otherwise untouched — this redesign only touches the section
-  cards, not the preview panel or other chrome).
-- **Why this was a smaller change than it looked**: almost every control (`RangeField`,
-  `ColorField`, text inputs, `ls-picker` dropdowns, `radio-group`s nested in `.field`) already
-  renders as a **white pill** via the existing `.field` class — that was already isolated from
-  whatever sits behind it, so none of those needed any changes at all. Only things that sit
-  **directly** on the card background (not wrapped in `.field`) needed light-on-colour styling:
-  the new `.section-title` header (icon + title + summary + chevron, all white/near-white),
-  `.subsection-label` and `.city-tier-label` (Elevation profile / City labels sub-headings),
-  `.upload-area` (GPX upload), and `.upload-status`/`presetError` (now solid dark
-  `rgba(0,0,0,0.22)` pills with white text — chosen specifically because their old colour-tint
-  approach (`var(--success)`/`var(--danger)` text) isn't guaranteed readable against every one
-  of the 6 card colours, whereas white-on-dark-pill always is, regardless of the surrounding
-  card).
-- **Section icons**: Material Symbols (same font/pattern as the travel-mode icons — see
-  `CarIcon` etc.), added to the existing font subset request in `webapp/index.html`'s
-  `icon_names` query param (was `directions_bike,directions_car,directions_walk`, now also
-  `bookmark,route,sell,timeline,map,download`) — expanding this list is required, the font is
-  a curated subset, not the full Material Symbols set. One `<span className="section-icon">`
-  wrapper per header gives it the translucent white circle backing seen in the mockup.
-- **Header summary line** (e.g. "Car · Ghent → Lauris", "Animated", "Dotted · 10px"): computed
-  inline in `PropsForm` right before the `return`, one `const ...Summary` per section, reusing
-  existing option-label lookups (`MAP_STYLE_OPTIONS.find(...)`, `LINE_STYLE_OPTIONS.find(...)`,
-  `LABEL_MODE_OPTIONS.find(...)`) plus two new small local maps (`TRAVEL_MODE_LABEL`,
-  `OUTPUT_FORMAT_LABEL`) for the two prop sets that didn't already have an options array. Shown
-  both collapsed and expanded, matching the mockup's "see the current value without opening
-  the card" pattern. Not a live "does this match a saved preset" check — `presetsSummary` just
-  shows the last-applied preset's name via the existing `selectedPresetId`, same simplification
-  as the `PresetPicker` trigger label above.
-- **Verified locally before shipping**: spun up the real server (`node server/index.cjs`) with
-  a throwaway `.env` (fake `MAPBOX_TOKEN`, default `admin`/`changeme` credentials — deleted
-  after, never committed), logged in, and screenshotted every card open/closed in the actual
-  running app rather than a static mockup — worth doing again for any layout change this size,
-  since contrast/spacing issues in a real flex layout with live data (long preset names, actual
-  field values) don't always show up in a hand-written HTML mockup.
+**Stage** (`App.tsx`):
+- Top bar: `PresetBar.tsx` (preset switcher pill + black "+" save button with a small name
+  form; delete × per row with `window.confirm`; errors as a dismissable toast), the update
+  pill (only when an update exists), and `AccountMenu.tsx` (round avatar with the email's
+  initial → email, Change password (inline `ChangePasswordPanel`), Sign out).
+- Left column: yellow "Live preview" tag, the route as a huge light title ("Ghent / → Lauris*",
+  font size steps down for long city names), a note ("* By car · 9:16 · 5 seconds"), the
+  **format list** (moved here from the old Export section, since it reshapes the preview) and a
+  **duration stepper** (−/+ buttons and a typeable number, clamped 1–60 s).
+- Preview frame: `.frame-fit` is a CSS size container; `.preview-frame` is
+  `width: min(100cqw, 100cqh * var(--ar))` + `aspect-ratio: var(--ar)`, so it's always the
+  largest box of the chosen ratio that fits.
+- Bottom: `Timeline.tsx` — ruler with ticks, played region, playhead, an invisible range input
+  for scrubbing, a play/pause button and a big "02.0 / 5.0 s" counter. Remotion's own control
+  bar is hidden (`PreviewPlayer` no longer passes `controls`); `PreviewPlayer` hands its
+  `PlayerRef` to App via `onReady`, and Timeline drives it with `play/pause/toggle/seekTo` and
+  listens to `frameupdate`/`seeked`/`play`/`pause`.
+
+**Phones (≤ 760px)**: one scrolling column instead of the old Settings/Preview tab bar —
+brand bar → stage (preview left, title + 2×2 format chips + duration right) → timeline →
+bands → Export. Done with `.sidebar { display: contents }` + `order` so the DOM stays the
+same. Inputs are 16px there (stops iOS zoom on focus).
+
+**Icons**: inline SVG components in `webapp/src/icons.tsx`. The Material Symbols web font and
+all emoji UI glyphs are gone. (`src/routeIcons.tsx` — the icons drawn *inside the video* — is
+unrelated and unchanged.)
+
+**Font**: Archivo (Google Fonts, 300–800) for the webapp UI. The rendered video's label/city
+fonts are separate props and unaffected.
+
+**Superseded history** (same week, kept short): 2026-09-26 "Option C" colourful accordion
+cards → 2026-09-27 critique pass (6 points: wordmark, type scale, spacing, OKLCH card ramp,
+dark render button, 320px sidebar) → labels moved out of boxes → flat value-bar sliders. The
+current design keeps what the user validated in those passes: bold per-section colour, labels
+never inside a box, flat control fills, value-bar sliders.
+
+**Testing note**: `tsconfig.json` only includes `src/` — the webapp isn't type-checked by
+`npx tsc --noEmit -p tsconfig.json`. `npm run build:webapp` (Vite/esbuild) doesn't type-check
+either. To type-check the webapp, use a temporary tsconfig that includes `webapp/src/**/*`
+(pre-existing `process` errors from Vite's `define` are expected).
 
 ## Props defaults (key values)
 - `lineWidth`: default **10**, min 1, max **30** (in schema.ts, types.ts, PropsForm slider)
@@ -267,6 +257,7 @@ add one later following the same reset-token-hash pattern `costa-rica-trip` uses
   other failures/network errors. **General lesson**: any `fetch()` call gated by `requireAuth`
   needs visible error handling, not just a `r.ok` happy-path check — a stale session after a
   deploy is a realistic, recurring failure mode in this app, not an edge case.
+- **Moved to the stage top bar** (2026-09-27 Color Stack redesign): the picker, save form and error message now live in `webapp/src/PresetBar.tsx` (see "UI layout"). The notes below describe the 2026-09-26 dropdown version it grew out of; the apply/delete/confirm/error behaviour is unchanged.
 - **UI redesign to a dropdown** (2026-09-26, user request — wanted a dropdown "zoals moderne
   apps" instead of an always-expanded stack of buttons, one per preset): the preset list now
   lives inside a `PresetPicker` component (`webapp/src/PropsForm.tsx`), reusing the same
@@ -501,12 +492,12 @@ the other `ls-panel`s don't scroll, this one needs to for ~195 options) and a sm
 thumbnail (`https://flagcdn.com/24x18/<code>.png`) per row and on the trigger button.
 Selecting an option updates both `startCountryCode`/`startCountry` (or the `end` pair) in one
 `onChange` call via `set(set(props, ...), ...)` — `upd()` only sets one key at a time.
-Appears in both the Route (Directions mode) and GPX file sections, alongside the renamed
-"Start city"/"End city" fields (previously "Start label"/"End label").
+Appears in the Labels band (Start country / End country), next to the Start city / End city fields.
 
 ## Preview player (PreviewPlayer.tsx)
 - Auto-play via `useEffect` + `setTimeout(() => playerRef.current?.play(), 100)` — NOT the `autoPlay` prop
 - The `autoPlay` prop caused "shows Pause but frames don't advance" on page refresh (fires before Player is ready)
+- No `controls` prop: playback UI is our own `Timeline.tsx`, which gets the `PlayerRef` through `onReady`
 
 ## Auto-update feature (server/index.cjs + App.tsx)
 ### Server endpoints (all `requireAuth`):
@@ -518,35 +509,8 @@ Appears in both the Route (Directions mode) and GPX file sections, alongside the
 ### Client (App.tsx):
 - `updateState`: `'idle' | 'available' | 'updating' | 'restart-needed' | 'restarting'`
 - `checkForUpdate()` called after login and session restore
-- Update banner in `.sidebar-header`; Install disabled while rendering
+- Update pill (`.update-pill`) in the stage top bar; Install disabled while rendering
 - After restart: polls `GET /api/me` every 2 s; **any HTTP response** (200 or 401) triggers `window.location.reload()` — sessions are in-memory so the server returns 401 after restart, not 200
-
-## Sidebar visual redesign — critique pass (2026-09-27)
-Ran `image-to-code-skill` (a Claude Code custom skill, `~/.claude/skills/image-to-code-skill/SKILL.md`) as a design critique against a screenshot of the main screen (sidebar + preview), then implemented all 6 points it raised, in `webapp/src/styles.css`:
-1. **Brand consistency** — `.sidebar-header h1` ("Travel Map") was 12px/600, a much weaker treatment than the login card's 22px/800 for the same wordmark. Bumped to 18px/800.
-2. **Typographic contrast** — `.section-title-main` 12px→14px, `.section-summary` 9.5px→10.5px; everything used to sit in an 8–12px range with little hierarchy.
-3. **Spacing** — card gap 10px→16px, `.section-title` padding 13/15px→16/18px, `.section-body-inner` 14px→18/16px, `.field` padding/min-height/margin bumped — cards and fields were nearly touching.
-4. **Systematic card palette** — the 6 `--card-color` values were picked by eye (mustard/tan were only a few degrees apart). Now all 5 content cards share the same OKLCH lightness (64%) and chroma (0.09), only hue rotates; Export is a deliberate desaturated exception (utility step, not content).
-5. **Render button distinction** — `.sidebar-footer .btn-primary` (only that scope, not the global `.btn-primary`) now gets a near-black `oklch(22% 0.01 250)` background, since the global `--accent` orange sat in the same hue family as the Travel route card directly above it.
-6. **Sidebar width** — `--sidebar-w` 280px→320px, root cause of truncated labels ("Transport ma..."). Widening alone wasn't enough because `.field > label { width: 38% }` is a percentage, not absolute — also bumped that to 46% so "Transport marker" (the longest field label) renders in full.
-
-Rollback: commit `eecb220` is the last clean commit before this pass — `git revert <this-pass-commit>` or checkout `eecb220` undoes it cleanly since it landed as its own commit, not amended.
-
-### Follow-up: labels sat "inside a box" (2026-09-27, same day)
-User feedback on the above pass: `.field` was one shared white pill wrapping **both** the label and its control (e.g. "Start address" + "Ghent, Belgium") — so the label text itself read as sitting inside a text box, not as a caption next to one. First attempt (commit `11dafe5`, reverted as `56d26f5`) just gave the *value* its own nested box while leaving `.field`'s own box in place — that produced a box-inside-a-box look and was rejected.
-
-Correct fix: `.field` itself no longer has any background/border at all — it's just an unstyled flex row. The label sits directly on the card's own colour (`rgba(255,255,255,0.75)`, same light-on-colour treatment as `.section-summary`/`.subsection-label`). Only the control half of each row gets a box, added individually per control type since none of them had their own independent box before (`.field > input`, `.field > select`, `.field > .ls-picker`, `.field > .range-row`, `.field > .color-row`, `.field > .city-slider-row` all get `background: var(--field-bg); border: 1px solid var(--border)`). `.field > .radio-group` (the "Directions/GPS track" and travel-mode toggles) needed its base box *restored* — it used to strip its own border/background specifically because `.field`'s pill was doing that job. `.upload-area` needed no change — it already sits directly on the card colour (dashed border, light text), never relied on `.field`'s box.
-
-### Third pass: label size/style, box width, slider style (2026-09-27, same day)
-User feedback on the above, with two reference screenshots: (1) match the field label's style/size to `.section-summary` (e.g. "Car · Ghent → Lauris") exactly — bumped `.field > label` from 10px to 10.5px, added `line-height: 1.25`, same `rgba(255,255,255,0.75)` it already had; (2) the label column (46%) was starving the control box of width, badly enough that slider thumbs stuck out past their own box on the right — narrowed to 36% and switched the label from `white-space: nowrap` + ellipsis to normal wrapping (`overflow-wrap: break-word`), so "Transport marker" now wraps onto 2 lines instead of truncating *or* needing a wide column; (3) restyle the control boxes to match a flat native-app settings-panel reference (borderless, larger `border-radius: 10px` instead of a thin stroked outline) — explicitly about the shape/fill language, not the reference's own gray colour scheme, which was ignored.
-
-The reference's sliders are a distinct case: the *whole box* is the value bar (a flat fill from the left edge to the current value, with a thin vertical grip — not a thumb+thin-track floating inside an empty pill). Reimplemented `.range-row`/`.city-slider-row` accordingly: `--range-fill` (already computed in `RangeField`/`CitySlider` for the old thin-track gradient) moved from the `<input>` itself onto the wrapping `.range-row`/`.city-slider-row` div (custom properties inherit to descendants, so the input's own track/thumb pseudo-elements still read it), and the "track" pseudo-element now spans the full 30px box height as a two-tone `linear-gradient(var(--field-hover) 0%..fill%, transparent fill%..100%)`, clipped to the box's rounded corners by the box's own `overflow: hidden` (this is also what fixed the thumb-overflow bug — `.field`'s `overflow: hidden` got dropped in the previous pass's box-removal refactor and was never restored on the new per-control boxes). Thumb is now a 3×16px vertical bar (`var(--accent)`) instead of a 13px circle.
-
-Also fixed while restyling: `.field > .radio-group label:last-child` used to zero out `padding-right` (harmless with the old 1px border + 6px radius, but the last option's text visibly touched the new 10px-radius rounded corner) — removed that override so the last option gets the same 8px inset as the others.
-
-## Mobile-specific fixes
-- **Login screen**: `.login-card` uses `width: 100%; max-width: 360px`; on mobile `.login-field input` has `font-size: 16px` (prevents iOS Safari auto-zoom); `.login-page` uses `min-height: 100svh`
-- **Mobile render button**: `.mobile-render-area` (hidden on desktop, shown in preview tab on mobile) — same `handleRender` handler as sidebar footer
 
 ## npm scripts
 | Script | Description |
@@ -562,7 +526,7 @@ Also fixed while restyling: `.field > .radio-group label:last-child` used to zer
 MAPBOX_TOKEN=pk.xxx RESEND_API_KEY=re_xxx APP_URL=https://travelmap.luyens.be \
   bash <(curl -s https://raw.githubusercontent.com/shaggy72/Travel-map/main/deploy.sh)
 
-# Update via browser: "🔄 Update available" banner → Install → Restart now
+# Update via browser: "Update available" pill → Install → Restart now
 # Update via SSH:
 bash ~/Travel-map/deploy.sh
 ```
