@@ -259,71 +259,104 @@ html, body, #root {
 }
 
 /* ── Field cards ──────────────────────────────────────────────────────── */
-/* Each .field is a white rounded pill — label left, control right        */
+/* 2026-09-27, second pass on user feedback: a .field used to be one shared
+   white pill wrapping BOTH the label and its control — which read as if the
+   label text itself sat inside a text box. Now .field is just an unstyled
+   flex row: the label floats directly on the card's own colour (like
+   .section-summary/.subsection-label already do), and only the control
+   half (input, dropdown, slider, etc. — see each ".field > <control>" rule
+   below) gets its own boxed white pill. */
 .field {
   display: flex;
   align-items: center;
-  background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0 14px 0 10px; /* was 0 12px 0 8px */
-  min-height: 30px; /* was 27px */
-  margin-bottom: 6px; /* was 4px — 2026-09-27 critique pass, fields felt packed */
+  padding: 0 14px 0 10px;
+  min-height: 30px;
+  margin-bottom: 6px;
   gap: 7px;
-  transition: background .12s;
-  overflow: hidden; /* clips slider thumb + focus ring to the rounded pill shape */
-}
-
-.field:hover {
-  background: var(--field-hover);
 }
 
 .field > label {
   flex-shrink: 0;
   font-size: 10px;
-  font-weight: 400;           /* regular weight — matches reference        */
-  color: var(--text-muted);   /* warm brownish, not black                  */
+  font-weight: 400;
+  color: rgba(255,255,255,0.75); /* light-on-colour — no box behind it any more */
   margin: 0;
-  /* Bumped from 38% (2026-09-27 critique pass): even at the new 320px
-     sidebar width, a fixed percentage still ellipsised the longest labels
-     ("Transport marker") because it scales with the field, not with the
-     text. 46% gives those labels enough room while the sidebar widening
-     still does most of the work for everything shorter. */
+  /* 46% (was 38%): even at the 320px sidebar width, a fixed percentage
+     still ellipsised the longest labels ("Transport marker") because it
+     scales with the field, not with the text. */
   width: 46%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Controls that sit directly inside .field fill the remaining space */
+/* Controls that sit directly inside .field each get their own boxed white
+   pill (nested inside the now-boxless .field row) so it's unambiguous
+   which part is the editable/interactive control. */
+.field > input[type="text"],
+.field > input[type="number"],
+.field > select,
+.field > .ls-picker,
+.field > .range-row,
+.field > .color-row,
+.field > .city-slider-row {
+  flex: 1;
+  min-width: 0;
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  transition: background .12s;
+}
+
 .field > input[type="text"],
 .field > input[type="number"],
 .field > select {
-  flex: 1;
   text-align: right;
-  border: none;
-  background: transparent;
-  padding: 6px 0;
+  padding: 0 10px;
+  min-height: 26px;
   color: var(--text-muted);
   font-size: 10px;
+}
+
+.field > .ls-picker,
+.field > .range-row,
+.field > .color-row,
+.field > .city-slider-row {
+  padding: 3px 10px;
+  min-height: 26px;
+  box-sizing: border-box;
+}
+
+.field > input[type="text"]:hover,
+.field > input[type="number"]:hover,
+.field > select:hover,
+.field > .ls-picker:hover,
+.field > .range-row:hover,
+.field > .color-row:hover,
+.field > .city-slider-row:hover {
+  background: var(--field-hover);
 }
 
 .field > input[type="text"]:focus,
 .field > input[type="number"]:focus,
 .field > select:focus {
   color: var(--text);
+  border-color: var(--accent);
+  background: var(--field-bg);
   outline: none;
 }
 
-/* Range and color rows fill the remaining width */
-.field > .range-row,
-.field > .color-row,
-.field > .radio-group,
-.field > .city-slider-row {
-  flex: 1;
+/* Directions/GPS track + travel-mode toggles: restore their own box now
+   that .field no longer supplies one (previously .field > .radio-group
+   stripped its base border/background because .field's pill was enough). */
+.field > .radio-group {
+  background: var(--field-bg);
+  border: 1px solid var(--border);
 }
 
-/* Upload area sits in its own full-width field-like block */
+/* Upload area sits in its own full-width field-like block — already
+   light-on-colour (dashed border, white text) since it's meant to sit
+   directly on the card background, so it needs no box of its own. */
 .field > .upload-area {
   flex: 1;
   margin: 4px 0;
@@ -694,13 +727,8 @@ select {
   color: var(--text);
 }
 
-/* Radio group inside a field pill: remove the inner box, use text-only toggle */
-.field > .radio-group {
-  border: none;
-  background: transparent;
-  border-radius: 0;
-}
-
+/* Radio group inside a field: box itself is set higher up (near .field),
+   here just the text-only toggle styling for the individual options. */
 .field > .radio-group label {
   padding: 0 8px;
   border-right: 1px solid var(--border);
@@ -794,8 +822,6 @@ select {
 /* range input styles for city-slider-row are merged with .range-row above */
 
 /* ── Line Style Picker ────────────────────────────────────────────────── */
-.field > .ls-picker { flex: 1; }
-
 .ls-picker { position: relative; width: 100%; }
 
 .ls-trigger {

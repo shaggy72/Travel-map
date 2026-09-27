@@ -532,6 +532,11 @@ Ran `image-to-code-skill` (a Claude Code custom skill, `~/.claude/skills/image-t
 
 Rollback: commit `eecb220` is the last clean commit before this pass — `git revert <this-pass-commit>` or checkout `eecb220` undoes it cleanly since it landed as its own commit, not amended.
 
+### Follow-up: labels sat "inside a box" (2026-09-27, same day)
+User feedback on the above pass: `.field` was one shared white pill wrapping **both** the label and its control (e.g. "Start address" + "Ghent, Belgium") — so the label text itself read as sitting inside a text box, not as a caption next to one. First attempt (commit `11dafe5`, reverted as `56d26f5`) just gave the *value* its own nested box while leaving `.field`'s own box in place — that produced a box-inside-a-box look and was rejected.
+
+Correct fix: `.field` itself no longer has any background/border at all — it's just an unstyled flex row. The label sits directly on the card's own colour (`rgba(255,255,255,0.75)`, same light-on-colour treatment as `.section-summary`/`.subsection-label`). Only the control half of each row gets a box, added individually per control type since none of them had their own independent box before (`.field > input`, `.field > select`, `.field > .ls-picker`, `.field > .range-row`, `.field > .color-row`, `.field > .city-slider-row` all get `background: var(--field-bg); border: 1px solid var(--border)`). `.field > .radio-group` (the "Directions/GPS track" and travel-mode toggles) needed its base box *restored* — it used to strip its own border/background specifically because `.field`'s pill was doing that job. `.upload-area` needed no change — it already sits directly on the card colour (dashed border, light text), never relied on `.field`'s box.
+
 ## Mobile-specific fixes
 - **Login screen**: `.login-card` uses `width: 100%; max-width: 360px`; on mobile `.login-field input` has `font-size: 16px` (prevents iOS Safari auto-zoom); `.login-page` uses `min-height: 100svh`
 - **Mobile render button**: `.mobile-render-area` (hidden on desktop, shown in preview tab on mobile) — same `handleRender` handler as sidebar footer

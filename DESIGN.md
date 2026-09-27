@@ -159,30 +159,42 @@ pill's own contrast against a neutral background) plus larger `padding`/`font-si
 
 ### Field pill — `.field`
 
-The fundamental unit of the form. A rounded card with a label on the left and a control on the right.
+The fundamental unit of the form. A label floating on the card's own colour (no box), with the control on the right in its own boxed white pill.
 
 ```
-┌─────────────────────────────────────────┐
-│ Label          [      control      ]    │
-└─────────────────────────────────────────┘
+  Label            ┌──────────────────┐
+                    │     control      │
+                    └──────────────────┘
 ```
+
+**Restructured 2026-09-27** (user feedback): `.field` used to be one shared white pill wrapping *both* the label and the control, which made the label read as if it sat inside a text box. Now `.field` itself has no background/border at all — just an unstyled flex row — and only the control half gets a box:
 
 ```css
 /* Structure */
 .field {
   display: flex;
   align-items: center;
-  background: var(--field-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   padding: 0 14px 0 10px;
   min-height: 30px;
   margin-bottom: 6px;
 }
-.field > label { width: 46%; flex-shrink: 0; color: var(--text-muted); }
+.field > label {
+  width: 46%; /* bumped from 38% 2026-09-27 — even at the 320px sidebar,
+                 38% still ellipsised the longest label, "Transport marker" */
+  flex-shrink: 0;
+  color: rgba(255,255,255,0.75); /* light-on-colour, same as .section-summary — no box behind it */
+}
+/* Each control type gets its own boxed pill instead (input, select,
+   .ls-picker, .range-row, .color-row, .city-slider-row, .radio-group) */
+.field > input[type="text"] {
+  flex: 1;
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
 ```
 
-The label takes 46% of the width (bumped from 38% 2026-09-27 — even at the wider 320px sidebar, 38% still ellipsised the longest label, "Transport marker"). The control (`input`, `.range-row`, `.color-row`, `.radio-group`, `.ls-picker`) takes `flex: 1`.
+`.upload-area` needed no change — it already sits directly on the card's colour (dashed border, light text), the same pattern the label now uses, so it never relied on `.field`'s box.
 
 **Two-column layout** — wrap two fields in `.field-row` (CSS grid, 2 equal columns):
 ```jsx
