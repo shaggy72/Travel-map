@@ -1193,16 +1193,6 @@ button:disabled { cursor: not-allowed; }
   align-items: center;
   justify-content: center;
 }
-.login-switch { margin: 8px 0 0; font-size: 14px; color: var(--ink-muted); }
-.login-switch button {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font-weight: 700;
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .login-banner { margin-bottom: 16px; padding: 10px 12px; border-radius: 12px; font-size: 13.5px; }
 .login-banner--ok { background: var(--tag); }
 .login-banner--error { background: var(--danger-bg); color: var(--danger); }

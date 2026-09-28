@@ -164,7 +164,7 @@ Express server (port 3002) that:
 Email + password authentication: `initAuth(dataDir)` returns `{ requireAuth, registerAuthRoutes, loadUsers, saveUsers }`. Users live in `server/data/users.json` (bcrypt-hashed passwords). Registers `POST /api/login`, `POST /api/register`, `GET /api/verify-email`, `POST /api/change-password`, `POST /api/logout`, `GET /api/me`. Sessions are the same lightweight in-memory `Map` the old single-account version used (token → `{email, createdAt}`), just now looked up per-account instead of being one shared token. Rate-limited (`express-rate-limit`) on login and registration. Confirmation emails sent via [Resend](https://resend.com). See "Authentication" above for the user-facing flow.
 
 ### `webapp/src/LoginPage.tsx` / `webapp/src/ChangePasswordPanel.tsx`
-`LoginPage` handles both sign-in and registration (toggled via `mode` state), plus the post-registration "check your email" screen and the `?verify=ok/invalid/expired/missing` banner left by `GET /api/verify-email`'s redirect. `ChangePasswordPanel` is a small form shown inside the account menu (round avatar button, top right — `AccountMenu.tsx`), calling `POST /api/change-password`.
+`LoginPage` is sign-in only (the registration form and "check your email" screen were removed from the UI 2026-09-28), plus the `?verify=ok/invalid/expired/missing` banner left by `GET /api/verify-email`'s redirect. `ChangePasswordPanel` is a small form shown inside the account menu (round avatar button, top right — `AccountMenu.tsx`), calling `POST /api/change-password`.
 
 ### `webapp/src/PropsForm.tsx`
 The settings bands in the sidebar: **1 Route**, **2 Labels**, **3 Line**, **4 Map** — full-width colour blocks, one open at a time, each showing a two-line summary of its settings when closed. Every control calls `upd(key, value)` which produces a new `Props` object and bubbles it to `App.tsx` → `PreviewPlayer`. Dropdowns use a custom picker (not native `<select>`) for consistent cross-browser styling. Band 5 (Export) lives in `App.tsx`; presets live in `PresetBar.tsx` (stage top bar); format and duration sit next to the preview. See CLAUDE.md's "UI layout — Color Stack redesign" for the full breakdown.
@@ -259,9 +259,11 @@ npm run sync-gpx          # regenerates src/gpxFiles.ts
 
 ## Authentication
 
-Email + password, self-registration, anyone can sign up — replaced the old single shared `APP_USERNAME`/`APP_PASSWORD` account (2026-09-26). Accounts live in `server/data/users.json` (gitignored, bcrypt-hashed passwords, never committed). See `server/auth.cjs` for the full implementation.
+Email + password per account — replaced the old single shared `APP_USERNAME`/`APP_PASSWORD` account (2026-09-26). Accounts live in `server/data/users.json` (gitignored, bcrypt-hashed passwords, never committed). See `server/auth.cjs` for the full implementation.
 
-- **Register** → account is created immediately but `verified: false` until the confirmation email's link is clicked (sent via [Resend](https://resend.com), 48h expiry)
+**Since 2026-09-28 the login page has no "Create account" link** — the page is sign-in only. The server's `POST /api/register` endpoint still exists (not reachable from the UI).
+
+- **Register** (API only) → account is created immediately but `verified: false` until the confirmation email's link is clicked (sent via [Resend](https://resend.com), 48h expiry)
 - **Log in** → email + password; blocked until the account is verified
 - **Change password** → while logged in, via the account menu (round avatar button, top right) (requires the current password)
 - **Presets are per-account** — `server/data/presets-<sanitized-email>.json`, one file per registered user (was a single shared file tied to `APP_USERNAME` before)

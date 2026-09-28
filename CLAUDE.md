@@ -26,7 +26,7 @@ Start dev: `npm run dev` (starts both servers concurrently)
 | `server/index.cjs` | Express: GPX upload, Remotion render, auto-update endpoints, serves `webapp/dist` in prod; wires in `server/auth.cjs` |
 | `server/auth.cjs` | Email+password auth: `initAuth(dataDir)` → login/register/verify-email/change-password/logout/me routes, bcrypt, Resend confirmation email, in-memory sessions |
 | `webapp/src/App.tsx` | Root React app: auth state, sidebar (brand bar + PropsForm bands + Export band / render), stage (top bar, route title, format list, duration, preview frame, timeline), update pill (`updateState`) |
-| `webapp/src/LoginPage.tsx` | Sign-in + registration (toggled `mode` state) + `?verify=` banner from the confirmation-link redirect |
+| `webapp/src/LoginPage.tsx` | Sign-in only (registration form + "Create account" link removed 2026-09-28 at the user's request; `POST /api/register` still exists server-side, just unreachable from the UI) + `?verify=` banner from the confirmation-link redirect |
 | `webapp/src/ChangePasswordPanel.tsx` | Change-password form shown inside the account menu, `POST /api/change-password` |
 | `webapp/src/AccountMenu.tsx` | Round avatar button → email, Change password, Sign out |
 | `webapp/src/PresetBar.tsx` | Preset switcher + save-as-preset popover in the stage top bar (`/api/presets`) |
