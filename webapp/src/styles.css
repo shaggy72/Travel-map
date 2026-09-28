@@ -566,6 +566,9 @@ button:disabled { cursor: not-allowed; }
 }
 
 /* ── Stage ────────────────────────────────────────────────────────────── */
+/* .stage-slot only matters on phones (sticky preview placeholder, see App.tsx);
+   on desktop it's transparent to layout so .stage stays a flex item of .app. */
+.stage-slot { display: contents; }
 .stage {
   flex: 1;
   min-width: 0;
@@ -1275,7 +1278,40 @@ button:disabled { cursor: not-allowed; }
   .sidebar { display: contents; }
   .brand-bar { order: 0; height: 56px; padding: 0 18px; }
   .brand-sub { display: none; }
-  .stage { order: 1; flex: none; }
+  .stage-slot { display: block; order: 1; flex: none; }
+  .stage { flex: none; }
+
+  /* Sticky preview: once the stage scrolls away, it becomes a compact bar
+     fixed to the top — frame left, timeline right (App.tsx toggles the class). */
+  .stage--pinned {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+    padding: 8px 16px;
+    background: var(--ground);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 8px 24px rgba(17,17,17,0.12);
+    animation: pin-in .18s ease-out;
+  }
+  .stage--pinned .stage-top,
+  .stage--pinned .stage-info,
+  .stage--pinned .stage-hint { display: none; }
+  .stage--pinned .stage-body { padding: 0; }
+  .stage--pinned .stage-frame-area { flex: 1 1 auto; height: 150px; }
+  .stage--pinned .preview-frame { border-radius: 10px; }
+  .stage--pinned .stage-bottom { padding: 0; }
+  .stage--pinned .ruler { height: 26px; }
+  .stage--pinned .timeline-controls { margin-top: 4px; gap: 8px; }
+  .stage--pinned .play-btn { width: 40px; height: 40px; }
+  .stage--pinned .time-now { font-size: 30px; }
+  @keyframes pin-in { from { transform: translateY(-100%); } to { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .stage--pinned { animation: none; } }
   .sidebar-scroll { order: 2; overflow: visible; flex: none; }
 
   .stage-top { height: auto; padding: 12px 16px; flex-wrap: wrap; }

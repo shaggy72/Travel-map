@@ -143,6 +143,18 @@ brand bar → stage (preview left, title + 2×2 format chips + duration right) �
 bands → Export. Done with `.sidebar { display: contents }` + `order` so the DOM stays the
 same. Inputs are 16px there (stops iOS zoom on focus).
 
+**Sticky preview on phones** (2026-09-28, user request — editing Line/Map scrolled the
+preview out of view; considered moving the preview between bands, chose this instead to
+avoid layout jumps): once the stage's bottom scrolls above `PIN_AT` (190px), App.tsx adds
+`.stage--pinned` → `position: fixed` compact bar at the top (150px frame left, ruler + play +
+time right; stage-top, title/formats and hint hidden). The wrapper `.stage-slot` gets the
+stage's measured full height while pinned so the page length doesn't change (no jump, no
+pin/unpin flicker); on desktop `.stage-slot` is `display: contents`. Same DOM element →
+the Remotion Player isn't remounted. Scroll + resize + media-query listeners; the full height
+is re-measured by a ResizeObserver only while unpinned. Rollback point: `cf70c6c`.
+Testing note: scroll events aren't delivered in a hidden/background tab (they fire with
+rendering updates) — when testing via the automation extension, dispatch `scroll` manually.
+
 **Route → labels** (2026-09-27, `routeLabels.ts` + PropsForm): editing From/To geocodes that
 address (Mapbox v5, `language=en`, 700 ms debounce) and fills in that end's city + country
 (country name taken from our COUNTRIES list by ISO code). Only user edits trigger it — never

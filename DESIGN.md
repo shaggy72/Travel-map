@@ -90,7 +90,9 @@ All text on bands is `--ink` (black), which clears 4.5:1 on every band colour. U
 ```
 
 Phones (≤ 760px): one scrolling column — brand bar, stage (preview left, title + 2×2 format
-chips + duration right), timeline, bands, Export.
+chips + duration right), timeline, bands, Export. Once the preview scrolls away it becomes a
+**sticky bar** at the top (`.stage--pinned`: small frame left, ruler + play + time right,
+slides in), so edits in any band stay visible.
 
 ---
 

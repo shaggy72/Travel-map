@@ -97,6 +97,50 @@ export default function App() {
   const propsRef = useRef(props);
   propsRef.current = props;
 
+  // ── Sticky preview on phones (2026-09-28) ───────────────────────────────
+  // On narrow screens the stage sits above the bands, so editing Line or Map
+  // scrolled the preview out of view. Once the stage has scrolled up past
+  // PIN_AT px, it switches to a compact bar fixed to the top (.stage--pinned:
+  // small frame + timeline). Same element, only CSS changes, so the Remotion
+  // Player isn't remounted. .stage-slot keeps the stage's full height while
+  // it's pinned so the page doesn't jump.
+  const stageRef = useRef<HTMLElement>(null);
+  const slotRef  = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  const [slotH,  setSlotH]  = useState<number | null>(null);
+
+  useEffect(() => {
+    if (auth !== 'logged-in') return;
+    const PIN_AT = 190; // ≈ height of the pinned bar
+    const mq = window.matchMedia('(max-width: 760px)');
+    let pinnedNow = false;
+    let fullH = 0;
+    const measure = () => {
+      if (!pinnedNow && stageRef.current) fullH = stageRef.current.offsetHeight;
+    };
+    const update = () => {
+      measure();
+      const slot = slotRef.current;
+      const should = mq.matches && !!slot && slot.getBoundingClientRect().top + fullH < PIN_AT;
+      if (should === pinnedNow) return;
+      pinnedNow = should;
+      setSlotH(should ? fullH : null);
+      setPinned(should);
+    };
+    const ro = new ResizeObserver(measure);
+    if (stageRef.current) ro.observe(stageRef.current);
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    mq.addEventListener('change', update);
+    update();
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      mq.removeEventListener('change', update);
+    };
+  }, [auth]);
+
   // ── Check session on mount ──────────────────────────────────────────────
   useEffect(() => {
     const ctrl  = new AbortController();
@@ -321,7 +365,8 @@ export default function App() {
       </aside>
 
       {/* ── Stage ────────────────────────────────────────────────────── */}
-      <main className="stage">
+      <div className="stage-slot" ref={slotRef} style={slotH ? { height: slotH } : undefined}>
+      <main ref={stageRef} className={`stage${pinned ? ' stage--pinned' : ''}`}>
         <div className="stage-top">
           <PresetBar props={props} onChange={setProps} />
 
@@ -406,6 +451,7 @@ export default function App() {
           <p className="stage-hint">Preview runs in your browser<br />Export renders full HD on the server</p>
         </div>
       </main>
+      </div>
     </div>
   );
 }
