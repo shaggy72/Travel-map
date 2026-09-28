@@ -6,7 +6,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import type { PlayerRef } from '@remotion/player';
-import { PlayIcon, PauseIcon } from './icons';
+import { PlayIcon, PauseIcon, ExpandIcon, CollapseIcon } from './icons';
 
 const TICKS = 50;
 
@@ -16,12 +16,14 @@ function fmt(seconds: number): string {
 }
 
 export default function Timeline({
-  player, durationInFrames, fps, compact = false,
+  player, durationInFrames, fps, compact = false, fullscreen = false, onToggleFullscreen,
 }: {
   player: PlayerRef | null;
   durationInFrames: number;
   fps: number;
   compact?: boolean;
+  fullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
   const [frame,   setFrame]   = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -86,6 +88,17 @@ export default function Timeline({
           <span className="time-now">{fmt(frame / fps)}</span>
           <span className="time-total">/ {(durationInFrames / fps).toFixed(1)} s</span>
         </span>
+        {onToggleFullscreen && (
+          <button
+            type="button"
+            className="fs-btn"
+            aria-label={fullscreen ? 'Exit full screen' : 'Full screen preview'}
+            title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen preview (or double-click the preview)'}
+            onClick={onToggleFullscreen}
+          >
+            {fullscreen ? <CollapseIcon size={20} /> : <ExpandIcon size={20} />}
+          </button>
+        )}
       </div>
     </div>
   );

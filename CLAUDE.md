@@ -143,6 +143,17 @@ brand bar → stage (preview left, title + 2×2 format chips + duration right) �
 bands → Export. Done with `.sidebar { display: contents }` + `order` so the DOM stays the
 same. Inputs are 16px there (stops iOS zoom on focus).
 
+**Full-screen preview** (2026-09-28): expand button in `Timeline` (`onToggleFullscreen`) or a
+double-click on `.preview-frame` → `.stage--fullscreen` (fixed, inset 0, dark; the stage's own
+CSS variables are overridden so the timeline turns white). Deliberately NOT the Fullscreen
+API: iPhone Safari only supports it for `<video>`. Same element restyled → no Player
+remount. Esc closes it; page scroll is locked meanwhile (`documentElement.style.overflow`).
+On phones `.stage-slot` keeps the stage's height (`fsSlotH`) so the page doesn't shift, and
+the sticky-bar logic skips measuring/pinning while full screen is open. Full-screen rules use
+`.stage.stage--fullscreen` so they beat the phone and `.stage--pinned` rules; they must reset
+`align-items: stretch` (the pinned bar centres, which collapsed the frame to 0 wide).
+Rollback point: `dec591e`.
+
 **Sticky preview on phones** (2026-09-28, user request — editing Line/Map scrolled the
 preview out of view; considered moving the preview between bands, chose this instead to
 avoid layout jumps): once the stage's bottom scrolls above `PIN_AT` (190px), App.tsx adds

@@ -30,7 +30,7 @@ import PropsForm from './PropsForm';
 import PresetBar from './PresetBar';
 import AccountMenu from './AccountMenu';
 import Timeline from './Timeline';
-import { ArrowIcon, MinusIcon, PlusIcon, RefreshIcon } from './icons';
+import { ArrowIcon, CloseIcon, MinusIcon, PlusIcon, RefreshIcon } from './icons';
 import { Props, DEFAULT_PROPS } from './types';
 
 // Lazy-load PreviewPlayer so a Remotion import failure can't kill the whole app
@@ -109,16 +109,47 @@ export default function App() {
   const [pinned, setPinned] = useState(false);
   const [slotH,  setSlotH]  = useState<number | null>(null);
 
+  // ── Full-screen preview (2026-09-28) ────────────────────────────────────
+  // An in-page overlay, not the browser Fullscreen API (iPhone Safari only
+  // allows that for <video>). Like the sticky bar, it's the same .stage
+  // element restyled (.stage--fullscreen), so the Player isn't remounted.
+  // fsSlotH holds the stage's height in the page meanwhile (phones), so the
+  // page underneath doesn't shift.
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fsSlotH,    setFsSlotH]    = useState<number | null>(null);
+  const fullscreenRef = useRef(false);
+  fullscreenRef.current = fullscreen;
+
+  function toggleFullscreen() {
+    if (!fullscreen) setFsSlotH(stageRef.current && !pinned ? stageRef.current.offsetHeight : null);
+    setFullscreen(!fullscreen);
+  }
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false); };
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden'; // no page scroll behind the overlay
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.documentElement.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [fullscreen]);
+
   useEffect(() => {
     if (auth !== 'logged-in') return;
     const PIN_AT = 190; // ≈ height of the pinned bar
     const mq = window.matchMedia('(max-width: 760px)');
     let pinnedNow = false;
     let fullH = 0;
+    // Both skip while the full-screen overlay is up: the stage is then
+    // viewport-sized and the page underneath is frozen.
     const measure = () => {
-      if (!pinnedNow && stageRef.current) fullH = stageRef.current.offsetHeight;
+      if (!pinnedNow && !fullscreenRef.current && stageRef.current) fullH = stageRef.current.offsetHeight;
     };
     const update = () => {
+      if (fullscreenRef.current) return;
       measure();
       const slot = slotRef.current;
       const should = mq.matches && !!slot && slot.getBoundingClientRect().top + fullH < PIN_AT;
@@ -365,8 +396,16 @@ export default function App() {
       </aside>
 
       {/* ── Stage ────────────────────────────────────────────────────── */}
-      <div className="stage-slot" ref={slotRef} style={slotH ? { height: slotH } : undefined}>
-      <main ref={stageRef} className={`stage${pinned ? ' stage--pinned' : ''}`}>
+      <div className="stage-slot" ref={slotRef}
+        style={slotH || (fullscreen && fsSlotH) ? { height: slotH ?? fsSlotH ?? undefined } : undefined}>
+      <main ref={stageRef}
+        className={`stage${pinned ? ' stage--pinned' : ''}${fullscreen ? ' stage--fullscreen' : ''}`}
+        aria-label={fullscreen ? 'Full screen preview' : undefined}>
+        {fullscreen && (
+          <button type="button" className="fs-close" aria-label="Close full screen" onClick={() => setFullscreen(false)}>
+            <CloseIcon size={22} />
+          </button>
+        )}
         <div className="stage-top">
           <PresetBar props={props} onChange={setProps} />
 
@@ -435,7 +474,8 @@ export default function App() {
             {/* .frame-fit is a size container: the frame takes the largest
                 size of the chosen aspect ratio that fits (see styles.css). */}
             <div className="frame-fit">
-              <div className="preview-frame" style={{ '--ar': format.ar } as React.CSSProperties}>
+              <div className="preview-frame" style={{ '--ar': format.ar } as React.CSSProperties}
+                onDoubleClick={toggleFullscreen}>
                 <PlayerErrorBoundary>
                   <Suspense fallback={<div className="preview-loading">Loading preview…</div>}>
                     <PreviewPlayer props={props} onReady={setPlayer} />
@@ -447,7 +487,8 @@ export default function App() {
         </div>
 
         <div className="stage-bottom">
-          <Timeline player={player} durationInFrames={durationInFrames} fps={FPS} />
+          <Timeline player={player} durationInFrames={durationInFrames} fps={FPS}
+            fullscreen={fullscreen} onToggleFullscreen={toggleFullscreen} />
           <p className="stage-hint">Preview runs in your browser<br />Export renders full HD on the server</p>
         </div>
       </main>

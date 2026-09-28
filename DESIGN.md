@@ -94,6 +94,11 @@ chips + duration right), timeline, bands, Export. Once the preview scrolls away 
 **sticky bar** at the top (`.stage--pinned`: small frame left, ruler + play + time right,
 slides in), so edits in any band stay visible.
 
+**Full-screen preview** (`.stage--fullscreen`): the same stage over the whole viewport on a
+near-black ground — frame as large as fits, timeline below in white, round × top right.
+Opened by the expand button next to the time counter or a double-click on the preview;
+closed by ×, Esc, the collapse button or another double-click.
+
 ---
 
 ## Components

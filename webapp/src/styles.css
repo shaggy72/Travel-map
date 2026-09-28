@@ -1016,6 +1016,86 @@ button:disabled { cursor: not-allowed; }
 }
 .time-total { font-size: 14px; color: var(--ink-muted); padding-top: 4px; }
 
+/* Full-screen button (in the timeline) */
+.fs-btn {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  margin-left: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background .12s;
+}
+.fs-btn:hover { background: rgba(17,17,17,0.06); }
+.preview-frame { cursor: pointer; }
+
+/* ── Full-screen preview (App.tsx toggles .stage--fullscreen) ─────────────
+   The same .stage element pinned over the whole viewport on a dark ground:
+   frame as large as it fits, timeline below, close button top right.
+   Declared with .stage.stage--fullscreen so it wins over the phone rules
+   and the sticky bar (.stage--pinned). */
+.stage.stage--fullscreen {
+  --ink: #FFFFFF;
+  --ink-muted: #B9B6AE;
+  --line: rgba(255,255,255,0.18);
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;   /* reset the sticky bar's centring, or the frame column collapses to 0 wide */
+  column-gap: 0;
+  padding: 20px 24px 18px;
+  background: #0E0D0C;
+  color: #fff;
+  box-shadow: none;
+  border: 0;
+  animation: fs-in .16s ease-out;
+}
+.stage.stage--fullscreen .stage-top,
+.stage.stage--fullscreen .stage-info,
+.stage.stage--fullscreen .stage-hint { display: none; }
+.stage.stage--fullscreen .stage-body { flex: 1; min-height: 0; padding: 0; flex-direction: column; }
+.stage.stage--fullscreen .stage-frame-area { flex: 1 1 auto; height: auto; padding: 0 0 14px; }
+.stage.stage--fullscreen .preview-frame { border-radius: 12px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+.stage.stage--fullscreen .stage-bottom { padding: 0; }
+.stage.stage--fullscreen .ruler {
+  height: 30px;
+  background: linear-gradient(to right, rgba(255,255,255,0.1) var(--played), transparent var(--played));
+}
+.stage.stage--fullscreen .tick { background: rgba(255,255,255,0.3); }
+.stage.stage--fullscreen .tick--major { background: rgba(255,255,255,0.6); }
+.stage.stage--fullscreen .play-btn:hover:not(:disabled),
+.stage.stage--fullscreen .fs-btn:hover { background: rgba(255,255,255,0.1); }
+.stage.stage--fullscreen .time-now { font-size: 40px; }
+.stage.stage--fullscreen .timeline-controls { margin-top: 6px; gap: 12px; }
+.fs-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.fs-close:hover { background: rgba(255,255,255,0.22); }
+.stage.stage--fullscreen .stage-body { padding-top: 48px; }
+@keyframes fs-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stage.stage--fullscreen { animation: none; } }
+
 /* ── Spinner ──────────────────────────────────────────────────────────── */
 .spinner {
   width: 14px;

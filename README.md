@@ -109,7 +109,7 @@ User clicks "Export MP4"
 9. In **GPX mode**, optionally enable **Elevation profile**: a filled area chart at the bottom of the canvas that fills in left-to-right in sync with the route line. Position (left %, top %) and size (width %, height %) are freely configurable via sliders. Requires `<ele>` tags in the GPX file.
 10. Choose **Format** (Portrait 9:16 / Landscape 16:9 / Square 1:1 / Instagram post 4:5) and **Duration** (seconds) — both sit next to the preview, since they change the preview frame
 11. Save frequently-used configurations as **Presets** (bookmark button + "+" at the top of the preview area) — stored on the server so they survive browser clears and are available on any device
-12. The live preview updates as you change settings and plays automatically in a loop — use the ruler timeline under it to pause, play and scrub
+12. The live preview updates as you change settings and plays automatically in a loop — use the ruler timeline under it to pause, play and scrub. The full-screen button next to the time (or a double-click on the preview) shows it full screen; Esc or × closes it
 13. Your settings are saved automatically: the next time you sign in you continue where you left off, even without saving a preset. A brand-new account starts from the built-in defaults (`DEFAULT_PROPS` in `webapp/src/types.ts`: Brussels → New York by plane on the Air France map style)
 
 ---

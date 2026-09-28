@@ -54,6 +54,12 @@ export const CloseIcon = (p: IconProps) => (
 export const UploadIcon = (p: IconProps) => (
   <Svg {...p}><path d="M12 16V5M7 10l5-5 5 5M5 20h14" /></Svg>
 );
+export const ExpandIcon = (p: IconProps) => (
+  <Svg strokeWidth={2} {...p}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></Svg>
+);
+export const CollapseIcon = (p: IconProps) => (
+  <Svg strokeWidth={2} {...p}><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></Svg>
+);
 export const RefreshIcon = (p: IconProps) => (
   <Svg {...p}><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" /></Svg>
 );
