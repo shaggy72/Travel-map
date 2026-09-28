@@ -155,6 +155,16 @@ inputs (`.stack-field` + `.login-input`), black submit pill. On phones the bands
 
 ---
 
+## App icon
+
+The five band colours as horizontal stripes (route, labels, line, map, export — top to
+bottom) with a black route curve and two end dots (white start, yellow destination).
+Full-bleed square; iOS and Android apply their own rounding. The maskable Android variant
+scales only the route to 72% so it stays inside the 80% safe zone. Files and regeneration:
+README → "App icon".
+
+---
+
 ## Adding a control
 
 ```tsx

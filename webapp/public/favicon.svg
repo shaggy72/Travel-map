@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Travel Map app icon ("Color Stack" A): the five sidebar band colours with a route across them -->
+  <rect width="512" height="103" fill="#FFD45C"/>
+  <rect y="102" width="512" height="103" fill="#F4B6EA"/>
+  <rect y="204" width="512" height="103" fill="#CDBDB5"/>
+  <rect y="306" width="512" height="103" fill="#97ACE3"/>
+  <rect y="408" width="512" height="104" fill="#FF6B2C"/>
+  <path d="M118 398C170 250 330 360 394 118" fill="none" stroke="#111111" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="118" cy="398" r="34" fill="#111111"/>
+  <circle cx="118" cy="398" r="13" fill="#FFFFFF"/>
+  <circle cx="394" cy="118" r="42" fill="#111111"/>
+  <circle cx="394" cy="118" r="16" fill="#FFD45C"/>
+</svg>
