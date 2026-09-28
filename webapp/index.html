@@ -7,9 +7,13 @@
     <!-- App icon: the five band colours with a route (webapp/public/, see README "App icon") -->
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- ?v= busts iOS's touch-icon cache (it keeps a missing icon forever); bump it when the icon changes -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-title" content="Travel Map" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />

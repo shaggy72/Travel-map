@@ -271,7 +271,7 @@ Email + password, self-registration, anyone can sign up — replaced the old sin
 
 ## App icon
 
-The icon is the five sidebar band colours with a route across them. Source: `webapp/public/favicon.svg`. Everything else in `webapp/public/` is generated from it — the tab icon (`favicon.ico`, 16 + 32 px), the iOS home-screen icon (`apple-touch-icon.png`, 180 px), the Android / "Add to home screen" icons (`icon-192.png`, `icon-512.png`, plus `icon-maskable-512.png` with the route pulled in so Android's round crop doesn't cut the end dots) and `manifest.webmanifest`. After editing the SVG, regenerate with:
+The icon is the five sidebar band colours with a route across them. Source: `webapp/public/favicon.svg`. Everything else in `webapp/public/` is generated from it — the tab icon (`favicon.ico`, 16 + 32 px), the iOS home-screen icon (`apple-touch-icon.png`, 180 px), the Android / "Add to home screen" icons (`icon-192.png`, `icon-512.png`, plus `icon-maskable-512.png` with the route pulled in so Android's round crop doesn't cut the end dots) and `manifest.webmanifest`. The Apple icon is rendered opaque and also copied to `apple-touch-icon-precomposed.png` (iOS probes that name). iOS caches touch icons per URL — even a missing one — so `index.html` links it as `/apple-touch-icon.png?v=2`: bump `v` whenever the icon changes. After editing the SVG, regenerate with:
 
 ```bash
 node scripts/render-icons.cjs   # uses your installed Chrome/Edge headless; CHROME_PATH=… to override

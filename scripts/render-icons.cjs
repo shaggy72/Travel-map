@@ -34,19 +34,23 @@ const maskable = main
   .replace('<path d=', '<g transform="translate(256 256) scale(0.72) translate(-256 -256)"><path d=')
   .replace('</svg>', '</g></svg>');
 
-function render(svg, size, out) {
+function render(svg, size, out, bg = '00000000') {
   const html = path.join(TMP, `icon-${size}.html`);
   fs.writeFileSync(html, `<!doctype html><html><head><style>html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:${size}px;height:${size}px}</style></head><body>${svg}</body></html>`);
   execFileSync(CHROME, [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run',
     `--user-data-dir=${path.join(TMP, 'profile')}`, '--force-device-scale-factor=1',
-    `--window-size=${size},${size}`, '--default-background-color=00000000',
+    `--window-size=${size},${size}`, `--default-background-color=${bg}`,
     `--screenshot=${out}`, 'file:///' + html.replace(/\\/g, '/'),
   ], { stdio: 'ignore' });
   console.log(path.basename(out));
 }
 
-render(main, 180, path.join(PUB, 'apple-touch-icon.png'));
+// Opaque background for iOS: Apple wants touch icons without transparency.
+render(main, 180, path.join(PUB, 'apple-touch-icon.png'), 'F0EFEAFF');
+// iOS also probes this legacy name; without a real file the SPA fallback
+// answers with index.html, which iOS can't use as an icon.
+fs.copyFileSync(path.join(PUB, 'apple-touch-icon.png'), path.join(PUB, 'apple-touch-icon-precomposed.png'));
 render(main, 192, path.join(PUB, 'icon-192.png'));
 render(main, 512, path.join(PUB, 'icon-512.png'));
 render(maskable, 512, path.join(PUB, 'icon-maskable-512.png'));
