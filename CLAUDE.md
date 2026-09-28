@@ -49,8 +49,6 @@ MAPBOX_STYLE=shaggy72/cmpma5agg000101qr4tt68gad  # optional, falls back to mapbo
 RESEND_API_KEY=re_...                     # required — account-confirmation emails, see "Authentication" below
 APP_URL=https://travelmap.luyens.be       # required in production — confirmation-link base URL
 PORT=3002
-START_PRESET_OWNER=owner@example.com        # optional — whose "Start" preset seeds new users (default: oldest verified account)
-START_PRESET_NAME=Start                   # optional
 ```
 `APP_USERNAME`/`APP_PASSWORD` were removed 2026-09-26 — see "Authentication" below.
 
@@ -149,7 +147,7 @@ address (Mapbox v5, `language=en`, 700 ms debounce) and fills in that end's city
 (country name taken from our COUNTRIES list by ISO code). Only user edits trigger it — never
 loading a preset or session, so stored custom labels aren't overwritten. With **Same as
 route** on, switching source/track also re-syncs; for a GPS track the first/last track point
-is reverse-geocoded. `labelsFromRoute` is a real prop (schema + types, default false) so it
+is reverse-geocoded. `labelsFromRoute` is a real prop (schema + types, default **true** since 2026-09-28) so it
 saves with presets/sessions; the video ignores it. PropsForm's `onChange` is a state
 setter so async results merge onto the latest props, and results are dropped if the address
 changed again meanwhile.
@@ -540,15 +538,19 @@ Appears in the Labels band (Start country / End country), next to the Start city
 - Update pill (`.update-pill`) in the stage top bar; Install disabled while rendering
 - After restart: polls `GET /api/me` every 2 s; **any HTTP response** (200 or 401) triggers `window.location.reload()` — sessions are in-memory so the server returns 401 after restart, not 200
 
-## Last session + "Start" preset (added 2026-09-27)
+## Last session + first-login defaults (added 2026-09-27)
 - The webapp autosaves the current props (1 s debounce, plus a `sendBeacon` on `pagehide`,
   plus a flush before logout) to `POST /api/state` → `server/data/state-<sanitized-email>.json`.
 - On login/session restore, `GET /api/state` returns that; with no file yet (first login) it
-  returns the props of the preset named `START_PRESET_NAME` ("Start", case-insensitive) owned
-  by `START_PRESET_OWNER` (falls back to the oldest verified account). App merges onto
-  `DEFAULT_PROPS` and only then shows the UI; autosave waits for `sessionReady` so it never
+  returns `props: null` and the app keeps `DEFAULT_PROPS`. Saved props are merged onto
+  `DEFAULT_PROPS` and only then is the UI shown; autosave waits for `sessionReady` so it never
   overwrites a stored session with defaults.
-- The owner's email is deliberately not in the (public) repo — it lives in the VPS `.env`.
+- **First-login defaults = `DEFAULT_PROPS` in `webapp/src/types.ts`**, copied 2026-09-28 from
+  the owner's "Start" preset (Brussels → New York, flight, Air France style, dotted light line,
+  plane marker, static labels, no city labels, `labelsFromRoute: true`). A first version looked
+  that preset up at runtime (a `START_PRESET_OWNER` env var); the user asked for plain defaults
+  instead. To change what new users see, edit `DEFAULT_PROPS` — it also fills in props missing
+  from older presets/sessions.
 
 ## npm scripts
 | Script | Description |

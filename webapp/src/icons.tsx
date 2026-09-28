@@ -77,10 +77,12 @@ export function PauseIcon({ size = 28 }: { size?: number }) {
 
 /** Vehicle glyphs — the exact same Material Symbols paths the video uses for
  *  the route-tip marker badge (src/routeIcons.tsx), so the sidebar buttons
- *  match what appears on the map. type: car | camper | plane | bike | walk. */
+ *  match what appears on the map. type: car | camper | plane | bike | walk.
+ *  viewBox is ±12, not ±10: RouteMarkerIcon maps Material's full 960-unit
+ *  grid to ±12, and the bike glyph uses that full width (±10 cut its wheels). */
 export function VehicleIcon({ type, size = 20 }: { type: string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="-10 -10 20 20" aria-hidden="true">
+    <svg width={size} height={size} viewBox="-12 -12 24 24" aria-hidden="true">
       <RouteMarkerIcon type={type} fill="currentColor" />
     </svg>
   );
