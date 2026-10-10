@@ -274,6 +274,7 @@ const MAP_STYLE_OPTIONS: (PickerOption<string> & { swatch: string })[] = [
   { value: 'shaggy72/cmpma5agg000101qr4tt68gad', label: 'Gray',        swatch: '#D9D9D7' },
   { value: 'mapbox/dark-v11',                    label: 'Dark',        swatch: '#2A2B2D' },
   { value: 'shaggy72/cmugrbhnu000801s01q212pyn', label: 'Air France',  swatch: '#1F3A5C' },
+  { value: 'shaggy72/cmv2hu7i3000l01sbehp1dbnl', label: 'Blueprint',   swatch: '#5D7299' },
   { value: 'shaggy72/cmqf8b53y001g01sc9lsh67db', label: 'Topographic', swatch: '#E8E2CC' },
   { value: 'shaggy72/cmqf94fhu003q01qw4m5e4fpk', label: 'Topo v2',     swatch: '#EDE7D3' },
   { value: 'mapbox/streets-v12',                 label: 'Streets',     swatch: '#AAD3DF' },
