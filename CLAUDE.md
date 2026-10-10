@@ -331,7 +331,7 @@ add one later following the same reset-token-hash pattern `costa-rica-trip` uses
 - `shaggy72/cmqf8b53y001g01sc9lsh67db` — Topographic (contours + water only, with hillshade)
 - `shaggy72/cmqf94fhu003q01qw4m5e4fpk` — Topo v2 (adds land-use colours: urban/grass/wood/rock/protected areas)
 - `shaggy72/cmugrbhnu000801s01q212pyn` — Air France (dark monochrome, inspired by the Air France in-flight wifi map: land `#313645`, water `#181B26`, faint country borders `#41454F` at 60% opacity, no labels/roads)
-- Source JSON files: `mapbox-topo-style.json`, `mapbox-topo-style-v2.json`, `mapbox-navy-style.json`
+- Source JSON files: `mapbox-topo-style.json`, `mapbox-topo-style-v2.json`, `mapbox-navy-style.json`, `mapbox-blueprint-style.json` (2026-10-10: two-tone blue/white city map — water #5D7299, land #F3F5F9, parks #DCE2EC, buildings #B9C3D6, white roads, small upper-case street labels; validated with `gl-style-validate`; not yet uploaded to Studio, so not in MAP_STYLE_OPTIONS)
 - Custom styles are created by editing the source JSON (Mapbox Style Spec v8) and uploading it manually in Mapbox Studio (or via `POST https://api.mapbox.com/styles/v1/shaggy72` with a `styles:write` secret token)
 - Standard Mapbox styles: streets-v12, outdoors-v12, light-v11, dark-v11, satellite-streets-v12, none
 
