@@ -271,6 +271,10 @@ Email + password per account — replaced the old single shared `APP_USERNAME`/`
 
 ---
 
+## Backups
+
+Set `BACKUP_DIR` in `.env` (production: `/home/micha/backups/travelmap`) and the server makes a `travelmap-files-YYYYMMDD-HHMMSS.tar.gz` of `server/data/` (users, presets, last session) every day at 03:30 Belgian time, keeps 14 days, and makes one right at startup if the newest is older than 26 hours. Without `BACKUP_DIR` nothing happens. The code is `server/backup.js` from the luyens-skills catalogue (component `deploy`, version recorded in `.luyens/components.json`); it is an ES module, so `server/package.json` sets `"type": "module"` and `index.cjs` loads it with `import()`. Tests: `node --test server/test/backup.test.js`. Restore: stop the app, `tar -xzf travelmap-files-….tar.gz -C server`, start it.
+
 ## App icon
 
 The icon is the five sidebar band colours with a route across them. Source: `webapp/public/favicon.svg`. Everything else in `webapp/public/` is generated from it — the tab icon (`favicon.ico`, 16 + 32 px), the iOS home-screen icon (`apple-touch-icon.png`, 180 px), the Android / "Add to home screen" icons (`icon-192.png`, `icon-512.png`, plus `icon-maskable-512.png` with the route pulled in so Android's round crop doesn't cut the end dots) and `manifest.webmanifest`. The Apple icon is rendered opaque and also copied to `apple-touch-icon-precomposed.png` (iOS probes that name). iOS caches touch icons per URL — even a missing one — so `index.html` links it as `/apple-touch-icon.png?v=2`: bump `v` whenever the icon changes. After editing the SVG, regenerate with:

@@ -361,6 +361,11 @@ server.listen(PORT, '0.0.0.0', () => {
   if (!process.env.APP_URL) {
     console.warn(`[warn] APP_URL is not set — confirmation links will use http://localhost:${PORT}, wrong in production.`);
   }
+  // Dagelijkse back-up van server/data (gebruikers, voorinstellingen, status) als tar.gz. Zonder BACKUP_DIR gebeurt er niets.
+  // backup.js is een ES-module (server/package.json: type module), vandaar import() vanuit deze CommonJS-server.
+  import('./backup.js')
+    .then((m) => m.startBackups(null, { dir: process.env.BACKUP_DIR, name: 'travelmap', files: [DATA_DIR] }))
+    .catch((e) => console.error('[backup]', e.message));
 });
 
 // ── Catch any unhandled errors ────────────────────────────────────────────

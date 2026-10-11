@@ -1,0 +1,11 @@
+{
+  "deploy": {
+    "skill": "app-deploy",
+    "version": "1.2.0",
+    "files": {
+      "server/backup.js": "3b198021a1be2b1c",
+      "server/test/backup.test.js": "360223b991ebe405",
+      "deploy/nginx.conf": "037d532fa53eeb4e"
+    }
+  }
+}
