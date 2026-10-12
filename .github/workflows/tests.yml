@@ -1,0 +1,40 @@
+# Automatische tests: bij elke push en pull request, en elke nacht (04:00 Belgische zomertijd).
+# 's Nachts ook een controle of de echte site bereikbaar is. Mislukt er iets, dan mailt GitHub je.
+# De tests hebben geen npm-pakketten nodig (enkel Node), dus geen `npm ci` van de zware Remotion-installatie.
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+# Een nieuwere push annuleert de lopende run van dezelfde branch.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PROD_URL: https://travelmap.luyens.be
+
+jobs:
+  server:
+    name: Servertests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # zelfde als de VPS
+      - run: node --test "server/test/*.test.js"
+
+  production:
+    name: Site bereikbaar
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 20 "$PROD_URL/" -o /dev/null
