@@ -43,7 +43,8 @@ if [ "${SKIP_CI:-0}" != "1" ]; then
 fi
 
 # 3. Op de VPS: bijwerken, bouwen, herstarten, controleren, zo nodig terugdraaien.
-ssh "$VPS" bash -s -- "$NAME" "$DIR" "$HEALTH" "$BUILD" <<'REMOTE'
+# ssh plakt argumenten aan elkaar zonder aanhalingstekens; %q beschermt spaties (bv. in het bouwcommando).
+ssh "$VPS" "bash -s -- $(printf '%q ' "$NAME" "$DIR" "$HEALTH" "$BUILD")" <<'REMOTE'
 set -uo pipefail
 NAME="$1"; DIR="$2"; HEALTH="$3"; BUILD="$4"
 cd "$DIR"
