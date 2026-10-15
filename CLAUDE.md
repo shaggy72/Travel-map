@@ -612,3 +612,11 @@ bash ~/Travel-map/deploy.sh
 - **Restart button does nothing after update**: sessions stored in-memory (`Map`) are lost on `process.exit(0)`. After PM2 restarts the server, `/api/me` returns 401 (not 200). Old polling checked `r.ok` (200 only) → never reloaded. Fix: reload on any HTTP response; only network-level errors (ECONNREFUSED) mean the server is still starting.
 - **`dotenv` prints ad tips to production logs**: `dotenv@17.4.2`'s `.config()` logs an "injected env" line with a random rotating self-promo tip (`dotenvx.com`, `vestauth.com`) on every server start — looks alarming in `pm2 logs` (unfamiliar domain) but is genuine upstream behaviour, not a compromised package (checked `node_modules/dotenv/lib/main.js` — the tips are hardcoded in a `TIPS` array). Fixed by passing `{ quiet: true }` to `.config()` in `server/index.cjs`.
 - **Applying an old preset after adding a schema field crashes the preview**: preset "Apply" replaced `props` wholesale with the raw stored JSON (`onChange(p.props)`), so a preset saved before a new required-looking field existed (e.g. `startCountry`/`startCountryCode`) left it `undefined` at runtime — `labelBoxWidth()` then called `.length` on `undefined` and threw. Fix: `onChange({ ...DEFAULT_PROPS, ...p.props })` so missing fields fall back to defaults. Apply this pattern any time a new prop is added — old stored presets never gain it automatically.
+
+<!-- luyens-skills:start -->
+## Catalogus luyens-skills (automatisch beheerd door kit.mjs, niet met de hand wijzigen)
+Deze app gebruikt gedeelde onderdelen uit de catalogus `luyens-skills` (GitHub: shaggy72/luyens-skills; op Michas pc: `C:\Users\micha\ai-projecten\luyens-skills`, geïnstalleerd in `~/.claude/skills`).
+- **Lees voor je aan een nieuwe functie begint `~/.claude/skills/app-nieuw/LESSONS.md`** (kort overzicht van fouten die al eens gemaakt en opgelost zijn: iOS, swipen, enz.). Open een les alleen als ze op je taak slaat.
+- Onderdelen staan in `.luyens/components.json`; `node ~/.claude/skills/app-nieuw/scripts/kit.mjs status .` toont of de app achterloopt. Schrijf geen eigen login, dock, swipe of back-up als de catalogus die heeft.
+- Vond je een betere oplossing, of corrigeerde Micha je? Werk de les en het onderdeel bij in de bron-repo (zie het begin van LESSONS.md), niet enkel in deze app.
+<!-- luyens-skills:end -->
