@@ -38,3 +38,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: curl -fsS --max-time 20 "$PROD_URL/" -o /dev/null
+
+  # Pakket-updates van Dependabot (kleine updates en beveiligingsfixes) worden pas samengevoegd als alle tests hierboven groen zijn.
+  # Staat standaard UIT: zet de repo-variabele AUTOMERGE op true (gh variable set AUTOMERGE --body true). Grote versiesprongen nooit automatisch.
+  automerge:
+    name: Dependabot samenvoegen
+    needs: [server]
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]' && vars.AUTOMERGE == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.meta.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

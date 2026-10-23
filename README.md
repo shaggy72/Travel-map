@@ -331,3 +331,6 @@ Uploaded `.gpx` files are stored in `/public` and are visible to all logged-in u
 - **Adding a new line style** — extend the `lineStyle` enum in `schema.ts` and add the SVG rendering case in `MapComposition.tsx` where `lineStyle` is consumed.
 - **Adding a new travel mode** — add the value to the `travelMode` enum in `schema.ts` and `types.ts`, handle the route/arc logic in `MapComposition.tsx`, add an icon + radio button in `PropsForm.tsx`.
 - **Commits** — one logical change per commit, present-tense imperative subject line (e.g. `Add wipe animation style`).
+
+## Pakket-updates (Dependabot)
+`.github/dependabot.yml`: wekelijks (maandag) één voorstel per map met kleine updates, en meteen een voorstel bij een beveiligingsgat; nieuwe versies moeten 5 dagen oud zijn, grote versiesprongen komen niet vanzelf. De job `automerge` in `.github/workflows` voegt zo'n voorstel enkel samen als alle tests groen zijn **en** de repo-variabele `AUTOMERGE` op `true` staat (staat uit: de tests zijn te beperkt, kijk zelf naar het voorstel). Samenvoegen is nog geen uitrol: uitrollen blijft `deploy/deploy.sh` (of de uitrol op de VPS). system.luyens.be toont de uitslag van `npm audit` per app (tegel "Updates").

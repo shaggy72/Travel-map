@@ -1,0 +1,19 @@
+# Dependabot: wekelijks een voorstel (pull request) met kleine pakket-updates, en meteen een voorstel bij een beveiligingsgat.
+# - Een nieuwe versie moet 5 dagen oud zijn (vergiftigde nieuwe releases worden meestal snel opgemerkt). Beveiligingsfixes wachten niet.
+# - Kleine updates (minor/patch) komen gegroepeerd in één voorstel per map; grote versiesprongen komen niet vanzelf (enkel als het een beveiligingsfix is).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday, time: '06:00', timezone: Europe/Brussels }
+    cooldown: { default-days: 5 }
+    open-pull-requests-limit: 5
+    groups:
+      kleine-updates: { update-types: [minor, patch] }
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    cooldown: { default-days: 5 }
