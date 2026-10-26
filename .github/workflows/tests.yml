@@ -1,5 +1,6 @@
 # Automatische tests: bij elke push en pull request, en elke nacht (04:00 Belgische zomertijd).
 # 's Nachts ook een controle of de echte site bereikbaar is. Mislukt er iets, dan mailt GitHub je.
+# 's Nachts alleen bij nieuwe code in de afgelopen 24 uur (minuten sparen); zonder commits slaan de jobs over.
 # De tests hebben geen npm-pakketten nodig (enkel Node), dus geen `npm ci` van de zware Remotion-installatie.
 name: Tests
 
@@ -22,8 +23,23 @@ env:
   PROD_URL: https://travelmap.luyens.be
 
 jobs:
+  changes:
+    # Enkel 's nachts: nieuwe code in de afgelopen 24 uur? Zonder commits slaan de nachtelijke jobs over (minuten sparen).
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.check.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          if [ -n "$(git log --since='24 hours ago' --format=%H)" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; else echo "code=false" >> "$GITHUB_OUTPUT"; fi
   server:
     name: Servertests
+    needs: [changes]
+    if: github.event_name != 'schedule' || needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +50,8 @@ jobs:
 
   production:
     name: Site bereikbaar
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [changes]
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.event_name != 'schedule' || needs.changes.outputs.code == 'true')
     runs-on: ubuntu-latest
     steps:
       - run: curl -fsS --max-time 20 "$PROD_URL/" -o /dev/null
